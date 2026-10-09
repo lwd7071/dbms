@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cổng Quản Trị &amp; Phòng Đào Tạo | Quản Lý Học Vụ DBMS330284</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Header & Navigation -->
+  <header class="header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-logo" style="background: rgba(255, 255, 255, 0.2);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>HỆ THỐNG QUẢN TRỊ ĐÀO TẠO</h1>
+          <p>Phân Hệ Cán Bộ Phòng Đào Tạo &amp; Quản Trị Viên</p>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="user-profile">
+          <div class="user-info">
+            <div class="user-name" id="header-user-name">Đang tải...</div>
+            <div class="user-role" id="header-user-role">Vai trò: ...</div>
+          </div>
+          <button class="btn-logout" onclick="logout()">Đăng xuất</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Container Chính -->
+  <main class="main-container">
+
+    <!-- Navigation Tabs (9 Màn Hình Chuẩn Đặc Tả) -->
+    <!-- Navigation Tabs (Gom nhóm 4 Phân Hệ Chuẩn UI/UX Pro Max) -->
+    <nav class="tabs-nav">
+      <!-- 1. Dashboard -->
+      <button class="tab-btn active" id="btnTabDashboard" onclick="switchAdminTab('dashboard', this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        <span>Dashboard</span>
+      </button>
+
+      <!-- 2. Quản lý Đào tạo (Dropdown) -->
+      <div class="tab-group" data-group="academic">
+        <button class="tab-dropdown-btn" id="btnGroupAcademic" onclick="toggleTabDropdown('academic')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+          </svg>
+          <span>Quản lý Đào tạo</span>
+          <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <div class="tab-dropdown-menu">
+          <button class="tab-dropdown-item" onclick="switchAdminTab('students', this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span>Quản lý sinh viên</span>
+          </button>
+          <button class="tab-dropdown-item" onclick="switchAdminTab('classes-sh', this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            <span>Lớp sinh hoạt (36 lớp)</span>
+          </button>
+          <button class="tab-dropdown-item" onclick="switchAdminTab('classes', this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            <span>Quản lý lớp học phần</span>
+          </button>
+          <button class="tab-dropdown-item" onclick="switchAdminTab('registrations', this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            <span>Đăng ký tín chỉ</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. Tài chính & Học phí (Dropdown) -->
+      <div class="tab-group" data-group="finance">
+        <button class="tab-dropdown-btn" id="btnGroupFinance" onclick="toggleTabDropdown('finance')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+            <line x1="1" y1="10" x2="23" y2="10"></line>
+          </svg>
+          <span>Tài chính &amp; Học phí</span>
+          <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <div class="tab-dropdown-menu">
+          <button class="tab-dropdown-item" onclick="switchAdminTab('pending', this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>Xác nhận thanh toán (Chờ duyệt)</span>
+          </button>
+          <button class="tab-dropdown-item" onclick="switchAdminTab('cashier', this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
+            </svg>
+            <span>Quản lý học phí &amp; Quầy thu</span>
+          </button>
+          <button class="tab-dropdown-item" onclick="switchAdminTab('report', this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            <span>Báo cáo thống kê học phí</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 4. Quản trị Hệ thống (Dropdown) -->
+      <div class="tab-group" data-group="system">
+        <button class="tab-dropdown-btn" id="btnGroupSystem" onclick="toggleTabDropdown('system')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Quản trị Hệ thống</span>
+          <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <div class="tab-dropdown-menu">
+          <button class="tab-dropdown-item" onclick="switchAdminTab('users', this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <span>Quản lý tài khoản</span>
+          </button>
+          <button class="tab-dropdown-item" onclick="switchAdminTab('audit', this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            <span>Nhật ký hoạt động (Audit)</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- MÀN HÌNH 1: DASHBOARD / TỔNG QUAN -->
+    <div id="tab-dashboard" class="tab-pane active">
+      <div id="adminDashboardContent">
+        <div style="text-align: center; padding: 2rem;">Đang tải dashboard...</div>
+      </div>
+    </div>
+
+    <!-- MÀN HÌNH 2: QUẢN LÝ SINH VIÊN -->
+    <div id="tab-students" class="tab-pane">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+            </svg>
+            Danh sách hồ sơ sinh viên
+          </h2>
+        </div>
+        <div class="card-body">
+          <div class="toolbar">
+            <div class="search-box">
+              <input type="text" id="searchStudentInput" class="form-control" placeholder="Tìm theo MSSV, họ tên, email..." onkeydown="if(event.key==='Enter') loadAdminStudents()">
+            </div>
+            <div style="min-width: 180px;">
+              <select id="filterStudentKhoa" class="form-control" onchange="onStudentKhoaChange()" aria-label="Lọc theo khoa">
+                <option value="">-- Tất cả khoa --</option>
+              </select>
+            </div>
+            <div style="min-width: 200px;">
+              <select id="filterStudentLop" class="form-control" onchange="loadAdminStudents()" aria-label="Lọc theo lớp sinh hoạt">
+                <option value="">-- Tất cả lớp sinh hoạt --</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="loadAdminStudents()">Tìm kiếm</button>
+          </div>
+          <div id="adminStudentsContainer"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- MÀN HÌNH 2.1: QUẢN LÝ LỚP SINH HOẠT (36 LỚP) -->
+    <div id="tab-classes-sh" class="tab-pane">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            Danh sách Lớp sinh hoạt / Lớp niên chế (36 lớp toàn trường)
+          </h2>
+          <span class="badge badge-info">Phân bổ 1.500 Sinh viên (K23 - K25)</span>
+        </div>
+        <div class="card-body">
+          <div class="toolbar">
+            <div style="min-width: 180px;">
+              <select id="filterAdminClassShKhoa" class="form-control" onchange="loadAdminAdministrativeClasses()">
+                <option value="">-- Tất cả khoa --</option>
+              </select>
+            </div>
+            <div style="min-width: 180px;">
+              <select id="filterAdminClassShNam" class="form-control" onchange="loadAdminAdministrativeClasses()">
+                <option value="">-- Tất cả khóa nhập học --</option>
+                <option value="2023">Khóa 2023 (K23)</option>
+                <option value="2024">Khóa 2024 (K24)</option>
+                <option value="2025">Khóa 2025 (K25)</option>
+              </select>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="loadAdminAdministrativeClasses()">Làm mới</button>
+          </div>
+          <div id="adminAdministrativeClassesContainer">
+            <div style="text-align: center; padding: 2rem;">Đang tải danh sách 36 lớp sinh hoạt...</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- MÀN HÌNH 3: QUẢN LÝ LỚP HỌC PHẦN -->
+    <div id="tab-classes" class="tab-pane">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            Danh sách Lớp học phần mở trong kỳ
+          </h2>
+        </div>
+        <div class="card-body">
+          <div class="toolbar">
+            <div class="search-box">
+              <input type="text" id="searchClassInput" class="form-control" placeholder="Tìm theo mã LHP, tên môn học..." onkeydown="if(event.key==='Enter') loadAdminClasses()">
+            </div>
+            <button class="btn btn-primary" onclick="loadAdminClasses()">Tìm kiếm</button>
+          </div>
+          <div id="adminClassesContainer"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- MÀN HÌNH 4: QUẢN LÝ ĐĂNG KÝ TÍN CHỈ -->
+    <div id="tab-registrations" class="tab-pane">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            Tra cứu kết quả Đăng ký Tín chỉ
+          </h2>
+        </div>
+        <div class="card-body">
+          <div class="toolbar">
+            <div class="search-box">
+              <input type="text" id="searchRegInput" class="form-control" placeholder="Tìm theo MSSV, họ tên, mã LHP..." onkeydown="if(event.key==='Enter') loadAdminRegistrations()">
+            </div>
+            <div style="min-width: 180px;">
+              <select id="filterRegLop" class="form-control" onchange="loadAdminRegistrations()">
+                <option value="">-- Tất cả lớp sinh hoạt --</option>
+              </select>
+            </div>
+            <div style="min-width: 180px;">
+              <select id="filterRegStatus" class="form-control" onchange="loadAdminRegistrations()">
+                <option value="">-- Tất cả trạng thái --</option>
+                <option value="REGISTERED">Đã đăng ký</option>
+                <option value="CANCELLED">Đã hủy</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="loadAdminRegistrations()">Tìm kiếm</button>
+          </div>
+          <div id="adminRegistrationsContainer"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- MÀN HÌNH 5: XÁC NHẬN THANH TOÁN (CHO_XAC_NHAN) -->
+    <div id="tab-pending" class="tab-pane">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            Danh sách giao dịch nộp học phí đang chờ xác nhận
+          </h2>
+          <span id="pendingCountBadge" class="badge badge-warning">0 giao dịch</span>
+        </div>
+        <div class="card-body">
+          <div class="toolbar" style="margin-bottom: 1rem;">
+            <div style="min-width: 220px;">
+              <select id="filterPendingLop" class="form-control" onchange="loadPendingPayments()">
+                <option value="">-- Lọc theo lớp sinh hoạt --</option>
+              </select>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="loadPendingPayments()">
+              Làm mới danh sách
+            </button>
+          </div>
+          <div id="pendingPaymentsContainer">
+            <div style="text-align: center; padding: 2rem;">Đang tải danh sách chờ duyệt...</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- MÀN HÌNH 6: QUẢN LÝ HỌC PHÍ & QUẦY THU -->
+    <div id="tab-cashier" class="tab-pane">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
+            </svg>
+            Tra cứu &amp; Thu học phí tại quầy Tài vụ
+          </h2>
+          <span class="badge badge-info">Phòng Đào tạo / Tài vụ</span>
+        </div>
+        <div class="card-body">
+          <div class="toolbar" style="max-width: 480px;">
+            <input type="number" id="searchMaSV" class="form-control" placeholder="Nhập Mã SV ID (VD: 1, 5, 10, 495...)" onkeydown="if(event.key === 'Enter') searchStudentTuitionAdmin()">
+            <button class="btn btn-primary" onclick="searchStudentTuitionAdmin()">
+              Tra cứu
+            </button>
+          </div>
+
+          <div id="adminStudentTuitionResult"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- MÀN HÌNH 7: BÁO CÁO / THỐNG KÊ (SP) -->
+    <div id="tab-report" class="tab-pane">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+              <polyline points="17 6 23 6 23 12"></polyline>
+            </svg>
+            Báo cáo Tài chính Thu Học phí theo Học kỳ
+          </h2>
+          <span class="badge badge-info">Stored Procedure SP_ThongKeHocPhi</span>
+        </div>
+        <div class="card-body">
+          <div class="toolbar">
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <label for="filterReportHocKy" style="font-size: 0.8125rem; font-weight: 600;">Học kỳ:</label>
+              <select id="filterReportHocKy" class="form-control" style="width: auto; min-width: 160px;" onchange="loadTuitionReport()" aria-label="Lọc theo học kỳ">
+                <option value="">-- Tất cả học kỳ --</option>
+              </select>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <label for="filterReportStatus" style="font-size: 0.8125rem; font-weight: 600;">Trạng thái:</label>
+              <select id="filterReportStatus" class="form-control" style="width: auto; min-width: 140px;" onchange="loadTuitionReport()">
+                <option value="">-- Tất cả --</option>
+                <option value="UNPAID">Chưa thanh toán</option>
+                <option value="PARTIAL">Thanh toán 1 phần</option>
+                <option value="PAID">Đã hoàn thành</option>
+              </select>
+            </div>
+
+            <button class="btn btn-secondary btn-sm" onclick="loadTuitionReport()">
+              Làm mới
+            </button>
+          </div>
+
+          <div id="adminReportContainer">
+            <div style="text-align: center; padding: 2rem;">Đang tải dữ liệu báo cáo...</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- MÀN HÌNH 8: QUẢN LÝ TÀI KHOẢN -->
+    <div id="tab-users" class="tab-pane">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            Quản lý tài khoản người dùng
+          </h2>
+          <span class="badge badge-info">View V_TaiKhoanNguoiDung</span>
+        </div>
+        <div class="card-body">
+          <div class="toolbar">
+            <div class="search-box">
+              <input type="text" id="searchUserInput" class="form-control" placeholder="Tìm theo username, họ tên..." onkeydown="if(event.key==='Enter') loadAdminUsers()">
+            </div>
+            <div style="min-width: 160px;">
+              <select id="filterUserRole" class="form-control" onchange="loadAdminUsers()">
+                <option value="">-- Tất cả vai trò --</option>
+                <option value="SINH_VIEN">Sinh viên</option>
+                <option value="GIANG_VIEN">Giảng viên</option>
+                <option value="DAO_TAO">Cán bộ Đào tạo</option>
+                <option value="QUAN_TRI">Quản trị viên</option>
+              </select>
+            </div>
+            <div style="min-width: 170px;">
+              <select id="filterUserLop" class="form-control" onchange="loadAdminUsers()">
+                <option value="">-- Lớp sinh hoạt --</option>
+              </select>
+            </div>
+            <div style="min-width: 160px;">
+              <select id="filterUserStatus" class="form-control" onchange="loadAdminUsers()">
+                <option value="">-- Tất cả trạng thái --</option>
+                <option value="ACTIVE">Hoạt động</option>
+                <option value="LOCKED">Đã khóa</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="loadAdminUsers()">Tìm kiếm</button>
+          </div>
+          <div id="adminUsersContainer"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- MÀN HÌNH 9: AUDIT LOG -->
+    <div id="tab-audit" class="tab-pane">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            Nhật ký hoạt động hệ thống (Audit Trail)
+          </h2>
+          <span class="badge badge-info">Bảng LOGHOATDONG</span>
+        </div>
+        <div class="card-body">
+          <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+            <button class="btn btn-secondary btn-sm" onclick="loadAdminAuditLogs()">
+              Làm mới nhật ký
+            </button>
+          </div>
+          <div id="adminAuditLogsContainer"></div>
+        </div>
+      </section>
+    </div>
+
+  </main>
+
+  <!-- Modal Thu Tiền Tại Quầy -->
+  <div id="adminPaymentModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Ghi nhận thanh toán tại quầy</h3>
+        <button class="modal-close" onclick="closeAdminPaymentModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="adminPaymentMaHocPhi">
+        <div id="adminPaymentInfo" style="margin-bottom: 1rem; padding: 0.75rem; background: var(--color-surface-hover); border-radius: var(--radius-sm); font-size: 0.875rem; line-height: 1.6;">
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label class="form-label" for="adminPaymentAmount" style="display: block; font-weight: 600; font-size: 0.875rem; margin-bottom: 0.35rem;">Số tiền thực thu (VNĐ)</label>
+          <input type="number" id="adminPaymentAmount" class="form-control" step="10000" min="10000">
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label class="form-label" for="adminPaymentMethod" style="display: block; font-weight: 600; font-size: 0.875rem; margin-bottom: 0.35rem;">Phương thức thu</label>
+          <select id="adminPaymentMethod" class="form-control">
+            <option value="TIEN_MAT">Tiền mặt tại quầy Tài vụ</option>
+            <option value="CHUYEN_KHOAN">Chuyển khoản Ngân hàng (POS/QR)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeAdminPaymentModal()">Hủy</button>
+        <button class="btn btn-primary" id="btnConfirmAdminPayment" onclick="submitAdminPayment()">Xác nhận thu tiền tại quầy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Chi Tiết Sinh Viên -->
+  <div id="adminStudentDetailModal" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="adminStudentDetailTitle">Chi tiết sinh viên</h3>
+        <button class="modal-close" onclick="closeStudentDetailModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="adminStudentDetailBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeStudentDetailModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Chi Tiết Lớp Sinh Hoạt (UI/UX Pro Max) -->
+  <div id="adminClassDetailModal" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width: 980px; width: 95%;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <h3 class="modal-title" id="adminClassDetailTitle">Danh sách sinh viên lớp sinh hoạt</h3>
+          <span id="adminClassStudentCountBadge" class="badge badge-info" style="font-size: 0.8125rem;">0 sinh viên</span>
+        </div>
+        <button class="modal-close" onclick="closeClassDetailModal()" title="Đóng (Esc)">&times;</button>
+      </div>
+      <div class="modal-body" id="adminClassDetailBody" style="padding-bottom: 0.5rem;"></div>
+      <div class="modal-footer">
+        <div id="adminClassDetailFooterSummary" style="margin-right: auto; font-size: 0.8125rem; color: var(--color-text-muted);">
+          Cuộn chuột để xem chi tiết danh sách sinh viên.
+        </div>
+        <button class="btn btn-secondary" onclick="closeClassDetailModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const user = requireAuth(['QUAN_TRI', 'DAO_TAO']);
+      if (!user) return;
+
+      // Nạp danh mục khoa, lớp sinh hoạt và học kỳ động
+      populateFaculties('filterStudentKhoa', '-- Tất cả khoa --');
+      populateFaculties('filterAdminClassShKhoa', '-- Tất cả khoa --');
+      populateClasses('filterStudentLop', '-- Tất cả lớp sinh hoạt --');
+      populateClasses('filterRegLop', '-- Tất cả lớp sinh hoạt --');
+      populateClasses('filterPendingLop', '-- Tất cả lớp sinh hoạt --');
+      populateClasses('filterUserLop', '-- Tất cả lớp sinh hoạt --');
+      populateSemesters('filterReportHocKy', '-- Tất cả học kỳ --');
+
+      // Nạp mặc định Dashboard
+      loadAdminDashboard();
+    });
+  </script>
+</body>
+</html>
