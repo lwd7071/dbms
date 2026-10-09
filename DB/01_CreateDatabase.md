@@ -1,0 +1,20 @@
+﻿-- ENCODING: UTF-8 WITH BOM
+IF DB_ID(N'DBMS330284') IS NULL
+BEGIN
+    CREATE DATABASE [DBMS330284];
+    PRINT N'Database DBMS330284 đã được tạo thành công.';
+END
+ELSE
+BEGIN
+    PRINT N'Database DBMS330284 đã tồn tại.';
+END
+GO
+
+USE [DBMS330284];
+GO
+
+SELECT
+    DB_NAME() AS CurrentDatabase,
+    SUSER_SNAME() AS CurrentLogin,
+    GETDATE() AS ExecutionTime;
+GO
