@@ -1,0 +1,143 @@
+const tuitionService = require('../services/tuition.service');
+const adminRepo = require('../repositories/admin.repository');
+const { successResponse } = require('../utils/apiResponse');
+
+/**
+ * Controller cho Quản trị viên và Phòng Đào tạo
+ */
+const getTuitionReport = async (req, res, next) => {
+  try {
+    const { maHocKy, trangThai } = req.query;
+    const report = await tuitionService.getTuitionReport({ maHocKy, trangThai });
+    return res.status(200).json(successResponse(report));
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getUsers = async (req, res, next) => {
+  try {
+    const { vaiTro, trangThai, search, page, pageSize } = req.query;
+    const result = await adminRepo.getUsersList({ vaiTro, trangThai, search, page, pageSize });
+    return res.status(200).json(
+      successResponse(result.items, {
+        page: result.page,
+        pageSize: result.pageSize,
+        totalItems: result.totalItems,
+        totalPages: result.totalPages
+      })
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+const updateUserStatus = async (req, res, next) => {
+  try {
+    const { username } = req.params;
+    const { trangThai } = req.body;
+    const result = await adminRepo.updateUserStatus(username, trangThai);
+    return res.status(200).json(successResponse(result));
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getCurriculums = async (req, res, next) => {
+  try {
+    const { maKhoa } = req.query;
+    const curriculums = await adminRepo.getCurriculums(maKhoa);
+    return res.status(200).json(successResponse(curriculums));
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getDashboardStats = async (req, res, next) => {
+  try {
+    const stats = await adminRepo.getDashboardStats();
+    return res.status(200).json(successResponse(stats));
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getStudents = async (req, res, next) => {
+  try {
+    const { search, maKhoa, trangThai, page, pageSize } = req.query;
+    const result = await adminRepo.getStudentsList({ search, maKhoa, trangThai, page, pageSize });
+    return res.status(200).json(
+      successResponse(result.items, {
+        page: result.page,
+        pageSize: result.pageSize,
+        totalItems: result.totalItems,
+        totalPages: result.totalPages
+      })
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getAllClasses = async (req, res, next) => {
+  try {
+    const { maHocKy, search, page, pageSize } = req.query;
+    const result = await adminRepo.getAllClasses({ maHocKy, search, page, pageSize });
+    return res.status(200).json(
+      successResponse(result.items, {
+        page: result.page,
+        pageSize: result.pageSize,
+        totalItems: result.totalItems,
+        totalPages: result.totalPages
+      })
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getRegistrations = async (req, res, next) => {
+  try {
+    const { maSV, maLHP, trangThai, search, page, pageSize } = req.query;
+    const result = await adminRepo.getRegistrationsList({ maSV, maLHP, trangThai, search, page, pageSize });
+    return res.status(200).json(
+      successResponse(result.items, {
+        page: result.page,
+        pageSize: result.pageSize,
+        totalItems: result.totalItems,
+        totalPages: result.totalPages
+      })
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getAuditLogs = async (req, res, next) => {
+  try {
+    const { page, pageSize, limit } = req.query;
+    const result = await adminRepo.getAuditLogs({ page, pageSize: pageSize || limit });
+    return res.status(200).json(
+      successResponse(result.items, {
+        page: result.page,
+        pageSize: result.pageSize,
+        totalItems: result.totalItems,
+        totalPages: result.totalPages
+      })
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = {
+  getTuitionReport,
+  getUsers,
+  updateUserStatus,
+  getCurriculums,
+  getDashboardStats,
+  getStudents,
+  getAllClasses,
+  getRegistrations,
+  getAuditLogs
+};
