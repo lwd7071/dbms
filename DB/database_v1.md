@@ -6,9 +6,9 @@
 ---
 
 ## TỔNG QUAN SCHEMA V1 (19 BẢNG)
-Hệ thống CSDL **`DBMS330284`** được thiết kế toàn diện, đồng bộ và hoàn thiện gồm **19 bảng**, **6 Views**, **7 Functions**, **7 Stored Procedures**, **13 Triggers**, 4 Security Roles và hệ thống **19 Indexes** tối ưu, quản lý trên 210.000 dòng dữ liệu thực tế.
+Hệ thống CSDL **`DBMS330284`** được thiết kế toàn diện, đồng bộ và hoàn thiện gồm **19 bảng**, **6 Views**, **7 Functions**, **9 Stored Procedures**, **13 Triggers**, 4 Security Roles và hệ thống **19 Indexes** tối ưu, quản lý trên 210.000 dòng dữ liệu thực tế.
 
-Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập khỏi `CHUONGTRINHDAOTAO` (quan hệ `KHOA` 1:N `NGANH` 1:N `CHUONGTRINHDAOTAO`), bổ sung **`LOP`** phục vụ quản lý sinh viên theo lớp sinh hoạt / lớp niên chế và **`CHITIETTHANHTOAN`** phục vụ nghiệp vụ thanh toán học phí nhiều đợt.
+Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập khỏi `CHUONGTRINHDAOTAO` (quan hệ `KHOA` 1:N `NGANH` 1:N `CHUONGTRINHDAOTAO`), bổ sung **`LOP`** phục vụ quản lý sinh viên theo lớp sinh hoạt / lớp niên chế và **`CHITIETTHANHTOAN`** phục vụ nghiệp vụ thanh toán học phí nhiều đợt với cơ chế xác nhận 2 bước.
 
 ---
 
@@ -27,7 +27,7 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 - **Không lưu sĩ số tĩnh:** Tuyệt đối không lưu cột vật lý `SoLuongHienTai` trong `LOPHOCPHAN`; sĩ số thực tế được tính toán động từ `DANGKYTINCHI WHERE TrangThai = 'REGISTERED'`. Sĩ số của `LOP` sinh hoạt tính động từ `SINHVIEN WHERE TrangThai = 'DANG_HOC'`.
 - **Không lưu điểm dẫn xuất tĩnh:** Không lưu vật lý `DiemTongKet`, `DiemChu`, `DiemHe4` trong `DIEMSO`; tính toán động thông qua View `V_BangDiemChiTiet` và Function `FN_TinhDiemTongKet`.
 - **Snapshot học phí:** `HOCPHI` lưu snapshot `DonGiaTinChi` và `TongTien` tại thời điểm sinh viên tính học phí.
-- **Cache thanh toán:** `HOCPHI.SoTienDaThanhToan` là trường cache; nguồn sự thật là bảng `CHITIETTHANHTOAN` và được đồng bộ tự động qua Trigger `TR_CHITIETTHANHTOAN_CapNhatHocPhi`.
+- **Cache thanh toán:** `HOCPHI.SoTienDaThanhToan` là trường cache; nguồn sự thật là bảng `CHITIETTHANHTOAN` (chỉ cộng dồn các giao dịch có `TrangThai = 'DA_XAC_NHAN'`) và được đồng bộ tự động qua Trigger `TR_CHITIETTHANHTOAN_CapNhatHocPhi`.
 
 ### 1.3. Quy tắc cốt lõi đã chốt
 - Mỗi học kỳ có một đợt đăng ký tín chỉ xác định bởi `NgayMoDangKy` và `NgayDongDangKy` trong bảng `HOCKY`.
@@ -56,20 +56,20 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 11. **`HOCKY`**: Danh mục năm học - học kỳ và thời gian mở/đóng cổng đăng ký tín chỉ.
 
 ### Khối C – Lớp học phần & Đăng ký học vụ (4 bảng)
-11. **`LOPHOCPHAN`**: Lớp học phần mở trong từng học kỳ.
-12. **`LICHHOC`**: Thời khóa biểu chi tiết của lớp học phần (thứ, tiết, phòng học).
-13. **`DANGKYTINCHI`**: Giao dịch đăng ký tín chỉ của sinh viên vào lớp học phần.
-14. **`DIEMSO`**: Bảng điểm quá trình, giữa kỳ, cuối kỳ của lượt đăng ký tín chỉ.
+12. **`LOPHOCPHAN`**: Lớp học phần mở trong từng học kỳ.
+13. **`LICHHOC`**: Thời khóa biểu chi tiết của lớp học phần (thứ, tiết, phòng học).
+14. **`DANGKYTINCHI`**: Giao dịch đăng ký tín chỉ của sinh viên vào lớp học phần.
+15. **`DIEMSO`**: Bảng điểm quá trình, giữa kỳ, cuối kỳ của lượt đăng ký tín chỉ.
 
 ### Khối D – Học phí & Hệ thống (4 bảng)
-15. **`MUCHOCPHI`**: Bảng định mức đơn giá tín chỉ áp dụng theo từng học kỳ.
-16. **`HOCPHI`**: Hồ sơ nghĩa vụ học phí tổng hợp của sinh viên trong từng học kỳ.
-17. **`CHITIETTHANHTOAN`**: Lịch sử các đợt nộp học phí thực tế của sinh viên.
-18. **`LOGHOATDONG`**: Nhật ký kiểm toán (Audit Log) theo dõi biến động dữ liệu toàn hệ thống.
+16. **`MUCHOCPHI`**: Bảng định mức đơn giá tín chỉ áp dụng theo từng học kỳ.
+17. **`HOCPHI`**: Hồ sơ nghĩa vụ học phí tổng hợp của sinh viên trong từng học kỳ.
+18. **`CHITIETTHANHTOAN`**: Lịch sử các đợt nộp học phí thực tế của sinh viên (cơ chế xác nhận 2 bước).
+19. **`LOGHOATDONG`**: Nhật ký kiểm toán (Audit Log) theo dõi biến động dữ liệu toàn hệ thống.
 
 ---
 
-## 3. DATA DICTIONARY HỢP NHẤT CHI TIẾT (18 BẢNG)
+## 3. DATA DICTIONARY HỢP NHẤT CHI TIẾT (19 BẢNG)
 
 ### 3.1. KHOA
 - `MaKhoa` VARCHAR(10) NOT NULL, PK.
@@ -120,7 +120,15 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 - CHECK: `MaMonHoc <> MaMonTienQuyet` (`CK_MONHOCTIENQUYET_MaMonHoc`).
 - Kiểm soát chu trình đệ quy nhiều cấp thông qua Trigger `TR_MONHOCTIENQUYET_KiemTraChuTrinh`.
 
-### 3.7. SINHVIEN
+### 3.7. LOP
+- `MaLop` VARCHAR(20) NOT NULL, PK (`PK_LOP`).
+- `TenLop` NVARCHAR(100) NOT NULL.
+- `MaKhoa` VARCHAR(10) NOT NULL, FK -> `KHOA.MaKhoa` (`FK_LOP_KHOA`).
+- `KhoaHoc` VARCHAR(20) NOT NULL.
+- `NamNhapHoc` INT NOT NULL.
+- `TrangThai` BIT NOT NULL DEFAULT 1 (`DF_LOP_TrangThai`).
+
+### 3.8. SINHVIEN
 - `MaSV` INT IDENTITY(1,1) NOT NULL, PK (`PK_SINHVIEN`).
 - `MaSinhVien` VARCHAR(20) NOT NULL, UNIQUE (`UQ_SINHVIEN_MaSinhVien`).
 - `HoTen` NVARCHAR(100) NOT NULL.
@@ -128,10 +136,11 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 - `Email` VARCHAR(254) NULL, Filtered Unique Index (`UQ_SINHVIEN_Email` WHERE Email IS NOT NULL).
 - `SoDienThoai` VARCHAR(20) NULL.
 - `MaKhoa` VARCHAR(10) NOT NULL, FK -> `KHOA.MaKhoa` (`FK_SINHVIEN_KHOA`).
+- `MaLop` VARCHAR(20) NULL, FK -> `LOP.MaLop` (`FK_SINHVIEN_LOP`).
 - `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'DANG_HOC', CHECK IN ('DANG_HOC', 'BAO_LUU', 'TOT_NGHIEP', 'THOI_HOC') (`CK_SINHVIEN_TrangThai`).
 - `NgayTao` DATETIME2(0) NOT NULL DEFAULT SYSUTCDATETIME() (`DF_SINHVIEN_NgayTao`).
 
-### 3.8. GIANGVIEN
+### 3.9. GIANGVIEN
 - `MaGV` INT IDENTITY(1,1) NOT NULL, PK (`PK_GIANGVIEN`).
 - `MaGiangVien` VARCHAR(20) NOT NULL, UNIQUE (`UQ_GIANGVIEN_MaGiangVien`).
 - `HoTen` NVARCHAR(100) NOT NULL.
@@ -141,19 +150,20 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 - `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'DANG_CONG_TAC', CHECK IN ('DANG_CONG_TAC', 'TAM_NGHI', 'NGHI_VIEC') (`CK_GIANGVIEN_TrangThai`).
 - `NgayTao` DATETIME2(0) NOT NULL DEFAULT SYSUTCDATETIME() (`DF_GIANGVIEN_NgayTao`).
 
-### 3.9. TAIKHOAN
+### 3.10. TAIKHOAN
 - `MaTaiKhoan` INT IDENTITY(1,1) NOT NULL, PK (`PK_TAIKHOAN`).
 - `Username` VARCHAR(50) NOT NULL, UNIQUE (`UQ_TAIKHOAN_Username`).
-- `PasswordHash` VARCHAR(255) NOT NULL (mã băm chuẩn SHA-256).
+- `PasswordHash` VARCHAR(255) NOT NULL (mã băm SHA-256 dùng cho demo/kiểm thử đồ án).
 - `VaiTro` VARCHAR(30) NOT NULL, CHECK IN ('SINH_VIEN', 'GIANG_VIEN', 'DAO_TAO', 'QUAN_TRI') (`CK_TAIKHOAN_VaiTro`).
 - `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', CHECK IN ('ACTIVE', 'LOCKED', 'DISABLED') (`CK_TAIKHOAN_TrangThai`).
 - `MaSV` INT NULL, FK -> `SINHVIEN.MaSV` (`FK_TAIKHOAN_SINHVIEN`), Filtered Unique Index (`UQ_TAIKHOAN_MaSV` WHERE MaSV IS NOT NULL).
 - `MaGV` INT NULL, FK -> `GIANGVIEN.MaGV` (`FK_TAIKHOAN_GIANGVIEN`), Filtered Unique Index (`UQ_TAIKHOAN_MaGV` WHERE MaGV IS NOT NULL).
 - `NgayTao` DATETIME2(0) NOT NULL DEFAULT SYSUTCDATETIME() (`DF_TAIKHOAN_NgayTao`).
 - `LanDangNhapCuoi` DATETIME2(0) NULL.
-- CHECK: Không cho phép `MaSV` và `MaGV` đồng thời khác `NULL` (`CK_TAIKHOAN_NguoiDung`).
+- CHECK: Không cho phép `MaSV` và `MaGV` đồng thời khác `NULL` (`CK_TAIKHOAN_NguoiDung`: `NOT (MaSV IS NOT NULL AND MaGV IS NOT NULL)`).
+- Ràng buộc tương thích vai trò ↔ khóa người dùng được kiểm soát chặt chẽ ở cấp Stored Procedure `SP_TaoTaiKhoan` (Role `SINH_VIEN` bắt buộc có `MaSV`, Role `GIANG_VIEN` bắt buộc có `MaGV`, Role `DAO_TAO`/`QUAN_TRI` không gắn mã; mã lỗi 51004).
 
-### 3.10. HOCKY
+### 3.11. HOCKY
 - `MaHocKy` INT IDENTITY(1,1) NOT NULL, PK (`PK_HOCKY`).
 - `NamHoc` VARCHAR(9) NOT NULL.
 - `TenHocKy` NVARCHAR(30) NOT NULL.
@@ -166,7 +176,7 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 - CHECK: `NgayBatDau <= NgayKetThuc` (`CK_HOCKY_NgayHoc`).
 - CHECK: `NgayMoDangKy <= NgayDongDangKy` (`CK_HOCKY_DangKy`).
 
-### 3.11. LOPHOCPHAN
+### 3.12. LOPHOCPHAN
 - `MaLHP` VARCHAR(20) NOT NULL, PK (`PK_LOPHOCPHAN`).
 - `MaMonHoc` VARCHAR(15) NOT NULL, FK -> `MONHOC.MaMonHoc` (`FK_LOPHOCPHAN_MONHOC`).
 - `MaHocKy` INT NOT NULL, FK -> `HOCKY.MaHocKy` (`FK_LOPHOCPHAN_HOCKY`).
@@ -174,8 +184,12 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 - `TenLHP` NVARCHAR(100) NOT NULL.
 - `SoLuongToiDa` INT NOT NULL DEFAULT 50, CHECK > 0 (`CK_LOPHOCPHAN_SoLuongToiDa`).
 - `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'MO_DANG_KY', CHECK IN ('MO_DANG_KY', 'DANG_MO', 'DA_KHOA', 'DA_HUY') (`CK_LOPHOCPHAN_TrangThai`).
+  - `MO_DANG_KY`: Đang trong đợt đăng ký tín chỉ, sinh viên được phép đăng ký/hủy.
+  - `DANG_MO`: Đã đóng đăng ký, lớp đang diễn ra giảng dạy học tập.
+  - `DA_KHOA`: Đã hoàn thành nhập điểm, kết thúc lớp học phần.
+  - `DA_HUY`: Hủy mở lớp do không đủ sĩ số tối thiểu.
 
-### 3.12. LICHHOC
+### 3.13. LICHHOC
 - `MaLichHoc` INT IDENTITY(1,1) NOT NULL, PK (`PK_LICHHOC`).
 - `MaLHP` VARCHAR(20) NOT NULL, FK -> `LOPHOCPHAN.MaLHP` (`FK_LICHHOC_LOPHOCPHAN`).
 - `Thu` TINYINT NOT NULL, CHECK BETWEEN 2 AND 8 (`CK_LICHHOC_Thu`).
@@ -184,7 +198,7 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 - `PhongHoc` VARCHAR(20) NOT NULL.
 - CHECK: `TietBatDau + SoTiet - 1 <= 12` (`CK_LICHHOC_TietKetThuc`).
 
-### 3.13. DANGKYTINCHI
+### 3.14. DANGKYTINCHI
 - `MaDangKy` BIGINT IDENTITY(1,1) NOT NULL, PK (`PK_DANGKYTINCHI`).
 - `MaSV` INT NOT NULL, FK -> `SINHVIEN.MaSV` (`FK_DANGKYTINCHI_SINHVIEN`).
 - `MaLHP` VARCHAR(20) NOT NULL, FK -> `LOPHOCPHAN.MaLHP` (`FK_DANGKYTINCHI_LOPHOCPHAN`).
@@ -192,7 +206,7 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 - `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'REGISTERED', CHECK IN ('REGISTERED', 'CANCELLED') (`CK_DANGKYTINCHI_TrangThai`).
 - Filtered Unique Index: `(MaSV, MaLHP) WHERE TrangThai = 'REGISTERED'` (`UQ_DANGKYTINCHI_SinhVien_LopHocPhan`).
 
-### 3.14. DIEMSO
+### 3.15. DIEMSO
 - `MaDangKy` BIGINT NOT NULL, PK/FK -> `DANGKYTINCHI.MaDangKy` (`PK_DIEMSO`, `FK_DIEMSO_DANGKYTINCHI`).
 - `DiemQuaTrinh` DECIMAL(4,2) NULL, CHECK (DiemQuaTrinh IS NULL OR DiemQuaTrinh BETWEEN 0 AND 10).
 - `DiemGiuaKy` DECIMAL(4,2) NULL, CHECK (DiemGiuaKy IS NULL OR DiemGiuaKy BETWEEN 0 AND 10).
@@ -202,7 +216,7 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 - `TyTrongCK` TINYINT NOT NULL DEFAULT 50 (`DF_DIEMSO_TyTrongCK`).
 - CHECK: `TyTrongQT + TyTrongGK + TyTrongCK = 100` (`CK_DIEMSO_TyTrong`).
 
-### 3.15. MUCHOCPHI
+### 3.16. MUCHOCPHI
 - `MaMucHocPhi` INT IDENTITY(1,1) NOT NULL, PK (`PK_MUCHOCPHI`).
 - `MaHocKy` INT NOT NULL, FK -> `HOCKY.MaHocKy` (`FK_MUCHOCPHI_HOCKY`).
 - `PhamViApDung` VARCHAR(50) NOT NULL, CHECK (`PhamViApDung = 'TOAN_TRUONG'`).
@@ -213,7 +227,7 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 - CHECK: `NgayHetHieuLuc IS NULL OR NgayHetHieuLuc >= NgayHieuLuc` (`CK_MUCHOCPHI_NgayHieuLuc`).
 - Trigger `TR_MUCHOCPHI_KiemTraHieuLuc` chặn trùng khoảng thời gian hiệu lực cho mức ACTIVE.
 
-### 3.16. HOCPHI
+### 3.17. HOCPHI
 - `MaHocPhi` INT IDENTITY(1,1) NOT NULL, PK (`PK_HOCPHI`).
 - `MaSV` INT NOT NULL, FK -> `SINHVIEN.MaSV` (`FK_HOCPHI_SINHVIEN`).
 - `MaHocKy` INT NOT NULL, FK -> `HOCKY.MaHocKy` (`FK_HOCPHI_HOCKY`).
@@ -227,14 +241,18 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 - UNIQUE: `(MaSV, MaHocKy)` (`UQ_HOCPHI_SinhVien_HocKy`).
 - CHECK: `SoTienDaThanhToan >= 0 AND SoTienDaThanhToan <= TongTien` (`CK_HOCPHI_SoTienDaThanhToan`).
 
-### 3.17. CHITIETTHANHTOAN
+### 3.18. CHITIETTHANHTOAN (Cơ chế xác nhận 2 bước)
 - `MaThanhToan` BIGINT IDENTITY(1,1) NOT NULL, PK (`PK_CHITIETTHANHTOAN`).
 - `MaHocPhi` INT NOT NULL, FK -> `HOCPHI.MaHocPhi` (`FK_CHITIETTHANHTOAN_HOCPHI`).
 - `SoTien` DECIMAL(14,2) NOT NULL, CHECK > 0 (`CK_CHITIETTHANHTOAN_SoTien`).
 - `NgayThanhToan` DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME() (`DF_CHITIETTHANHTOAN_NgayThanhToan`).
 - `PhuongThuc` VARCHAR(20) NOT NULL, CHECK IN ('TIEN_MAT', 'CHUYEN_KHOAN') (`CK_CHITIETTHANHTOAN_PhuongThuc`).
+- `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'CHO_XAC_NHAN', CHECK IN ('CHO_XAC_NHAN', 'DA_XAC_NHAN', 'TU_CHOI') (`CK_CHITIETTHANHTOAN_TrangThai`).
+- `MaTaiKhoanXacNhan` INT NULL, FK -> `TAIKHOAN.MaTaiKhoan` (`FK_CHITIETTHANHTOAN_TAIKHOAN`).
+- `NgayXacNhan` DATETIME2 NULL.
+- **Quy tắc kích hoạt Trigger:** Trigger `TR_CHITIETTHANHTOAN_CapNhatHocPhi` chỉ cộng dồn `SoTien` vào `HOCPHI.SoTienDaThanhToan` và đổi trạng thái (`PARTIAL` / `PAID`) đối với những giao dịch có `TrangThai = 'DA_XAC_NHAN'`. Giao dịch `CHO_XAC_NHAN` hoặc `TU_CHOI` không làm thay đổi số dư công nợ.
 
-### 3.18. LOGHOATDONG
+### 3.19. LOGHOATDONG
 - `MaLog` BIGINT IDENTITY(1,1) NOT NULL, PK (`PK_LOGHOATDONG`).
 - `MaTaiKhoan` INT NULL, FK -> `TAIKHOAN.MaTaiKhoan` (`FK_LOGHOATDONG_TAIKHOAN`).
 - `ThoiGian` DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME() (`DF_LOGHOATDONG_ThoiGian`).
@@ -251,6 +269,8 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 ```text
 [KHOA] 1 ────────────< N [NGANH]
 [NGANH] 1 ───────────< N [CHUONGTRINHDAOTAO]
+[KHOA] 1 ────────────< N [LOP]
+[LOP] 1 ─────────────< N [SINHVIEN]
 [KHOA] 1 ────────────< N [MONHOC]
 [KHOA] 1 ────────────< N [SINHVIEN]
 [KHOA] 1 ────────────< N [GIANGVIEN]
@@ -294,7 +314,7 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 - **BR11:** `HOCPHI` tham chiếu `MUCHOCPHI` đang có hiệu lực (`ACTIVE`) tại thời điểm tính và lưu snapshot `DonGiaTinChi`, `TongTien`.
 - **BR12:** `MUCHOCPHI.PhamViApDung` phiên bản 1 chỉ áp dụng giá trị `'TOAN_TRUONG'`.
 - **BR13:** Một hồ sơ `HOCPHI` có thể thanh toán nhiều đợt thông qua `CHITIETTHANHTOAN`; tổng tiền nộp không được vượt quá `TongTien`.
-- **BR14:** `SoTienDaThanhToan` và `TrangThai` của `HOCPHI` phải được cập nhật đồng bộ tự động khi có biến động giao dịch thanh toán.
+- **BR14:** `SoTienDaThanhToan` và `TrangThai` của `HOCPHI` phải được cập nhật đồng bộ tự động khi có biến động giao dịch thanh toán xác nhận (`DA_XAC_NHAN`).
 - **BR15:** Audit log ghi nhận mã tài khoản, thời gian, hành động, tên bảng và chuỗi JSON các trường thay đổi; tuyệt đối không ghi `PasswordHash`.
 - **BR16:** Email được phép `NULL` nhưng nếu có giá trị thì không được phép trùng lặp trong cùng bảng `SINHVIEN` hoặc `GIANGVIEN`.
 - **BR17:** Dữ liệu lịch sử đã được tham chiếu không xóa cứng (`NO ACTION`); chỉ đổi cờ trạng thái nghiệp vụ.
@@ -306,16 +326,21 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 
 - **1NF (Chuẩn 1):** Toàn bộ thuộc tính nghiệp vụ đều mang giá trị nguyên tử (atomic values). Các danh mục nhiều giá trị (môn học của CTĐT, môn tiên quyết, thời khóa biểu) đều được tách thành các thực thể quan hệ riêng (`CTDT_MONHOC`, `MONHOCTIENQUYET`, `LICHHOC`). Trường JSON trong `LOGHOATDONG` chỉ đóng vai trò payload kiểm toán, không thay thế cấu trúc dữ liệu quan hệ.
 - **2NF (Chuẩn 2):** Đạt 1NF và loại bỏ hoàn toàn phụ thuộc bộ phận. Tất cả các thuộc tính không khóa đều phụ thuộc hoàn toàn vào toàn bộ khóa chính:
-  - Các bảng khóa đơn (`KHOA`, `NGANH`, `SINHVIEN`, `MONHOC`, `LOPHOCPHAN`,...) mặc nhiên thỏa mãn 2NF.
+  - Các bảng khóa đơn (`KHOA`, `NGANH`, `LOP`, `SINHVIEN`, `MONHOC`, `LOPHOCPHAN`,...) mặc nhiên thỏa mãn 2NF.
   - Các bảng khóa ghép (`CTDT_MONHOC`, `MONHOCTIENQUYET`) chỉ chứa các thuộc tính phụ thuộc vào toàn bộ cặp khóa ghép (`HocKyDuKien`, `LoaiMon`, `MucDo`).
-- **3NF (Chuẩn 3):** Đạt 2NF và loại bỏ toàn bộ phụ thuộc bắc cầu (transitive dependencies):
-  - **Tách bảng `NGANH`:** Chuẩn hóa quan hệ giữa Khoa và CTĐT. Trước đây `CHUONGTRINHDAOTAO` chứa tên ngành dẫn đến lặp dữ liệu và phụ thuộc gián tiếp tới `KHOA`. Khi tách thành `NGANH`, chuỗi quan hệ là `KHOA` (1:N) `NGANH` (1:N) `CHUONGTRINHDAOTAO`, triệt tiêu hoàn toàn phụ thuộc bắc cầu.
+- **3NF (Chuẩn 3):** Đạt 2NF và loại bỏ các phụ thuộc bắc cầu ngoài ý muốn:
+  - **Tách bảng `NGANH`:** Chuẩn hóa quan hệ giữa Khoa và CTĐT. Chuỗi quan hệ `KHOA` (1:N) `NGANH` (1:N) `CHUONGTRINHDAOTAO` triệt tiêu hoàn toàn phụ thuộc bắc cầu.
+  - **Giải thích kỹ thuật về `SINHVIEN.MaKhoa` và `SINHVIEN.MaLop`:** Về mặt lý thuyết, tồn tại phụ thuộc bắc cầu `MaSV -> MaLop -> MaKhoa`. Tuy nhiên, việc giữ lại thuộc tính `SINHVIEN.MaKhoa` là một kỹ thuật **phi chuẩn hóa có chủ đích (Intentional Denormalization)** được cân nhắc cẩn trọng:
+    1. *Hiệu năng truy vấn:* Cho phép tra cứu và phân quyền theo khoa (Row-Level Security / Role-based Filter) tức thì mà không cần `JOIN` qua bảng `LOP`.
+    2. *Thực tế nghiệp vụ:* Sinh viên khi mới nhập học hoặc sinh viên tự do/chuyển trường có thể tạm thời chưa được phân vào Lớp sinh hoạt (`MaLop IS NULL`) nhưng luôn phải thuộc một Khoa quản lý trực tiếp.
+  - **Cách xác định Ngành & CTĐT của Sinh viên:** Hiện tại schema không có khóa ngoại trực tiếp từ `SINHVIEN` nối sang `NGANH` hay `CHUONGTRINHDAOTAO`. Tầng backend và ứng dụng xác định Ngành của sinh viên **gián tiếp thông qua Khoa** (`SINHVIEN.MaKhoa -> NGANH.MaKhoa -> CHUONGTRINHDAOTAO`) kết hợp niên khóa `LOP.KhoaHoc`.
+    - *Giới hạn thiết kế:* Trong bộ dữ liệu mẫu (seed data), 5/6 khoa có đúng 1 ngành đào tạo duy nhất (riêng khoa HTTT có 2 ngành: HTTT và TMDT; khi tra cứu dashboard/profile sinh viên, câu truy vấn SQL tạm thời lấy ngành đầu tiên thuộc khoa qua `OUTER APPLY (SELECT TOP 1 n.TenNganh FROM dbo.NGANH n WHERE n.MaKhoa = sv.MaKhoa)` hoặc fallback về tên khoa).
   - Không lặp tên khoa trong hồ sơ `SINHVIEN`, `GIANGVIEN`.
   - Không lưu sĩ số tĩnh trong `LOPHOCPHAN` (tính động từ `DANGKYTINCHI`).
   - Không lưu điểm tổng kết tĩnh trong `DIEMSO` (tính động qua View và Function).
-  - Tách bảng `TAIKHOAN` độc lập khỏi hồ sơ cá nhân của Sinh viên và Giảng viên.
+  - Tách bảng `TAIKHOAN` độc lập khỏi hồ sơ cá nhân của Sinh viên và Giảng viên; kiểm soát tính toàn vẹn vai trò qua `SP_TaoTaiKhoan`.
 
-**Kết luận:** Toàn bộ 18 bảng đạt tiêu chuẩn tối thiểu **3NF**.
+**Kết luận:** Toàn bộ 19 bảng đạt tiêu chuẩn tối thiểu **3NF** (với denormalization có kiểm soát tại bảng `SINHVIEN`).
 
 ---
 
@@ -340,7 +365,7 @@ Hệ thống mã nguồn SQL trong thư mục `DB/` đã hiện thực hóa đ�
 6. `FN_LayDonGiaTinChi(@MaHocKy, @NgayTinh)`: Lấy đơn giá tín chỉ đang có hiệu lực tại thời điểm tính.
 7. `FN_DemSiSoLopSinhHoat(@MaLop)`: Đếm sĩ số sinh viên hiện tại của một lớp sinh hoạt niên chế.
 
-### 7.3. Stored Procedures (08_StoredProcedures.md - 7 Procedures)
+### 7.3. Stored Procedures (08_StoredProcedures.md - 9 Procedures)
 1. `SP_TaoTaiKhoan`: Tạo tài khoản mới, kiểm tra trùng lặp và tính toàn vẹn khóa ngoại theo vai trò.
 2. `SP_KhoaTaiKhoan`: Khóa tài khoản người dùng, phân quyền chỉ Đào tạo/Quản trị được thao tác.
 3. `SP_DangKyTinChi`: Xử lý đăng ký tín chỉ lõi trong transaction (kiểm tra trạng thái SV, tiên quyết, trùng lịch học, sĩ số lớp, hạn mức tín chỉ).
@@ -348,6 +373,8 @@ Hệ thống mã nguồn SQL trong thư mục `DB/` đã hiện thực hóa đ�
 5. `SP_TinhHocPhiSinhVien`: Khởi tạo hồ sơ học phí theo mức giá tín chỉ học kỳ và số tín chỉ đã đăng ký hợp lệ.
 6. `SP_ThongKeHocPhi`: Báo cáo thống kê tài chính học phí theo học kỳ và trạng thái thanh toán.
 7. `SP_ThongKeHocPhiTheoLop`: Báo cáo thống kê tài chính học phí chi tiết theo Lớp sinh hoạt và học kỳ.
+8. `SP_XacNhanThanhToan`: Xác nhận giao dịch thanh toán học phí (`CHO_XAC_NHAN` -> `DA_XAC_NHAN`), lưu người xác nhận, kích hoạt trigger tính tiền học phí (mã 51401–51405).
+9. `SP_TuChoiThanhToan`: Từ chối giao dịch thanh toán học phí (`CHO_XAC_NHAN` -> `TU_CHOI`), không tính vào công nợ (mã 51401, 51404, 51405).
 
 ### 7.4. Triggers (05_Triggers.md - 13 Triggers)
 - **Nghiệp vụ (6 triggers):**
@@ -355,7 +382,7 @@ Hệ thống mã nguồn SQL trong thư mục `DB/` đã hiện thực hóa đ�
   2. `TR_DANGKYTINCHI_KiemTraSiSo`: Ngăn chặn đăng ký vượt quá sĩ số tối đa của lớp học phần (mã 51002).
   3. `TR_LICHHOC_KiemTraTrungLich`: Chặn xếp trùng lịch giảng viên hoặc trùng phòng học trong cùng khung giờ (mã 51310).
   4. `TR_MUCHOCPHI_KiemTraHieuLuc`: Chặn mức học phí trùng khoảng thời gian hiệu lực và đảm bảo phạm vi toàn trường (mã 51004, 51005).
-  5. `TR_CHITIETTHANHTOAN_CapNhatHocPhi`: Tự động tính tổng tiền thanh toán, cập nhật cache và chuyển trạng thái `UNPAID`/`PARTIAL`/`PAID` cho `HOCPHI` (mã 51006).
+  5. `TR_CHITIETTHANHTOAN_CapNhatHocPhi`: Tự động tính tổng tiền thanh toán, cập nhật cache và chuyển trạng thái `UNPAID`/`PARTIAL`/`PAID` cho `HOCPHI` khi giao dịch được xác nhận `DA_XAC_NHAN` (mã 51006).
   6. `TR_LOP_KiemTraXoa`: Ngăn chặn xóa Lớp sinh hoạt đang có Sinh viên trực thuộc (mã 51007).
 - **Kiểm toán (Audit - 7 triggers):**
   7. `TR_TAIKHOAN_Audit`: Ghi nhật ký bảng `TAIKHOAN` vào `LOGHOATDONG`.
@@ -381,13 +408,15 @@ Hệ thống mã nguồn SQL trong thư mục `DB/` đã hiện thực hóa đ�
 - **[DEC-03]** Bốn vai trò hệ thống: `SINH_VIEN`, `GIANG_VIEN`, `DAO_TAO`, `QUAN_TRI`.
 - **[DEC-04]** Email không bắt buộc (`NULL`), nhưng đảm bảo tính duy nhất bằng Filtered Unique Index.
 - **[DEC-05]** Mỗi học kỳ quản lý đợt đăng ký qua `NgayMoDangKy` và `NgayDongDangKy` kiểu `DATETIME2`.
-- **[DEC-06]** `HOCKY.TrangThai` gồm `'CHUA_MO'`, `'DANG_MO'`, `'KET_THUC'` do phòng Đào tạo quản trị.
+- **[DEC-06]** `HOCKY.TrangThai` gồm `'CHUA_MO'`, `'DANG_MO'`, `'KET_THUC'` do phòng Đào tạo quản trị. Học kỳ mặc định mở cổng demo: `2025-2026 HK1 / Học kỳ 7` (Mã học kỳ: 7).
 - **[DEC-07]** `HOCPHI` lưu `MaMucHocPhi` làm khóa ngoại FK tham chiếu đến `MUCHOCPHI`.
 - **[DEC-08]** `HOCPHI` lưu snapshot `DonGiaTinChi` và `TongTien` tại thời điểm sinh viên tính học phí.
 - **[DEC-09]** Hỗ trợ thanh toán nhiều đợt; `HOCPHI.SoTienDaThanhToan` là cache tự động cập nhật qua trigger với 3 trạng thái `'UNPAID'`, `'PARTIAL'`, `'PAID'`.
 - **[DEC-10]** `MUCHOCPHI.PhamViApDung` phiên bản 1 khóa cứng nhận giá trị `'TOAN_TRUONG'`.
 - **[DEC-11]** `LOGHOATDONG` lưu JSON các cột dữ liệu thay đổi. Phân quyền `DENY` quyền chỉnh sửa/xóa audit log đối với toàn bộ người dùng thông thường.
 - **[DEC-12]** Quy chuẩn đặt tên chuẩn Microsoft SQL Server: `PK_<Bang>`, `FK_<BangCon>_<BangCha>`, `UQ_<Bang>_<Cot>`, `CK_<Bang>_<Cot>`, `DF_<Bang>_<Cot>`, `IX_<Bang>_<Cot>`, `V_<MoTa>`, `SP_<HanhDong>_<DoiTuong>`, `FN_<MoTa>`, `TR_<Bang>_<SuKien>`.
+- **[DEC-13]** Cơ chế xác nhận thanh toán 2 bước: Giao dịch khởi tạo có `TrangThai = 'CHO_XAC_NHAN'`; chỉ khi Phòng Đào tạo / Quản trị thực thi `SP_XacNhanThanhToan` (chuyển sang `'DA_XAC_NHAN'`) thì Trigger `TR_CHITIETTHANHTOAN_CapNhatHocPhi` mới tính vào `HOCPHI.SoTienDaThanhToan`. Giao dịch từ chối (`SP_TuChoiThanhToan`) chuyển sang `'TU_CHOI'`. Vị trí script migration bổ sung cấu trúc này nằm tại `backend/scripts/migrate_payment_confirmation.js`.
+- **[DEC-14]** Bảo vệ IDOR và Phân quyền cấp Server: Thông tin `MaSV`, `MaGV` và `MaTaiKhoan` khi thực hiện các giao dịch nhạy cảm (Đăng ký tín chỉ, Xem học vụ cá nhân, Xác nhận thanh toán) bắt buộc trích xuất trực tiếp từ token xác thực JWT (`req.user`), không tin cậy dữ liệu truyền lên qua body client. Hạn mức tín chỉ tối đa do hệ thống ấn định (mặc định 24-25 tín chỉ).
 
 ---
 
@@ -396,14 +425,14 @@ Hệ thống mã nguồn SQL trong thư mục `DB/` đã hiện thực hóa đ�
 - [x] Khóa cấu trúc 19 bảng chuẩn hóa 3NF.
 - [x] Bổ sung bảng `NGANH` tách từ `CHUONGTRINHDAOTAO`.
 - [x] Bổ sung bảng `LOP` quản lý 36 lớp sinh hoạt niên chế.
-- [x] Bổ sung bảng `CHITIETTHANHTOAN` hỗ trợ thanh toán nhiều đợt.
+- [x] Bổ sung bảng `CHITIETTHANHTOAN` hỗ trợ thanh toán nhiều đợt (xác nhận 2 bước).
 - [x] Đồng bộ 100% Primary Key / Foreign Key liên module.
 - [x] Đồng bộ `MaHocKy`, loại bỏ hoàn toàn `MaHK`.
-- [x] Khóa 12 quyết định thiết kế kiến trúc (DEC-01 -> DEC-12).
+- [x] Khóa 14 quyết định thiết kế kiến trúc (DEC-01 -> DEC-14).
 - [x] Triển khai và kiểm thử 13 Triggers.
 - [x] Triển khai và kiểm thử 6 Views.
 - [x] Triển khai và kiểm thử 7 Functions.
-- [x] Triển khai và kiểm thử 7 Stored Procedures.
+- [x] Triển khai và kiểm thử 9 Stored Procedures.
 - [x] Triển khai và kiểm thử 19 Nonclustered Indexes.
 - [x] Thiết lập hệ thống phân quyền 4 Security Roles.
 - [x] Khởi tạo bộ dữ liệu mẫu >210.000 dòng dữ liệu thực tế (`04_SeedData.sql`).

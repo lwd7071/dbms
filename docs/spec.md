@@ -1,19 +1,19 @@
 # TÀI LIỆU ĐẶC TẢ KỸ THUẬT WEB DEMO HỆ THỐNG DBMS330284
 > **Hệ thống Quản lý Đăng ký Tín chỉ & Học vụ Đại học**  
-> **Phiên bản:** 1.0.0 | **Ngày cập nhật:** 08/10/2026  
+> **Phiên bản:** 1.2.0 | **Ngày cập nhật:** 09/10/2026  
 > **Kiến trúc:** Node.js (Express) + Vanilla HTML/CSS/JS + Microsoft SQL Server 2022
 
 ---
 
 ## 1. TỔNG QUAN HỆ THỐNG & NGUYÊN TẮC CỐT LÕI
 
-Hệ thống Web App phục vụ mục tiêu demo toàn diện các tính năng của CSDL **`DBMS330284`** (18 bảng, 5 views, 6 functions, 6 stored procedures, 11 triggers, 4 security roles và hệ thống indexes theo DB specification, >210.000 dòng dữ liệu).
+Hệ thống Web App phục vụ mục tiêu demo toàn diện các tính năng của CSDL **`DBMS330284`** (19 bảng, 6 views, 7 functions, 9 stored procedures, 13 triggers, 4 security roles và hệ thống 19 indexes theo DB specification, >210.000 dòng dữ liệu).
 
 ### 5 Nguyên tắc phát triển bắt buộc:
 1. **Validate API Input trước khi chạm DB:** Toàn bộ request payload phải được validate chặt chẽ ở tầng middleware; không cho phép request sai định dạng chạy xuống SQL Server.
 2. **Response Format chuẩn hóa 100%:** Mọi API (thành công hoặc thất bại) đều dùng một cấu trúc JSON thống nhất kèm HTTP status code ngữ nghĩa.
 3. **Phân tầng MVC + Service + Repository:** Controller chỉ điều hướng HTTP; Service xử lý business flow & ánh xạ lỗi; Repository chuyên trách giao tiếp SQL Server (gọi SP/View/Query).
-4. **RESTful thực dụng & Tối ưu hiệu năng:** API giữ chuẩn REST ở bề mặt (POST/GET/DELETE); bên dưới gọi trực tiếp các Stored Procedure, View, Function có sẵn; tận dụng Connection Pool và Index; tính toán sĩ số động từ `DANGKYTINCHI`.
+4. **RESTful thực dụng & Tối ưu hiệu năng:** API giữ chuẩn REST ở bề mặt (POST/GET/PATCH/DELETE); bên dưới gọi trực tiếp các Stored Procedure, View, Function có sẵn; tận dụng Connection Pool và Index; tính toán sĩ số động từ `DANGKYTINCHI`.
 5. **Đặc tả & API trước, Giao diện sau:** Xây dựng nền tảng API vững chắc, có kiểm thử TDD (Red-Green-Refactor) trước khi ghép UI. Giao diện thực dụng, tinh gọn, chuẩn Cổng học vụ Đại học, không rườm rà (Anti AI-slop).
 
 ---
@@ -22,7 +22,7 @@ Hệ thống Web App phục vụ mục tiêu demo toàn diện các tính năng 
 
 ```text
 ProjectDBMS/
-├── DB/                          # 13 file SQL chuẩn nguồn sự thật CSDL
+├── DB/                          # 14 file SQL/MD chuẩn nguồn sự thật CSDL
 ├── docs/
 │   └── spec.md                  # Bản đặc tả kỹ thuật này
 ├── backend/                     # Backend Node.js / Express
@@ -33,44 +33,62 @@ ProjectDBMS/
 │   │   │   ├── apiResponse.js   # Helper đóng gói response chuẩn
 │   │   │   └── errorMapper.js   # Translation layer ánh xạ mã lỗi SQL sang tiếng Việt
 │   │   ├── middlewares/
-│   │   │   ├── validate.middleware.js # Middleware validate schema (Zod/Joi)
-│   │   │   ├── auth.middleware.js     # Xác thực session/token & kiểm tra Role
+│   │   │   ├── validate.middleware.js # Middleware validate schema (Zod)
+│   │   │   ├── auth.middleware.js     # Xác thực JWT token & kiểm tra Role
 │   │   │   └── errorHandler.middleware.js # Global error handler
 │   │   ├── validators/
 │   │   │   ├── auth.validator.js
+│   │   │   ├── course.validator.js
 │   │   │   ├── registration.validator.js
 │   │   │   └── payment.validator.js
 │   │   ├── repositories/
+│   │   │   ├── admin.repository.js
 │   │   │   ├── auth.repository.js
+│   │   │   ├── class.repository.js
 │   │   │   ├── course.repository.js
+│   │   │   ├── faculty.repository.js
+│   │   │   ├── lecturer.repository.js
 │   │   │   ├── registration.repository.js
+│   │   │   ├── semester.repository.js
 │   │   │   ├── student.repository.js
 │   │   │   └── tuition.repository.js
 │   │   ├── services/
 │   │   │   ├── auth.service.js
+│   │   │   ├── class.service.js
 │   │   │   ├── course.service.js
+│   │   │   ├── lecturer.service.js
 │   │   │   ├── registration.service.js
+│   │   │   ├── student.service.js
 │   │   │   └── tuition.service.js
 │   │   ├── controllers/
+│   │   │   ├── admin.controller.js
 │   │   │   ├── auth.controller.js
+│   │   │   ├── class.controller.js
 │   │   │   ├── course.controller.js
+│   │   │   ├── faculty.controller.js
+│   │   │   ├── health.controller.js
+│   │   │   ├── lecturer.controller.js
 │   │   │   ├── registration.controller.js
+│   │   │   ├── semester.controller.js
 │   │   │   ├── student.controller.js
 │   │   │   └── tuition.controller.js
 │   │   ├── routes/
+│   │   │   ├── admin.routes.js
 │   │   │   ├── auth.routes.js
+│   │   │   ├── class.routes.js
 │   │   │   ├── course.routes.js
-│   │   │   ├── registration.routes.js
-│   │   │   ├── student.routes.js
-│   │   │   ├── tuition.routes.js
+│   │   │   ├── faculty.routes.js
 │   │   │   ├── health.routes.js
+│   │   │   ├── lecturer.routes.js
+│   │   │   ├── payment.routes.js
+│   │   │   ├── registration.routes.js
+│   │   │   ├── semester.routes.js
+│   │   │   ├── student.routes.js
 │   │   │   └── index.js
 │   │   └── app.js               # Khởi tạo Express app & gắn route
-│   ├── tests/
-│   │   ├── health.test.js       # Healthcheck API & DB
-│   │   ├── auth.test.js         # Test đăng nhập & phân quyền
-│   │   ├── registration.test.js # Test đăng ký tín chỉ, trigger bắt lỗi
-│   │   └── tuition.test.js      # Test thanh toán & đồng bộ học phí
+│   ├── tests/                   # 22 Test Suites Jest tự động hóa 100%
+│   ├── scripts/
+│   │   └── migrate_payment_confirmation.js # Script migrate xác nhận 2 bước
 │   ├── package.json
 │   └── .env
 └── frontend/                    # Giao diện HTML/CSS/JS thuần thực dụng
@@ -83,7 +101,8 @@ ProjectDBMS/
     │   └── tuition.js           # Xử lý tra cứu & nộp học phí
     ├── index.html               # Trang đăng nhập & bảng Quick Login demo
     ├── portal-student.html      # Cổng Sinh viên: ĐK tín chỉ, TKB, Bảng điểm, Học phí
-    └── portal-admin.html        # Cổng Đào tạo / Quản trị: Thống kê, Báo cáo
+    ├── portal-lecturer.html     # Cổng Giảng viên: Lịch dạy, Sổ điểm lớp học phần
+    └── portal-admin.html        # Cổng Đào tạo / Quản trị: 9 phân hệ điều hành
 ```
 
 ---
@@ -168,17 +187,22 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `05_Triggers.md` và `08_S
 | **50017** | `SP_TinhHocPhiSinhVien` | `409` | `tinChi` | Sinh viên không có tín chỉ hợp lệ nào trong học kỳ để tính học phí. |
 | **51001** | `TR_MONHOCTIENQUYET` | `409` | `chuTrinh` | Không thể thiết lập môn tiên quyết do tạo thành chu trình phụ thuộc vòng lặp. |
 | **51002** | `TR_DANGKYTINCHI_KiemTraSiSo` | `409` | `siSo` | Lớp học phần đã đạt ngưỡng sĩ số tối đa cho phép. |
-| **51310** | `TR_LICHHOC_KiemTraTrungLich` | `409` | `phongHoc` | Lịch học bị trùng giảng viên hoặc trùng phòng học trong cùng khung giờ. |
-| **51006** | `TR_CHITIETTHANHTOAN_CapNhatHocPhi`| `409` | `soTien` | Tổng số tiền thanh toán không được vượt quá số dư học phí còn lại. *(Ngữ cảnh: Thanh toán)* |
-| **51006** | `SP_TaoTaiKhoan` | `409` | `username` | Tên đăng nhập đã tồn tại trong hệ thống. *(Ngữ cảnh: Tạo tài khoản)* |
+| **51004** | `TR_MUCHOCPHI_KiemTraHieuLuc` / `SP_TaoTaiKhoan` | `409` | `mucHocPhi` / `vaiTro` | Mức học phí bị trùng thời gian hiệu lực / Vai trò tài khoản không tương thích với liên kết người dùng. |
+| **51005** | `TR_MUCHOCPHI_KiemTraHieuLuc` / `SP_TaoTaiKhoan` | `409` / `404` | `phamVi` / `maSV` | Chỉ hỗ trợ phạm vi TOAN_TRUONG / Không tìm thấy mã sinh viên hoặc giảng viên liên kết. |
+| **51006** | `TR_CHITIETTHANHTOAN_CapNhatHocPhi`| `409` | `soTien` | Tổng số tiền thanh toán không được vượt quá số dư học phí còn lại. *(Ngữ cảnh: PAYMENT)* |
+| **51006** | `SP_TaoTaiKhoan` | `409` | `username` | Tên đăng nhập đã tồn tại trong hệ thống. *(Ngữ cảnh: CREATE_USER)* |
+| **51007** | `TR_LOP_KiemTraXoa` / `SP_TaoTaiKhoan` | `409` | `maLop` / `maSV` | Không thể xóa lớp sinh hoạt đang có sinh viên trực thuộc / Sinh viên đã được liên kết tài khoản khác. |
+| **51008** | `SP_TaoTaiKhoan` / `SP_ThongKeHocPhiTheoLop` | `409` / `404` | `maGV` / `maLop` | Giảng viên đã được liên kết với tài khoản khác / Không tìm thấy lớp sinh hoạt được yêu cầu. |
+| **51009** | `SP_KhoaTaiKhoan` | `400` | `maTaiKhoan` | Mã tài khoản không được để trống khi thực hiện khóa tài khoản. |
 | **51010** | `SP_KhoaTaiKhoan` | `404` | `maTaiKhoan` | Không tìm thấy tài khoản người dùng cần thao tác. |
+| **51310** | `TR_LICHHOC_KiemTraTrungLich` | `409` | `phongHoc` | Lịch học bị trùng giảng viên hoặc trùng phòng học trong cùng khung giờ. |
 | **51401** | `SP_XacNhanThanhToan` / `SP_TuChoiThanhToan` | `404` | `maThanhToan` | Giao dịch thanh toán không tồn tại trong hệ thống. |
 | **51402** | `SP_XacNhanThanhToan` | `409` | `trangThai` | Giao dịch thanh toán đã được xác nhận trước đó. |
 | **51403** | `SP_XacNhanThanhToan` | `409` | `trangThai` | Không thể xác nhận giao dịch thanh toán đã bị từ chối. |
 | **51404** | `SP_XacNhanThanhToan` / `SP_TuChoiThanhToan` | `403` | `taiKhoan` | Tài khoản không có quyền xác nhận hoặc từ chối thanh toán. |
 | **51405** | `SP_XacNhanThanhToan` / `SP_TuChoiThanhToan` | `409` | `trangThai` | Chỉ có thể thao tác với giao dịch đang ở trạng thái chờ xác nhận. |
 
-> **Lưu ý kỹ thuật cho `errorMapper.js`:** CSDL thực tế quy định mã `51006` ở cả Trigger thanh toán và `SP_TaoTaiKhoan`. Vì vậy tầng Backend `errorMapper(error, context)` **bắt buộc phải nhận tham số `context`** (ví dụ: `context = 'PAYMENT'` hoặc `context = 'CREATE_USER'`) để ánh xạ đúng `field` và thông báo lỗi tương ứng mà không cần can thiệp sửa mã nguồn SQL Server.
+> **Lưu ý kỹ thuật cho `errorMapper.js`:** CSDL thực tế có một số mã lỗi `THROW` được dùng chung giữa các Trigger và Stored Procedure (như `51004`, `51005`, `51006`, `51007`, `51008`). Tầng Backend `errorMapper(error, context)` sử dụng tham số `context` (ví dụ: `'PAYMENT'`, `'CREATE_USER'`, `'CLASS'`, `'TUITION_RATE'`) để phân biệt ngữ cảnh nghiệp vụ, ánh xạ chính xác `field` và thông báo lỗi tương ứng sang HTTP response mà không làm thay đổi mã lỗi đã triển khai trên SQL Server.
 
 ---
 
@@ -207,18 +231,25 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `05_Triggers.md` và `08_S
 
 ### 5.3. Nhóm Tra cứu Lớp học phần (Đăng ký tín chỉ)
 - **`GET /api/courses/available`**
-  - **Query:** `?maHocKy=7&maKhoa=CNTT&search=CSDL&page=1&pageSize=10`
+  - **Query:** `?maHocKy=7&maKhoa=CNTT&search=CSDL&type=ALL&page=1&pageSize=10`
   - **Xử lý DB:**
     ```sql
+    -- 1. Query lấy tổng số bản ghi khớp bộ lọc
+    SELECT COUNT(*) AS TotalItems
+    FROM dbo.LOPHOCPHAN lhp
+    INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc = mh.MaMonHoc
+    WHERE lhp.MaHocKy = @MaHocKy AND lhp.TrangThai = 'MO_DANG_KY';
+
+    -- 2. Query lấy dữ liệu phân trang (JOIN chính xác gv.MaGV)
     SELECT 
         lhp.MaLHP, lhp.TenLHP, lhp.MaMonHoc, mh.TenMonHoc, mh.SoTinChi,
         lhp.SoLuongToiDa,
-        ISNULL(dk.SiSoHienTai, 0) AS SiSoHienTai, -- Giá trị tính toán động trong query, KHÔNG PHẢI cột vật lý của LOPHOCPHAN
+        ISNULL(dk.SiSoHienTai, 0) AS SiSoHienTai, -- Sĩ số tính toán động trong query
         gv.HoTen AS TenGiangVien,
         lh.Thu, lh.TietBatDau, lh.SoTiet, lh.PhongHoc
     FROM dbo.LOPHOCPHAN lhp
     INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc = mh.MaMonHoc
-    LEFT JOIN dbo.GIANGVIEN gv ON lhp.MaGiangVien = gv.MaGiangVien
+    LEFT JOIN dbo.GIANGVIEN gv ON lhp.MaGiangVien = gv.MaGV -- Khóa ngoại INT tham chiếu MaGV kỹ thuật
     LEFT JOIN dbo.LICHHOC lh ON lhp.MaLHP = lh.MaLHP
     OUTER APPLY (
         SELECT COUNT(*) AS SiSoHienTai
@@ -233,26 +264,39 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `05_Triggers.md` và `08_S
 
 ### 5.4. Nhóm Giao dịch Đăng ký Tín chỉ (Core Transaction)
 - **`POST /api/registrations`**
-  - **Body:** `{ "maSV": 1, "maLHP": "LHP_HK7_CSDL_01", "tinChiToiDa": 25 }`
+  - **Body:** `{ "maLHP": "LHP_HK7_CSDL_01" }`
+  - **Bảo mật & Phân quyền (Security Enforcement):**
+    - `maSV`: Trích xuất trực tiếp từ token JWT xác thực (`req.user.maSV` đối với vai trò `SINH_VIEN`). Không cho phép sinh viên tự truyền `maSV` khác từ body để ngăn chặn đăng ký hộ hoặc giả mạo người khác (IDOR protection).
+    - `tinChiToiDa`: Do hệ thống/học kỳ ấn định cố định (mặc định 24-25 tín chỉ), không cho phép client tùy ý nâng hạn mức.
   - **Xử lý DB:** Gọi Stored Procedure **`SP_DangKyTinChi`**.
   - **Status:** `201 Created` nếu thành công; `409 Conflict` nếu vi phạm ràng buộc (bắt mã lỗi 50001–50011 qua Translation Layer).
 - **`DELETE /api/registrations/:id`** (với `:id` là `maDangKy`)
   - **Xử lý DB:** Lấy thông tin đăng ký và gọi Stored Procedure **`SP_HuyDangKy`**.
   - **Status:** `200 OK` | `409 Conflict` (Mã 50021–50023).
+- **`GET /api/registrations/my-courses`**
+  - **Query:** `?maHocKy=7`
+  - **Mô tả:** Lấy danh sách lớp học phần sinh viên đang đăng nhập đã đăng ký trong học kỳ.
 
-### 5.5. Nhóm Học vụ Sinh viên (Views)
+### 5.5. Nhóm Học vụ Sinh viên (Views & Báo cáo)
+- **Bảo mật truy cập (IDOR Defense):** Toàn bộ các route `/api/students/:id/...` kiểm tra tham số `:id` phải khớp với `req.user.maSV` trong JWT token, trừ khi người dùng có vai trò `DAO_TAO` hoặc `QUAN_TRI`.
 - **`GET /api/students/:id/schedule`**
   - **Query:** `?maHocKy=7`
-  - **Xử lý DB:** `SELECT * FROM dbo.V_ThoiKhoaBieuSinhVien WHERE MaSV = @MaSV AND MaHocKy = @MaHocKy;`
+  - **Xử lý DB:** `SELECT * FROM dbo.V_ThoiKhoaBieuSinhVien WHERE MaSV = @MaSV AND (@MaHocKy IS NULL OR MaHocKy = @MaHocKy);`
 - **`GET /api/students/:id/grades`**
-  - **Query:** `?maHocKy=...`
-  - **Xử lý DB:** `SELECT * FROM dbo.V_BangDiemChiTiet WHERE MaSV = @MaSV ORDER BY MaHocKy, MaMonHoc;`
+  - **Query:** `?maHocKy=7`
+  - **Xử lý DB:** `SELECT * FROM dbo.V_BangDiemChiTiet WHERE MaSV = @MaSV AND (@MaHocKy IS NULL OR MaHocKy = @MaHocKy) ORDER BY MaHocKy, MaMonHoc;`
 - **`GET /api/students/:id/tuition`**
   - **Xử lý DB:** `SELECT * FROM dbo.V_HocPhiSinhVien WHERE MaSV = @MaSV ORDER BY MaHocKy DESC;`
+- **`GET /api/students/:id/payments`**
+  - **Query:** `?page=1&pageSize=10`
+  - **Mô tả:** Lịch sử chi tiết các lần nộp học phí của sinh viên (kèm trạng thái xác nhận và học kỳ).
+- **`GET /api/students/:id/profile`**
+  - **Mô tả:** Hồ sơ sinh viên, thông tin Lớp sinh hoạt, Khoa, niên khóa và tài khoản.
 
-### 5.6. Nhóm Thanh toán & Quản trị (Cơ chế Xác nhận 2 bước)
+### 5.6. Nhóm Thanh toán Học phí (Cơ chế Xác nhận 2 bước)
 - **`POST /api/payments`**
   - **Mô tả:** Sinh viên tạo yêu cầu nộp học phí. Giao dịch ban đầu được tạo ở trạng thái `CHO_XAC_NHAN`. Hệ thống chưa tự động tăng `HOCPHI.SoTienDaThanhToan`.
+  - **Bảo mật:** Kiểm tra hồ sơ học phí `maHocPhi` thuộc đúng sinh viên đang đăng nhập (`hp.MaSV = req.user.maSV`).
   - **Body:** `{ "maHocPhi": 123, "soTien": 4500000.00, "phuongThuc": "CHUYEN_KHOAN" }` (Phương thức: `CHUYEN_KHOAN` hoặc `TIEN_MAT`).
   - **Xử lý DB:** `INSERT INTO dbo.CHITIETTHANHTOAN (MaHocPhi, SoTien, PhuongThuc, TrangThai) VALUES (@MaHocPhi, @SoTien, @PhuongThuc, 'CHO_XAC_NHAN')`.
   - **Status:** `201 Created` | `409 Conflict` (Nếu số tiền nộp vượt mức dư còn lại hoặc sai constraint).
@@ -268,9 +312,26 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `05_Triggers.md` và `08_S
   - **Mô tả:** Từ chối giao dịch thanh toán. Gọi Stored Procedure `SP_TuChoiThanhToan`, chuyển `TrangThai = 'TU_CHOI'`. Khoản tiền này không bao giờ được tính vào học phí.
   - **Quyền:** Chỉ `DAO_TAO` hoặc `QUAN_TRI`.
   - **Status:** `200 OK` | `403 Forbidden` | `404 Not Found` | `409 Conflict`.
-- **`GET /api/admin/reports/tuition`**
-  - **Query:** `?maHocKy=7&trangThai=UNPAID`
-  - **Xử lý DB:** Gọi Stored Procedure **`SP_ThongKeHocPhi`**.
+
+### 5.7. Nhóm Endpoint Quản trị, Giảng viên & Danh mục
+- **`GET /api/admin/dashboard`**: Thống kê số lượng sinh viên, giảng viên, lớp học phần mở, tỷ lệ thu học phí và số giao dịch chờ duyệt.
+- **`GET /api/admin/reports/tuition`**: Báo cáo thống kê tài chính học phí theo học kỳ (gọi Stored Procedure `SP_ThongKeHocPhi`).
+- **`GET /api/admin/users`**: Quản lý danh sách tài khoản người dùng từ View `V_TaiKhoanNguoiDung`.
+- **`PATCH /api/admin/users/:username/status`**: Khóa / kích hoạt tài khoản người dùng (gọi Stored Procedure `SP_KhoaTaiKhoan`).
+- **`GET /api/admin/students`**: Danh sách sinh viên toàn trường kèm thông tin Lớp sinh hoạt và Khoa.
+- **`GET /api/admin/classes`**: Danh sách tất cả lớp học phần đang mở và sĩ số động.
+- **`GET /api/admin/registrations`**: Tra cứu toàn bộ giao dịch đăng ký tín chỉ của sinh viên.
+- **`GET /api/admin/audit-logs`**: Nhật ký kiểm toán bảo mật từ bảng `LOGHOATDONG` (chỉ role `QUAN_TRI`).
+- **`GET /api/admin/curriculums`**: Khung chương trình đào tạo từ View `V_CauTrucChuongTrinhDaoTao`.
+- **`GET /api/lecturers/:id/schedule`**: Lịch giảng dạy theo tuần của Giảng viên.
+- **`GET /api/lecturers/:id/classes`**: Danh sách các lớp học phần Giảng viên đang phụ trách.
+- **`GET /api/lecturers/classes/:maLHP/students`**: Danh sách sinh viên và bảng điểm thành phần của lớp học phần.
+- **`GET /api/classes`**: Danh sách 36 lớp sinh hoạt niên chế kèm sĩ số từ View `V_DanhSachLopSinhHoat`.
+- **`GET /api/classes/:id`**: Chi tiết lớp sinh hoạt và danh sách sinh viên trực thuộc.
+- **`GET /api/classes/:id/tuition-report`**: Thống kê học phí theo lớp sinh hoạt (gọi `SP_ThongKeHocPhiTheoLop`).
+- **`GET /api/faculties`**: Danh mục các khoa trong trường.
+- **`GET /api/semesters`**: Danh mục các năm học và học kỳ.
+- **`GET /api/semesters/open`**: Lấy học kỳ đang mở đăng ký tín chỉ hiện tại.
 
 ---
 
@@ -291,15 +352,15 @@ Lặp lại với hành vi/nghiệp vụ tiếp theo
 ### Chi tiết các Vertical Slices:
 1. **Slice 1 (App Health):** Test `GET /api/health` trả về `{ isSuccess: true, data: { status: "UP" } }` mà không cần gọi DB.
 2. **Slice 2 (DB Health):** Test `GET /api/health/db` kiểm tra mssql pool kết nối thành công đến `DBMS330284`.
-3. **Slice 3 (Authentication):** Test `POST /api/auth/login` với tài khoản thật (`admin`, `123456`) -> 200 OK; tài khoản sai mật khẩu -> 401; tài khoản `sv_23000495` (bảo lưu) -> 401/403.
-4. **Slice 4 (Available Courses with Sĩ số):** Test `GET /api/courses/available` trả về cấu trúc phân trang chuẩn, có tính `SiSoHienTai` từ bảng `DANGKYTINCHI`.
-5. **Slice 5 (Registration Validation):** Test `POST /api/registrations` thiếu `maSV` trả về `400 Bad Request` kèm `{ field: "maSV", message: "..." }`.
+3. **Slice 3 (Authentication):** Test `POST /api/auth/login` với tài khoản thật (`admin`, `123456`) -> 200 OK; tài khoản sai mật khẩu -> 401 Unauthorized; tài khoản bị khóa (`sv_23000495` trạng thái `LOCKED`) -> 403 Forbidden (theo test `auth.test.js` thực tế) / 401 Unauthorized (theo chuẩn từ chối đăng nhập).
+4. **Slice 4 (Available Courses with Sĩ số):** Test `GET /api/courses/available` trả về cấu trúc phân trang chuẩn, có tính `SiSoHienTai` động từ bảng `DANGKYTINCHI`.
+5. **Slice 5 (Registration Validation):** Test `POST /api/registrations` thiếu trường bắt buộc `maLHP` (hoặc thiếu `maSV` khi gọi trực tiếp không kèm token) trả về `400 Bad Request` kèm `{ field: "maLHP" / "maSV", message: "..." }`.
 6. **Slice 6 (Registration Core & Errors):**
    - Test case thành công: Đăng ký môn hợp lệ trả về `201 Created`.
    - Test case trùng lịch: Bắt mã `50009` trả về `409 Conflict`.
    - Test case thiếu tiên quyết: Bắt mã `50008` trả về `409 Conflict`.
 7. **Slice 7 (Cancellation):** Test `DELETE /api/registrations/:id` thành công và case không tìm thấy môn trả về `404 Not Found`.
-8. **Slice 8 (Payment & Trigger Auto Sync):** Test `POST /api/payments` thanh toán thành công và kiểm tra `HOCPHI.TrangThai` tự động cập nhật sang `PAID` / `PARTIAL`.
+8. **Slice 8 (Payment & 2-Step Confirmation Flow):** Test flow thanh toán xác nhận 2 bước: `POST /api/payments` tạo payment mới ở trạng thái `CHO_XAC_NHAN` (`HOCPHI.SoTienDaThanhToan` chưa tăng); chỉ khi gọi `POST /api/payments/:id/confirm` (bởi `DAO_TAO` hoặc `QUAN_TRI`) thì `HOCPHI.SoTienDaThanhToan` mới tự động cộng dồn qua Trigger và `HOCPHI.TrangThai` chuyển sang `PARTIAL` hoặc `PAID`.
 
 ---
 
@@ -321,7 +382,7 @@ Lặp lại với hành vi/nghiệp vụ tiếp theo
     - `Warning`: Nền `#FEF3C7`, chữ `#92400E` (Đóng một phần, Chờ thanh toán).
     - `Danger`: Nền `#FEE2E2`, chữ `#991B1B` (Rớt môn, Nợ học phí, Trùng lịch, Hết chỗ).
 - **Typography:** Font hệ thống (`system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif`) tải nhanh tức thì, không phụ thuộc Google Fonts ngoài mạng.
-- **Bố cục:** Desktop-first (độ rộng container 1280px), thanh Header cố định hiển thị học kỳ hiện tại (`2026-2027 HK1`) và thông tin sinh viên đăng nhập.
+- **Bố cục:** Desktop-first (độ rộng container 1280px), thanh Header cố định hiển thị học kỳ hiện tại (`2025-2026 HK1 / Học kỳ 7`) và thông tin người dùng đăng nhập.
 
 ### 7.3. Tính năng "Quick Login Demo" (Thay thế Role Switcher)
 Tại màn hình đăng nhập (`index.html`), cung cấp bảng **Quick Login Presets** với các kịch bản demo điển hình (đã đối chiếu khớp 100% với `DANH_SACH_TAI_KHOAN_TEST.md` và `DB/04_SeedData.sql`):
@@ -476,6 +537,23 @@ Bao gồm 9 phân hệ màn hình chức năng chính:
 - Không thêm component hoặc hiệu ứng chỉ để làm giao diện "trông hiện đại" nếu không phục vụ nghiệp vụ.
 - Các trạng thái nghiệp vụ phải được thể hiện rõ bằng badge, màu trạng thái và thông báo phù hợp.
 
+#### 7.7. Quy chuẩn Trạng thái Hệ thống & Ghi chú Bảo mật
+
+##### 1. Phân biệt trạng thái Học kỳ (`HOCKY.TrangThai`) và Lớp học phần (`LOPHOCPHAN.TrangThai`)
+- **`HOCKY.TrangThai`:**
+  - `CHUA_MO`: Học kỳ tương lai, chưa tới thời gian tổ chức học vụ.
+  - `DANG_MO`: Học kỳ đang diễn ra; cổng đăng ký tín chỉ mở theo khung thời gian xác định bởi `NgayMoDangKy` và `NgayDongDangKy`.
+  - `KET_THUC`: Học kỳ đã hoàn thành toàn bộ công tác giảng dạy, chấm điểm và thanh quyết toán học phí.
+- **`LOPHOCPHAN.TrangThai`:**
+  - `MO_DANG_KY`: Lớp học phần đang mở cổng cho sinh viên đăng ký tín chỉ trực tuyến (trong đợt mở cổng của học kỳ).
+  - `DANG_MO`: Lớp học phần đã chốt sĩ số / đóng đăng ký, đang trong thời gian giảng dạy học kỳ.
+  - `DA_KHOA`: Giảng viên đã hoàn thành nhập điểm, lớp học phần được khóa sổ học thuật.
+  - `DA_HUY`: Lớp bị hủy mở do không đạt sĩ số sinh viên tối thiểu.
+
+##### 2. Ghi chú kỹ thuật về Băm mật khẩu (SHA-256)
+- **Mục đích đồ án:** Hệ thống sử dụng thuật toán băm SHA-256 (`crypto.createHash('sha256').update(password).digest('hex')`) để tạo và xác thực `PasswordHash`. Thiết kế này đồng bộ 100% với hàm `HASHBYTES('SHA2_256', ...)` trong mã nguồn SQL Server (`04_SeedData.sql`, `SP_TaoTaiKhoan`), cho phép nhóm kiểm thử và giảng viên đối chiếu trực tiếp dữ liệu giữa Backend và Database mà không phụ thuộc thư viện native bên ngoài.
+- **Khuyến nghị sản xuất (Production Best Practice):** Trong môi trường ứng dụng thực tế, mật khẩu cần được bảo vệ bằng thuật toán băm chuyên dụng cho mật khẩu như **Argon2id** hoặc **bcrypt** với cryptographic salt ngẫu nhiên và cost factor thích hợp để phòng chống tấn công brute-force và tra cứu từ điển Rainbow Table.
+
 ---
 
 ## 8. LỘ TRÌNH TRIỂN KHAI THEO VERTICAL SLICES
@@ -492,7 +570,7 @@ Bao gồm 9 phân hệ màn hình chức năng chính:
   - Slice 7: Hoàn thành `DELETE /api/registrations/:id` gọi `SP_HuyDangKy`.
   - Hoàn thành các API View: Thời khóa biểu, Bảng điểm, Công nợ học phí.
 - **Giai đoạn 4 (Thanh toán & Báo cáo Đào tạo):**
-  - Slice 8: Hoàn thành `POST /api/payments` kích hoạt trigger thanh toán học phí.
+  - Slice 8: Hoàn thành `POST /api/payments` tạo giao dịch chờ duyệt (`CHO_XAC_NHAN`) và luồng xác nhận qua `POST /api/payments/:id/confirm` kích hoạt trigger cập nhật học phí (kịch bản migration cấu trúc DB nằm tại `backend/scripts/migrate_payment_confirmation.js`).
   - Hoàn thành `GET /api/admin/reports/tuition`.
 - **Giai đoạn 5 (Giao diện Frontend Thực dụng):**
   - Khởi tạo `frontend/`, dựng layout CSS Slate/Navy học vụ theo chuẩn `/ui-ux-pro-max`.

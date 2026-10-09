@@ -111,7 +111,12 @@ const findAvailableCourses = async ({ maHocKy, maKhoa, search, type, maSV, page 
     FROM dbo.LOPHOCPHAN lhp
     INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc = mh.MaMonHoc
     LEFT JOIN dbo.GIANGVIEN gv ON lhp.MaGiangVien = gv.MaGV
-    LEFT JOIN dbo.LICHHOC lh ON lhp.MaLHP = lh.MaLHP
+    OUTER APPLY (
+      SELECT TOP 1 Thu, TietBatDau, SoTiet, PhongHoc
+      FROM dbo.LICHHOC lh
+      WHERE lh.MaLHP = lhp.MaLHP
+      ORDER BY Thu, TietBatDau
+    ) lh
     OUTER APPLY (
       SELECT COUNT(*) AS SiSoHienTai
       FROM dbo.DANGKYTINCHI d

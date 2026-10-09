@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sơ đồ ERD - Hệ thống Quản lý Đào tạo & Tín chỉ (DBMS330284)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- SVG Pan Zoom -->
+  <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+  <!-- Mermaid.js -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    
+    * {
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    code, pre, .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Thanh cuộn giao diện sáng */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    #diagram-container svg {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+    }
+
+    /* Hiệu ứng nổi khối nhẹ nhàng */
+    .light-card {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Tùy chỉnh màu sắc Mermaid ERD nền trắng sáng, in ấn sắc nét */
+    .er.entityBox {
+      fill: #eff6ff !important; /* Xanh nhạt tinh tế */
+      stroke: #2563eb !important;
+      stroke-width: 1.8px !important;
+      rx: 4px;
+      ry: 4px;
+    }
+    .er.attributeBoxOdd {
+      fill: #ffffff !important;
+      stroke: #cbd5e1 !important;
+    }
+    .er.attributeBoxEven {
+      fill: #f8fafc !important;
+      stroke: #cbd5e1 !important;
+    }
+    #diagram-container svg text {
+      fill: #0f172a !important; /* Đen đậm chuẩn nét in */
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 12px !important;
+    }
+    #diagram-container svg .entityLabel {
+      fill: #1d4ed8 !important;
+      font-weight: 700 !important;
+      font-size: 13px !important;
+    }
+    #diagram-container svg .relationshipLine {
+      stroke: #1e293b !important; /* Đường nối đen đậm in ra rõ ràng */
+      stroke-width: 1.6px !important;
+    }
+    #diagram-container svg .relationshipLabel {
+      fill: #475569 !important;
+      font-size: 11px !important;
+      font-weight: 500 !important;
+    }
+    #diagram-container svg .relationshipLabelBox {
+      fill: #ffffff !important;
+      stroke: #cbd5e1 !important;
+      opacity: 0.98 !important;
+    }
+
+    /* Tối ưu hóa khi in ấn (Print CSS) */
+    @media print {
+      header, aside, .no-print {
+        display: none !important;
+      }
+      body, .flex-1, #diagram-wrapper, #diagram-container {
+        height: auto !important;
+        overflow: visible !important;
+        background: white !important;
+      }
+      #diagram-container svg {
+        width: 100% !important;
+        height: auto !important;
+      }
+      @page {
+        size: A3 landscape;
+        margin: 10mm;
+      }
+    }
+  </style>
+</head>
+<body class="bg-white text-slate-800 min-h-screen flex flex-col overflow-hidden">
+
+  <!-- Header Nền sáng -->
+  <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 z-20 shadow-sm no-print">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+        <i class="fa-solid fa-diagram-project text-lg"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight text-slate-900 flex items-center gap-2">
+          Sơ đồ Thực thể - Quan hệ (ERD)
+          <span class="text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">DBMS330284</span>
+        </h1>
+        <p class="text-xs text-slate-500">Chuẩn Crow's Foot Notation &bull; Bản nền sáng hỗ trợ in ấn & xuất PDF sắc nét</p>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="flex items-center gap-2">
+      <!-- Bộ chọn góc nhìn / Phân hệ -->
+      <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs">
+        <button onclick="switchView('all')" id="btn-view-all" class="px-3 py-1.5 rounded-md font-medium transition-all bg-blue-600 text-white shadow">
+          <i class="fa-solid fa-network-wired mr-1"></i> Toàn bộ (19 Bảng)
+        </button>
+        <button onclick="switchView('academic')" id="btn-view-academic" class="px-3 py-1.5 rounded-md font-medium transition-all text-slate-600 hover:text-slate-900">
+          <i class="fa-solid fa-graduation-cap mr-1"></i> Đào tạo
+        </button>
+        <button onclick="switchView('user')" id="btn-view-user" class="px-3 py-1.5 rounded-md font-medium transition-all text-slate-600 hover:text-slate-900">
+          <i class="fa-solid fa-users mr-1"></i> Nhân sự
+        </button>
+        <button onclick="switchView('registration')" id="btn-view-registration" class="px-3 py-1.5 rounded-md font-medium transition-all text-slate-600 hover:text-slate-900">
+          <i class="fa-solid fa-book-bookmark mr-1"></i> Học phần & ĐK
+        </button>
+        <button onclick="switchView('tuition')" id="btn-view-tuition" class="px-3 py-1.5 rounded-md font-medium transition-all text-slate-600 hover:text-slate-900">
+          <i class="fa-solid fa-coins mr-1"></i> Học phí
+        </button>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="h-6 w-px bg-slate-200 mx-1"></div>
+      <button onclick="zoomIn()" title="Phóng to" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition">
+        <i class="fa-solid fa-magnifying-glass-plus"></i>
+      </button>
+      <button onclick="zoomOut()" title="Thu nhỏ" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition">
+        <i class="fa-solid fa-magnifying-glass-minus"></i>
+      </button>
+      <button onclick="resetZoom()" title="Đặt lại góc nhìn" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition">
+        <i class="fa-solid fa-arrows-rotate"></i>
+      </button>
+      <button onclick="window.print()" title="In sơ đồ / Xuất PDF" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition">
+        <i class="fa-solid fa-print"></i>
+        <span>In sơ đồ (PDF)</span>
+      </button>
+      <button onclick="toggleSidebar()" title="Từ điển dữ liệu" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition">
+        <i class="fa-solid fa-table-list text-blue-600"></i>
+        <span>Tra cứu bảng</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <div class="flex-1 flex overflow-hidden relative bg-white">
+
+    <!-- Interactive Diagram Area -->
+    <div class="flex-1 h-full relative overflow-hidden bg-white flex flex-col">
+      <!-- Loading indicator -->
+      <div id="loading" class="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-30 transition-opacity">
+        <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="text-sm font-medium text-slate-700">Đang khởi tạo sơ đồ ERD...</p>
+      </div>
+
+      <!-- Diagram viewport -->
+      <div id="diagram-wrapper" class="w-full h-full cursor-grab active:cursor-grabbing bg-white">
+        <div id="diagram-container" class="w-full h-full flex items-center justify-center"></div>
+      </div>
+
+      <!-- Floating Legend (Ký hiệu ERD chuẩn Crow's Foot Nền sáng) -->
+      <div class="absolute bottom-4 left-4 z-10 light-card rounded-xl p-3 shadow-lg max-w-sm pointer-events-auto no-print">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-200 text-xs font-semibold text-slate-800">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-info text-blue-600"></i> Ký hiệu quan hệ (Crow's Foot)
+          </span>
+          <span class="text-[10px] text-slate-500">Kéo chuột &bull; Cuộn Zoom</span>
+        </div>
+        <div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] text-slate-600">
+          <div class="flex items-center gap-2">
+            <span class="mono font-bold text-blue-600 text-xs">||--||</span>
+            <span>Chính xác 1 - 1 (Bắt buộc)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="mono font-bold text-blue-600 text-xs">||--o|</span>
+            <span>0 hoặc 1 (Tùy chọn)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="mono font-bold text-amber-600 text-xs">||--o{</span>
+            <span>1 - Nhiều (0..N)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="mono font-bold text-amber-600 text-xs">||--|{</span>
+            <span>1 - Nhiều (1..N bắt buộc)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-mono font-bold">PK</span>
+            <span>Khóa chính</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 text-[10px] font-mono font-bold">FK</span>
+            <span>Khóa ngoại</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Dictionary Sidebar Nền sáng -->
+    <aside id="sidebar" class="w-96 bg-slate-50 border-l border-slate-200 flex flex-col h-full z-20 transition-all duration-300 ease-in-out shrink-0 no-print">
+      <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-database text-blue-600"></i>
+          <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Danh mục thực thể (19 Bảng)</h2>
+        </div>
+        <button onclick="toggleSidebar()" class="text-slate-400 hover:text-slate-700 p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Search entity -->
+      <div class="p-3 border-b border-slate-200 bg-white">
+        <div class="relative">
+          <i class="fa-solid fa-search absolute left-3 top-2.5 text-xs text-slate-400"></i>
+          <input type="text" id="search-table" placeholder="Tìm kiếm bảng hoặc cột..." onkeyup="filterEntities()"
+                 class="w-full bg-slate-100 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500">
+        </div>
+      </div>
+
+      <!-- Entity List with accordion details -->
+      <div id="entity-list" class="flex-1 overflow-y-auto p-3 space-y-2">
+        <!-- Entities injected by JS -->
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Sơ đồ Mermaid Script & Data -->
+  <script>
+    // Định nghĩa Mermaid code cho từng chế độ xem
+    const diagrams = {
+      // 1. Toàn bộ 19 bảng với đầy đủ quan hệ
+      all: `erDiagram
+    KHOA ||--o{ NGANH : "quan_ly"
+    KHOA ||--o{ MONHOC : "quan_ly"
+    KHOA ||--o{ LOP : "quan_ly"
+    KHOA ||--o{ SINHVIEN : "truc_thuoc"
+    KHOA ||--o{ GIANGVIEN : "cong_tac"
+
+    NGANH ||--o{ CHUONGTRINHDAOTAO : "dao_tao"
+    
+    CHUONGTRINHDAOTAO ||--|{ CTDT_MONHOC : "chua"
+    MONHOC ||--|{ CTDT_MONHOC : "thuoc"
+    
+    MONHOC ||--o{ MONHOCTIENQUYET : "la_mon_hoc"
+    MONHOC ||--o{ MONHOCTIENQUYET : "la_tien_quyet"
+
+    LOP ||--o{ SINHVIEN : "chua"
+
+    SINHVIEN |o--o| TAIKHOAN : "so_huu"
+    GIANGVIEN |o--o| TAIKHOAN : "so_huu"
+    TAIKHOAN ||--o{ LOGHOATDONG : "thuc_hien"
+
+    HOCKY ||--o{ LOPHOCPHAN : "to_chuc"
+    MONHOC ||--o{ LOPHOCPHAN : "giang_day"
+    GIANGVIEN ||--o{ LOPHOCPHAN : "phu_trach"
+
+    LOPHOCPHAN ||--|{ LICHHOC : "co_lich"
+    
+    SINHVIEN ||--o{ DANGKYTINCHI : "dang_ky"
+    LOPHOCPHAN ||--o{ DANGKYTINCHI : "duoc_dang_ky"
+
+    DANGKYTINCHI ||--o| DIEMSO : "co_ket_qua"
+
+    HOCKY ||--o{ MUCHOCPHI : "ban_hanh"
+    SINHVIEN ||--o{ HOCPHI : "phat_sinh"
+    HOCKY ||--o{ HOCPHI : "ap_dung"
+    MUCHOCPHI ||--o{ HOCPHI : "dinh_muc"
+
+    HOCPHI ||--o{ CHITIETTHANHTOAN : "thanh_toan"
+
+    %% Entity Details
+    KHOA {
+        string MaKhoa PK "VARCHAR(10)"
+        string TenKhoa UK "NVARCHAR(100)"
+        string Email "VARCHAR(100)"
+        string SoDienThoai "VARCHAR(15)"
+        bit TrangThai "BIT"
+    }
+
+    NGANH {
+        string MaNganh PK "VARCHAR(10)"
+        string MaKhoa FK "VARCHAR(10)"
+        string TenNganh UK "NVARCHAR(100)"
+        string MoTa "NVARCHAR(500)"
+        bit TrangThai "BIT"
+    }
+
+    CHUONGTRINHDAOTAO {
+        string MaCTDT PK "VARCHAR(15)"
+        string MaNganh FK "VARCHAR(10)"
+        string TenCTDT "NVARCHAR(150)"
+        string KhoaHoc "VARCHAR(20)"
+        int TongTinChiYeuCau "INT"
+        int ThoiGianDaoTao "INT"
+        bit TrangThai "BIT"
+    }
+
+    MONHOC {
+        string MaMonHoc PK "VARCHAR(15)"
+        string MaKhoa FK "VARCHAR(10)"
+        string TenMonHoc "NVARCHAR(150)"
+        tinyint SoTinChi "TINYINT"
+        smallint SoTietLyThuyet "SMALLINT"
+        smallint SoTietThucHanh "SMALLINT"
+        bit TrangThai "BIT"
+    }
+
+    CTDT_MONHOC {
+        string MaCTDT PK "VARCHAR(15) - FK"
+        string MaMonHoc PK "VARCHAR(15) - FK"
+        tinyint HocKyDuKien "TINYINT"
+        string LoaiMon "VARCHAR(20)"
+        smallint ThuTu "SMALLINT"
+    }
+
+    MONHOCTIENQUYET {
+        string MaMonHoc PK "VARCHAR(15) - FK"
+        string MaMonTienQuyet PK "VARCHAR(15) - FK"
+        string MucDo "VARCHAR(20)"
+    }
+
+    LOP {
+        string MaLop PK "VARCHAR(20)"
+        string TenLop "NVARCHAR(100)"
+        string MaKhoa FK "VARCHAR(10)"
+        string KhoaHoc "VARCHAR(20)"
+        int NamNhapHoc "INT"
+        bit TrangThai "BIT"
+    }
+
+    SINHVIEN {
+        int MaSV PK "INT IDENTITY"
+        string MaSinhVien UK "VARCHAR(20)"
+        string HoTen "NVARCHAR(100)"
+        date NgaySinh "DATE"
+        string Email UK "VARCHAR(254)"
+        string SoDienThoai "VARCHAR(20)"
+        string MaKhoa FK "VARCHAR(10)"
+        string MaLop FK "VARCHAR(20)"
+        string TrangThai "VARCHAR(20)"
+    }
+
+    GIANGVIEN {
+        int MaGV PK "INT IDENTITY"
+        string MaGiangVien UK "VARCHAR(20)"
+        string HoTen "NVARCHAR(100)"
+        string Email UK "VARCHAR(254)"
+        string SoDienThoai "VARCHAR(20)"
+        string MaKhoa FK "VARCHAR(10)"
+        string TrangThai "VARCHAR(20)"
+    }
+
+    TAIKHOAN {
+        int MaTaiKhoan PK "INT IDENTITY"
+        string Username UK "VARCHAR(50)"
+        string PasswordHash "VARCHAR(255)"
+        string VaiTro "VARCHAR(30)"
+        int MaSV FK "INT - 1-1"
+        int MaGV FK "INT - 1-1"
+        string TrangThai "VARCHAR(20)"
+    }
+
+    HOCKY {
+        int MaHocKy PK "INT IDENTITY"
+        string NamHoc "VARCHAR(9)"
+        string TenHocKy "NVARCHAR(30)"
+        date NgayBatDau "DATE"
+        date NgayKetThuc "DATE"
+        datetime NgayMoDangKy "DATETIME2"
+        datetime NgayDongDangKy "DATETIME2"
+        string TrangThai "VARCHAR(20)"
+    }
+
+    LOPHOCPHAN {
+        string MaLHP PK "VARCHAR(20)"
+        string MaMonHoc FK "VARCHAR(15)"
+        int MaHocKy FK "INT"
+        int MaGiangVien FK "INT"
+        string TenLHP "NVARCHAR(100)"
+        int SoLuongToiDa "INT"
+        string TrangThai "VARCHAR(20)"
+    }
+
+    LICHHOC {
+        int MaLichHoc PK "INT IDENTITY"
+        string MaLHP FK "VARCHAR(20)"
+        tinyint Thu "TINYINT"
+        tinyint TietBatDau "TINYINT"
+        tinyint SoTiet "TINYINT"
+        string PhongHoc "VARCHAR(20)"
+    }
+
+    DANGKYTINCHI {
+        bigint MaDangKy PK "BIGINT IDENTITY"
+        int MaSV FK "INT"
+        string MaLHP FK "VARCHAR(20)"
+        datetime NgayDangKy "DATETIME2"
+        string TrangThai "VARCHAR(20)"
+    }
+
+    DIEMSO {
+        bigint MaDangKy PK "BIGINT - 1-1 FK"
+        decimal DiemQuaTrinh "DECIMAL(4,2)"
+        decimal DiemGiuaKy "DECIMAL(4,2)"
+        decimal DiemCuoiKy "DECIMAL(4,2)"
+        tinyint TyTrongQT "TINYINT"
+        tinyint TyTrongGK "TINYINT"
+        tinyint TyTrongCK "TINYINT"
+    }
+
+    MUCHOCPHI {
+        int MaMucHocPhi PK "INT IDENTITY"
+        int MaHocKy FK "INT"
+        string PhamViApDung "VARCHAR(50)"
+        decimal DonGiaTinChi "DECIMAL(12,2)"
+        date NgayHieuLuc "DATE"
+        string TrangThai "VARCHAR(20)"
+    }
+
+    HOCPHI {
+        int MaHocPhi PK "INT IDENTITY"
+        int MaSV FK "INT"
+        int MaHocKy FK "INT"
+        int MaMucHocPhi FK "INT"
+        int SoTinChi "INT"
+        decimal DonGiaTinChi "DECIMAL(12,2)"
+        decimal TongTien "DECIMAL(14,2)"
+        decimal SoTienDaThanhToan "DECIMAL(14,2)"
+        string TrangThai "VARCHAR(20)"
+    }
+
+    CHITIETTHANHTOAN {
+        bigint MaThanhToan PK "BIGINT IDENTITY"
+        int MaHocPhi FK "INT"
+        decimal SoTien "DECIMAL(14,2)"
+        datetime NgayThanhToan "DATETIME2"
+        string PhuongThuc "VARCHAR(20)"
+    }
+
+    LOGHOATDONG {
+        bigint MaLog PK "BIGINT IDENTITY"
+        int MaTaiKhoan FK "INT"
+        datetime ThoiGian "DATETIME2"
+        string HanhDong "VARCHAR(20)"
+        string TenBang "VARCHAR(128)"
+        string KhoaBanGhi "NVARCHAR(200)"
+    }
+`,
+
+      // 2. Phân hệ Tổ chức & Khung chương trình đào tạo
+      academic: `erDiagram
+    KHOA ||--o{ NGANH : "quan_ly"
+    KHOA ||--o{ MONHOC : "quan_ly"
+    KHOA ||--o{ LOP : "quan_ly"
+    NGANH ||--o{ CHUONGTRINHDAOTAO : "dao_tao"
+    CHUONGTRINHDAOTAO ||--|{ CTDT_MONHOC : "chua"
+    MONHOC ||--|{ CTDT_MONHOC : "thuoc"
+    MONHOC ||--o{ MONHOCTIENQUYET : "la_mon_hoc"
+    MONHOC ||--o{ MONHOCTIENQUYET : "la_tien_quyet"
+
+    KHOA {
+        string MaKhoa PK "VARCHAR(10)"
+        string TenKhoa UK "NVARCHAR(100)"
+        string Email "VARCHAR(100)"
+        string SoDienThoai "VARCHAR(15)"
+        bit TrangThai "BIT"
+    }
+    NGANH {
+        string MaNganh PK "VARCHAR(10)"
+        string MaKhoa FK "VARCHAR(10)"
+        string TenNganh UK "NVARCHAR(100)"
+        string MoTa "NVARCHAR(500)"
+    }
+    CHUONGTRINHDAOTAO {
+        string MaCTDT PK "VARCHAR(15)"
+        string MaNganh FK "VARCHAR(10)"
+        string TenCTDT "NVARCHAR(150)"
+        string KhoaHoc "VARCHAR(20)"
+        int TongTinChiYeuCau "INT"
+        int ThoiGianDaoTao "INT"
+    }
+    MONHOC {
+        string MaMonHoc PK "VARCHAR(15)"
+        string MaKhoa FK "VARCHAR(10)"
+        string TenMonHoc "NVARCHAR(150)"
+        tinyint SoTinChi "TINYINT"
+        smallint SoTietLyThuyet "SMALLINT"
+        smallint SoTietThucHanh "SMALLINT"
+    }
+    CTDT_MONHOC {
+        string MaCTDT PK "VARCHAR(15) - FK"
+        string MaMonHoc PK "VARCHAR(15) - FK"
+        tinyint HocKyDuKien "TINYINT"
+        string LoaiMon "VARCHAR(20)"
+    }
+    MONHOCTIENQUYET {
+        string MaMonHoc PK "VARCHAR(15) - FK"
+        string MaMonTienQuyet PK "VARCHAR(15) - FK"
+        string MucDo "VARCHAR(20)"
+    }
+    LOP {
+        string MaLop PK "VARCHAR(20)"
+        string TenLop "NVARCHAR(100)"
+        string MaKhoa FK "VARCHAR(10)"
+        int NamNhapHoc "INT"
+    }
+`,
+
+      // 3. Phân hệ Người dùng, Sinh viên, Giảng viên & Tài khoản
+      user: `erDiagram
+    KHOA ||--o{ SINHVIEN : "truc_thuoc"
+    KHOA ||--o{ GIANGVIEN : "cong_tac"
+    LOP ||--o{ SINHVIEN : "chua"
+    SINHVIEN |o--o| TAIKHOAN : "so_huu"
+    GIANGVIEN |o--o| TAIKHOAN : "so_huu"
+    TAIKHOAN ||--o{ LOGHOATDONG : "thuc_hien"
+
+    KHOA {
+        string MaKhoa PK "VARCHAR(10)"
+        string TenKhoa "NVARCHAR(100)"
+    }
+    LOP {
+        string MaLop PK "VARCHAR(20)"
+        string TenLop "NVARCHAR(100)"
+    }
+    SINHVIEN {
+        int MaSV PK "INT IDENTITY"
+        string MaSinhVien UK "VARCHAR(20)"
+        string HoTen "NVARCHAR(100)"
+        date NgaySinh "DATE"
+        string Email UK "VARCHAR(254)"
+        string SoDienThoai "VARCHAR(20)"
+        string MaKhoa FK "VARCHAR(10)"
+        string MaLop FK "VARCHAR(20)"
+        string TrangThai "VARCHAR(20)"
+    }
+    GIANGVIEN {
+        int MaGV PK "INT IDENTITY"
+        string MaGiangVien UK "VARCHAR(20)"
+        string HoTen "NVARCHAR(100)"
+        string Email UK "VARCHAR(254)"
+        string SoDienThoai "VARCHAR(20)"
+        string MaKhoa FK "VARCHAR(10)"
+        string TrangThai "VARCHAR(20)"
+    }
+    TAIKHOAN {
+        int MaTaiKhoan PK "INT IDENTITY"
+        string Username UK "VARCHAR(50)"
+        string PasswordHash "VARCHAR(255)"
+        string VaiTro "VARCHAR(30)"
+        int MaSV FK "INT - 1-1"
+        int MaGV FK "INT - 1-1"
+        string TrangThai "VARCHAR(20)"
+    }
+    LOGHOATDONG {
+        bigint MaLog PK "BIGINT IDENTITY"
+        int MaTaiKhoan FK "INT"
+        datetime ThoiGian "DATETIME2"
+        string HanhDong "VARCHAR(20)"
+        string TenBang "VARCHAR(128)"
+        string KhoaBanGhi "NVARCHAR(200)"
+    }
+`,
+
+      // 4. Phân hệ Học phần, Lịch học, Đăng ký & Điểm số
+      registration: `erDiagram
+    HOCKY ||--o{ LOPHOCPHAN : "to_chuc"
+    MONHOC ||--o{ LOPHOCPHAN : "giang_day"
+    GIANGVIEN ||--o{ LOPHOCPHAN : "phu_trach"
+    LOPHOCPHAN ||--|{ LICHHOC : "co_lich"
+    SINHVIEN ||--o{ DANGKYTINCHI : "dang_ky"
+    LOPHOCPHAN ||--o{ DANGKYTINCHI : "duoc_dang_ky"
+    DANGKYTINCHI ||--o| DIEMSO : "co_ket_qua"
+
+    HOCKY {
+        int MaHocKy PK "INT IDENTITY"
+        string NamHoc "VARCHAR(9)"
+        string TenHocKy "NVARCHAR(30)"
+        date NgayBatDau "DATE"
+        date NgayKetThuc "DATE"
+        datetime NgayMoDangKy "DATETIME2"
+        datetime NgayDongDangKy "DATETIME2"
+    }
+    MONHOC {
+        string MaMonHoc PK "VARCHAR(15)"
+        string TenMonHoc "NVARCHAR(150)"
+        tinyint SoTinChi "TINYINT"
+    }
+    GIANGVIEN {
+        int MaGV PK "INT IDENTITY"
+        string HoTen "NVARCHAR(100)"
+    }
+    LOPHOCPHAN {
+        string MaLHP PK "VARCHAR(20)"
+        string MaMonHoc FK "VARCHAR(15)"
+        int MaHocKy FK "INT"
+        int MaGiangVien FK "INT"
+        string TenLHP "NVARCHAR(100)"
+        int SoLuongToiDa "INT"
+        string TrangThai "VARCHAR(20)"
+    }
+    LICHHOC {
+        int MaLichHoc PK "INT IDENTITY"
+        string MaLHP FK "VARCHAR(20)"
+        tinyint Thu "TINYINT"
+        tinyint TietBatDau "TINYINT"
+        tinyint SoTiet "TINYINT"
+        string PhongHoc "VARCHAR(20)"
+    }
+    SINHVIEN {
+        int MaSV PK "INT IDENTITY"
+        string MaSinhVien "VARCHAR(20)"
+        string HoTen "NVARCHAR(100)"
+    }
+    DANGKYTINCHI {
+        bigint MaDangKy PK "BIGINT IDENTITY"
+        int MaSV FK "INT"
+        string MaLHP FK "VARCHAR(20)"
+        datetime NgayDangKy "DATETIME2"
+        string TrangThai "VARCHAR(20)"
+    }
+    DIEMSO {
+        bigint MaDangKy PK "BIGINT - 1-1 FK"
+        decimal DiemQuaTrinh "DECIMAL(4,2)"
+        decimal DiemGiuaKy "DECIMAL(4,2)"
+        decimal DiemCuoiKy "DECIMAL(4,2)"
+        tinyint TyTrongQT "TINYINT"
+        tinyint TyTrongGK "TINYINT"
+        tinyint TyTrongCK "TINYINT"
+    }
+`,
+
+      // 5. Phân hệ Học phí & Thanh toán
+      tuition: `erDiagram
+    HOCKY ||--o{ MUCHOCPHI : "ban_hanh"
+    SINHVIEN ||--o{ HOCPHI : "phat_sinh"
+    HOCKY ||--o{ HOCPHI : "ap_dung"
+    MUCHOCPHI ||--o{ HOCPHI : "dinh_muc"
+    HOCPHI ||--o{ CHITIETTHANHTOAN : "thanh_toan"
+
+    HOCKY {
+        int MaHocKy PK "INT IDENTITY"
+        string NamHoc "VARCHAR(9)"
+        string TenHocKy "NVARCHAR(30)"
+    }
+    SINHVIEN {
+        int MaSV PK "INT IDENTITY"
+        string MaSinhVien "VARCHAR(20)"
+        string HoTen "NVARCHAR(100)"
+    }
+    MUCHOCPHI {
+        int MaMucHocPhi PK "INT IDENTITY"
+        int MaHocKy FK "INT"
+        string PhamViApDung "VARCHAR(50)"
+        decimal DonGiaTinChi "DECIMAL(12,2)"
+        date NgayHieuLuc "DATE"
+        string TrangThai "VARCHAR(20)"
+    }
+    HOCPHI {
+        int MaHocPhi PK "INT IDENTITY"
+        int MaSV FK "INT"
+        int MaHocKy FK "INT"
+        int MaMucHocPhi FK "INT"
+        int SoTinChi "INT"
+        decimal DonGiaTinChi "DECIMAL(12,2)"
+        decimal TongTien "DECIMAL(14,2)"
+        decimal SoTienDaThanhToan "DECIMAL(14,2)"
+        string TrangThai "VARCHAR(20)"
+    }
+    CHITIETTHANHTOAN {
+        bigint MaThanhToan PK "BIGINT IDENTITY"
+        int MaHocPhi FK "INT"
+        decimal SoTien "DECIMAL(14,2)"
+        datetime NgayThanhToan "DATETIME2"
+        string PhuongThuc "VARCHAR(20)"
+    }
+`
+    };
+
+    // Chi tiết 19 thực thể phục vụ tra cứu
+    const entityMetadata = [
+      {
+        name: "KHOA",
+        desc: "Đơn vị quản lý chuyên môn và học vụ",
+        module: "academic",
+        columns: [
+          { name: "MaKhoa", type: "VARCHAR(10)", key: "PK", desc: "Mã khoa viết tắt" },
+          { name: "TenKhoa", type: "NVARCHAR(100)", key: "UK", desc: "Tên khoa duy nhất" },
+          { name: "Email", type: "VARCHAR(100)", key: "", desc: "Email liên hệ khoa" },
+          { name: "SoDienThoai", type: "VARCHAR(15)", key: "", desc: "Số điện thoại bàn/hotline" },
+          { name: "TrangThai", type: "BIT", key: "", desc: "1: Hoạt động, 0: Đóng" }
+        ]
+      },
+      {
+        name: "NGANH",
+        desc: "Ngành đào tạo thuộc một Khoa",
+        module: "academic",
+        columns: [
+          { name: "MaNganh", type: "VARCHAR(10)", key: "PK", desc: "Mã ngành" },
+          { name: "MaKhoa", type: "VARCHAR(10)", key: "FK", desc: "Tham chiếu KHOA(MaKhoa)" },
+          { name: "TenNganh", type: "NVARCHAR(100)", key: "UK", desc: "Tên ngành duy nhất" },
+          { name: "MoTa", type: "NVARCHAR(500)", key: "", desc: "Mô tả ngành" },
+          { name: "TrangThai", type: "BIT", key: "", desc: "Trạng thái ngành" }
+        ]
+      },
+      {
+        name: "CHUONGTRINHDAOTAO",
+        desc: "Khung chương trình đào tạo của từng ngành",
+        module: "academic",
+        columns: [
+          { name: "MaCTDT", type: "VARCHAR(15)", key: "PK", desc: "Mã CTĐT" },
+          { name: "MaNganh", type: "VARCHAR(10)", key: "FK", desc: "Tham chiếu NGANH(MaNganh)" },
+          { name: "TenCTDT", type: "NVARCHAR(150)", key: "", desc: "Tên chương trình đào tạo" },
+          { name: "KhoaHoc", type: "VARCHAR(20)", key: "", desc: "Khóa học áp dụng (vd: K2022)" },
+          { name: "TongTinChiYeuCau", type: "INT", key: "", desc: "Tổng tín chỉ tốt nghiệp (> 0)" },
+          { name: "ThoiGianDaoTao", type: "INT", key: "", desc: "Số học kỳ hoặc năm đào tạo" },
+          { name: "TrangThai", type: "BIT", key: "", desc: "Trạng thái hiệu lực" }
+        ]
+      },
+      {
+        name: "MONHOC",
+        desc: "Danh mục môn học/học phần trong toàn trường",
+        module: "academic",
+        columns: [
+          { name: "MaMonHoc", type: "VARCHAR(15)", key: "PK", desc: "Mã định danh môn học" },
+          { name: "MaKhoa", type: "VARCHAR(10)", key: "FK", desc: "Khoa phụ trách chuyên môn" },
+          { name: "TenMonHoc", type: "NVARCHAR(150)", key: "", desc: "Tên môn học" },
+          { name: "SoTinChi", type: "TINYINT", key: "", desc: "Số tín chỉ (> 0)" },
+          { name: "SoTietLyThuyet", type: "SMALLINT", key: "", desc: "Số tiết lý thuyết" },
+          { name: "SoTietThucHanh", type: "SMALLINT", key: "", desc: "Số tiết thực hành" },
+          { name: "TrangThai", type: "BIT", key: "", desc: "Trạng thái giảng dạy" }
+        ]
+      },
+      {
+        name: "CTDT_MONHOC",
+        desc: "Bảng kết hợp: Môn học trong từng Khung CTĐT",
+        module: "academic",
+        columns: [
+          { name: "MaCTDT", type: "VARCHAR(15)", key: "PK, FK", desc: "Tham chiếu CHUONGTRINHDAOTAO" },
+          { name: "MaMonHoc", type: "VARCHAR(15)", key: "PK, FK", desc: "Tham chiếu MONHOC" },
+          { name: "HocKyDuKien", type: "TINYINT", key: "", desc: "Học kỳ khuyến nghị trong lộ trình" },
+          { name: "LoaiMon", type: "VARCHAR(20)", key: "", desc: "'BAT_BUOC' hoặc 'TU_CHON'" },
+          { name: "ThuTu", type: "SMALLINT", key: "", desc: "Thứ tự sắp xếp hiển thị" }
+        ]
+      },
+      {
+        name: "MONHOCTIENQUYET",
+        desc: "Mối quan hệ điều kiện tiên quyết giữa các môn học",
+        module: "academic",
+        columns: [
+          { name: "MaMonHoc", type: "VARCHAR(15)", key: "PK, FK", desc: "Môn cần học" },
+          { name: "MaMonTienQuyet", type: "VARCHAR(15)", key: "PK, FK", desc: "Môn điều kiện đi trước" },
+          { name: "MucDo", type: "VARCHAR(20)", key: "", desc: "'BAT_BUOC' hoặc 'KHUYEN_NGHI'" }
+        ]
+      },
+      {
+        name: "LOP",
+        desc: "Lớp sinh hoạt / Lớp chuyên ngành sinh viên",
+        module: "academic",
+        columns: [
+          { name: "MaLop", type: "VARCHAR(20)", key: "PK", desc: "Mã lớp sinh hoạt" },
+          { name: "TenLop", type: "NVARCHAR(100)", key: "", desc: "Tên lớp hành chính" },
+          { name: "MaKhoa", type: "VARCHAR(10)", key: "FK", desc: "Khoa trực thuộc" },
+          { name: "KhoaHoc", type: "VARCHAR(20)", key: "", desc: "Khóa sinh viên" },
+          { name: "NamNhapHoc", type: "INT", key: "", desc: "Năm nhập trường" }
+        ]
+      },
+      {
+        name: "SINHVIEN",
+        desc: "Hồ sơ thông tin sinh viên",
+        module: "user",
+        columns: [
+          { name: "MaSV", type: "INT", key: "PK", desc: "Khóa chính tự tăng (Surrogate)" },
+          { name: "MaSinhVien", type: "VARCHAR(20)", key: "UK", desc: "Mã số sinh viên (MSSV)" },
+          { name: "HoTen", type: "NVARCHAR(100)", key: "", desc: "Họ và tên đầy đủ" },
+          { name: "NgaySinh", type: "DATE", key: "", desc: "Ngày tháng năm sinh" },
+          { name: "Email", type: "VARCHAR(254)", key: "UK", desc: "Email sinh viên" },
+          { name: "SoDienThoai", type: "VARCHAR(20)", key: "", desc: "SĐT liên lạc" },
+          { name: "MaKhoa", type: "VARCHAR(10)", key: "FK", desc: "Khoa quản lý chuyên môn" },
+          { name: "MaLop", type: "VARCHAR(20)", key: "FK", desc: "Lớp sinh hoạt" },
+          { name: "TrangThai", type: "VARCHAR(20)", key: "", desc: "DANG_HOC, BAO_LUU, TOT_NGHIEP, THOI_HOC" }
+        ]
+      },
+      {
+        name: "GIANGVIEN",
+        desc: "Hồ sơ thông tin giảng viên & cán bộ đào tạo",
+        module: "user",
+        columns: [
+          { name: "MaGV", type: "INT", key: "PK", desc: "Khóa chính tự tăng" },
+          { name: "MaGiangVien", type: "VARCHAR(20)", key: "UK", desc: "Mã định danh cán bộ/GV" },
+          { name: "HoTen", type: "NVARCHAR(100)", key: "", desc: "Họ và tên giảng viên" },
+          { name: "Email", type: "VARCHAR(254)", key: "UK", desc: "Email công vụ giảng viên" },
+          { name: "SoDienThoai", type: "VARCHAR(20)", key: "", desc: "Số điện thoại" },
+          { name: "MaKhoa", type: "VARCHAR(10)", key: "FK", desc: "Khoa công tác" },
+          { name: "TrangThai", type: "VARCHAR(20)", key: "", desc: "DANG_CONG_TAC, TAM_NGHI, NGHI_VIEC" }
+        ]
+      },
+      {
+        name: "TAIKHOAN",
+        desc: "Tài khoản đăng nhập hệ thống (Sinh viên / Giảng viên / Quản trị)",
+        module: "user",
+        columns: [
+          { name: "MaTaiKhoan", type: "INT", key: "PK", desc: "Mã tài khoản tự tăng" },
+          { name: "Username", type: "VARCHAR(50)", key: "UK", desc: "Tên đăng nhập duy nhất" },
+          { name: "PasswordHash", type: "VARCHAR(255)", key: "", desc: "Mật khẩu băm an toàn" },
+          { name: "VaiTro", type: "VARCHAR(30)", key: "", desc: "SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI" },
+          { name: "MaSV", type: "INT", key: "FK, UK", desc: "Liên kết 1-1 với SINHVIEN (nếu là SV)" },
+          { name: "MaGV", type: "INT", key: "FK, UK", desc: "Liên kết 1-1 với GIANGVIEN (nếu là GV)" },
+          { name: "TrangThai", type: "VARCHAR(20)", key: "", desc: "ACTIVE, LOCKED, DISABLED" }
+        ]
+      },
+      {
+        name: "HOCKY",
+        desc: "Kỳ học và thời gian mở cổng đăng ký",
+        module: "registration",
+        columns: [
+          { name: "MaHocKy", type: "INT", key: "PK", desc: "Mã học kỳ" },
+          { name: "NamHoc", type: "VARCHAR(9)", key: "", desc: "Niên khóa (vd: 2024-2025)" },
+          { name: "TenHocKy", type: "NVARCHAR(30)", key: "", desc: "HK1, HK2, HK_HE (UK cùng NamHoc)" },
+          { name: "NgayBatDau", type: "DATE", key: "", desc: "Ngày bắt đầu học kỳ" },
+          { name: "NgayKetThuc", type: "DATE", key: "", desc: "Ngày kết thúc học kỳ" },
+          { name: "NgayMoDangKy", type: "DATETIME2", key: "", desc: "Thời điểm mở cổng đăng ký" },
+          { name: "NgayDongDangKy", type: "DATETIME2", key: "", desc: "Thời điểm đóng cổng đăng ký" }
+        ]
+      },
+      {
+        name: "LOPHOCPHAN",
+        desc: "Lớp học phần được mở trong từng học kỳ",
+        module: "registration",
+        columns: [
+          { name: "MaLHP", type: "VARCHAR(20)", key: "PK", desc: "Mã lớp học phần" },
+          { name: "MaMonHoc", type: "VARCHAR(15)", key: "FK", desc: "Môn học được giảng dạy" },
+          { name: "MaHocKy", type: "INT", key: "FK", desc: "Học kỳ tổ chức lớp" },
+          { name: "MaGiangVien", type: "INT", key: "FK", desc: "Giảng viên đứng lớp" },
+          { name: "TenLHP", type: "NVARCHAR(100)", key: "", desc: "Tên chi tiết lớp HP" },
+          { name: "SoLuongToiDa", type: "INT", key: "", desc: "Sĩ số tối đa của lớp" },
+          { name: "TrangThai", type: "VARCHAR(20)", key: "", desc: "MO_DANG_KY, DANG_MO, DA_KHOA, DA_HUY" }
+        ]
+      },
+      {
+        name: "LICHHOC",
+        desc: "Lịch học cụ thể trong tuần của lớp học phần",
+        module: "registration",
+        columns: [
+          { name: "MaLichHoc", type: "INT", key: "PK", desc: "Mã lịch học" },
+          { name: "MaLHP", type: "VARCHAR(20)", key: "FK", desc: "Lớp học phần trực thuộc" },
+          { name: "Thu", type: "TINYINT", key: "", desc: "Thứ trong tuần (2 - 8)" },
+          { name: "TietBatDau", type: "TINYINT", key: "", desc: "Tiết bắt đầu (1 - 12)" },
+          { name: "SoTiet", type: "TINYINT", key: "", desc: "Số tiết học (1 - 6)" },
+          { name: "PhongHoc", type: "VARCHAR(20)", key: "", desc: "Phòng học được xếp" }
+        ]
+      },
+      {
+        name: "DANGKYTINCHI",
+        desc: "Giao dịch đăng ký tín chỉ của sinh viên vào lớp học phần",
+        module: "registration",
+        columns: [
+          { name: "MaDangKy", type: "BIGINT", key: "PK", desc: "Mã giao dịch đăng ký tín chỉ" },
+          { name: "MaSV", type: "INT", key: "FK", desc: "Sinh viên thực hiện đăng ký" },
+          { name: "MaLHP", type: "VARCHAR(20)", key: "FK", desc: "Lớp học phần đã đăng ký" },
+          { name: "NgayDangKy", type: "DATETIME2", key: "", desc: "Thời điểm ghi nhận đăng ký" },
+          { name: "TrangThai", type: "VARCHAR(20)", key: "", desc: "REGISTERED, CANCELLED" }
+        ]
+      },
+      {
+        name: "DIEMSO",
+        desc: "Bảng điểm thành phần và tổng kết (quan hệ 1-1 với Đăng ký)",
+        module: "registration",
+        columns: [
+          { name: "MaDangKy", type: "BIGINT", key: "PK, FK", desc: "Mã đăng ký (1-1 với DANGKYTINCHI)" },
+          { name: "DiemQuaTrinh", type: "DECIMAL(4,2)", key: "", desc: "Điểm chuyên cần / quá trình" },
+          { name: "DiemGiuaKy", type: "DECIMAL(4,2)", key: "", desc: "Điểm thi giữa kỳ" },
+          { name: "DiemCuoiKy", type: "DECIMAL(4,2)", key: "", desc: "Điểm thi kết thúc học phần" },
+          { name: "TyTrongQT", type: "TINYINT", key: "", desc: "Tỷ trọng quá trình (mặc định 20%)" },
+          { name: "TyTrongGK", type: "TINYINT", key: "", desc: "Tỷ trọng giữa kỳ (mặc định 30%)" },
+          { name: "TyTrongCK", type: "TINYINT", key: "", desc: "Tỷ trọng cuối kỳ (mặc định 50%)" }
+        ]
+      },
+      {
+        name: "MUCHOCPHI",
+        desc: "Đơn giá tín chỉ ban hành theo từng học kỳ",
+        module: "tuition",
+        columns: [
+          { name: "MaMucHocPhi", type: "INT", key: "PK", desc: "Mã mức định mức học phí" },
+          { name: "MaHocKy", type: "INT", key: "FK", desc: "Học kỳ áp dụng" },
+          { name: "PhamViApDung", type: "VARCHAR(50)", key: "", desc: "'TOAN_TRUONG'" },
+          { name: "DonGiaTinChi", type: "DECIMAL(12,2)", key: "", desc: "Đơn giá tiền / 1 tín chỉ" },
+          { name: "NgayHieuLuc", type: "DATE", key: "", desc: "Ngày bắt đầu áp dụng" },
+          { name: "TrangThai", type: "VARCHAR(20)", key: "", desc: "ACTIVE, INACTIVE" }
+        ]
+      },
+      {
+        name: "HOCPHI",
+        desc: "Hóa đơn công nợ học phí của sinh viên trong học kỳ",
+        module: "tuition",
+        columns: [
+          { name: "MaHocPhi", type: "INT", key: "PK", desc: "Mã hóa đơn học phí" },
+          { name: "MaSV", type: "INT", key: "FK", desc: "Sinh viên có nghĩa vụ thanh toán" },
+          { name: "MaHocKy", type: "INT", key: "FK", desc: "Học kỳ phát sinh học phí" },
+          { name: "MaMucHocPhi", type: "INT", key: "FK", desc: "Định mức học phí áp dụng" },
+          { name: "SoTinChi", type: "INT", key: "", desc: "Tổng tín chỉ đăng ký hợp lệ" },
+          { name: "DonGiaTinChi", type: "DECIMAL(12,2)", key: "", desc: "Đơn giá áp dụng tại thời điểm tính" },
+          { name: "TongTien", type: "DECIMAL(14,2)", key: "", desc: "Tổng số tiền phải nộp" },
+          { name: "SoTienDaThanhToan", type: "DECIMAL(14,2)", key: "", desc: "Số tiền đã nộp thực tế" },
+          { name: "TrangThai", type: "VARCHAR(20)", key: "", desc: "UNPAID, PARTIAL, PAID" }
+        ]
+      },
+      {
+        name: "CHITIETTHANHTOAN",
+        desc: "Lịch sử từng lần giao dịch đóng tiền học phí",
+        module: "tuition",
+        columns: [
+          { name: "MaThanhToan", type: "BIGINT", key: "PK", desc: "Mã biên lai thanh toán" },
+          { name: "MaHocPhi", type: "INT", key: "FK", desc: "Mã hóa đơn học phí thanh toán" },
+          { name: "SoTien", type: "DECIMAL(14,2)", key: "", desc: "Số tiền giao dịch (> 0)" },
+          { name: "NgayThanhToan", type: "DATETIME2", key: "", desc: "Thời điểm nộp tiền" },
+          { name: "PhuongThuc", type: "VARCHAR(20)", key: "", desc: "TIEN_MAT, CHUYEN_KHOAN" }
+        ]
+      },
+      {
+        name: "LOGHOATDONG",
+        desc: "Nhật ký kiểm toán truy vết thao tác hệ thống (Audit Trail)",
+        module: "user",
+        columns: [
+          { name: "MaLog", type: "BIGINT", key: "PK", desc: "Mã nhật ký tự tăng" },
+          { name: "MaTaiKhoan", type: "INT", key: "FK", desc: "Tài khoản thực hiện thao tác" },
+          { name: "ThoiGian", type: "DATETIME2", key: "", desc: "Thời điểm ghi nhận" },
+          { name: "HanhDong", type: "VARCHAR(20)", key: "", desc: "INSERT, UPDATE, DELETE" },
+          { name: "TenBang", type: "VARCHAR(128)", key: "", desc: "Tên bảng bị tác động" },
+          { name: "KhoaBanGhi", type: "NVARCHAR(200)", key: "", desc: "Khóa của bản ghi thao tác" }
+        ]
+      }
+    ];
+
+    let currentPanZoom = null;
+    let currentView = 'all';
+
+    // Cấu hình Mermaid theo nền sáng
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'default',
+      themeVariables: {
+        darkMode: false,
+        background: '#ffffff',
+        primaryColor: '#eff6ff',
+        primaryTextColor: '#0f172a',
+        primaryBorderColor: '#2563eb',
+        lineColor: '#1e293b',
+        secondaryColor: '#f8fafc',
+        tertiaryColor: '#f1f5f9',
+        attributeBackgroundColorOdd: '#ffffff',
+        attributeBackgroundColorEven: '#f8fafc'
+      },
+      er: {
+        useMaxWidth: false,
+        layoutDirection: 'TB',
+        minEntityWidth: 140,
+        entityPadding: 16
+      }
+    });
+
+    // Render sơ đồ theo góc nhìn
+    async function renderDiagram(viewKey) {
+      const container = document.getElementById('diagram-container');
+      const loading = document.getElementById('loading');
+      loading.style.opacity = '1';
+      loading.style.pointerEvents = 'auto';
+
+      if (currentPanZoom) {
+        currentPanZoom.destroy();
+        currentPanZoom = null;
+      }
+
+      container.innerHTML = '';
+      const graphDefinition = diagrams[viewKey] || diagrams.all;
+
+      try {
+        const id = 'mermaid-svg-' + Date.now();
+        const { svg } = await mermaid.render(id, graphDefinition);
+        container.innerHTML = svg;
+
+        const svgElement = container.querySelector('svg');
+        if (svgElement) {
+          svgElement.setAttribute('id', 'erd-svg-main');
+          // Khởi tạo svg-pan-zoom
+          currentPanZoom = svgPanZoom('#erd-svg-main', {
+            zoomEnabled: true,
+            controlIconsEnabled: false,
+            fit: true,
+            center: true,
+            minZoom: 0.1,
+            maxZoom: 6.0,
+            zoomScaleSensitivity: 0.25
+          });
+
+          // Tự động căn chỉnh vừa vặn màn hình
+          setTimeout(() => {
+            currentPanZoom.resize();
+            currentPanZoom.fit();
+            currentPanZoom.center();
+          }, 50);
+        }
+      } catch (err) {
+        console.error('Lỗi khi vẽ Mermaid:', err);
+        container.innerHTML = `<div class="p-6 bg-red-50 border border-red-200 rounded-xl text-red-700">
+          <p class="font-bold">Không thể kết xuất sơ đồ:</p>
+          <pre class="mt-2 text-xs">${err.message || err}</pre>
+        </div>`;
+      } finally {
+        setTimeout(() => {
+          loading.style.opacity = '0';
+          loading.style.pointerEvents = 'none';
+        }, 150);
+      }
+    }
+
+    // Chuyển góc nhìn
+    function switchView(viewKey) {
+      currentView = viewKey;
+      ['all', 'academic', 'user', 'registration', 'tuition'].forEach(v => {
+        const btn = document.getElementById(`btn-view-${v}`);
+        if (v === viewKey) {
+          btn.className = 'px-3 py-1.5 rounded-md font-medium transition-all bg-blue-600 text-white shadow';
+        } else {
+          btn.className = 'px-3 py-1.5 rounded-md font-medium transition-all text-slate-600 hover:text-slate-900';
+        }
+      });
+      renderDiagram(viewKey);
+      populateEntityList();
+    }
+
+    // Các hàm zoom
+    function zoomIn() {
+      if (currentPanZoom) currentPanZoom.zoomIn();
+    }
+    function zoomOut() {
+      if (currentPanZoom) currentPanZoom.zoomOut();
+    }
+    function resetZoom() {
+      if (currentPanZoom) {
+        currentPanZoom.resetZoom();
+        currentPanZoom.fit();
+        currentPanZoom.center();
+      }
+    }
+
+    // Toggle Sidebar
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar.classList.contains('hidden')) {
+        sidebar.classList.remove('hidden');
+      } else {
+        sidebar.classList.add('hidden');
+      }
+      setTimeout(() => {
+        if (currentPanZoom) {
+          currentPanZoom.resize();
+          currentPanZoom.fit();
+          currentPanZoom.center();
+        }
+      }, 310);
+    }
+
+    // Hiển thị danh mục thực thể bên Sidebar Nền sáng
+    function populateEntityList() {
+      const listContainer = document.getElementById('entity-list');
+      listContainer.innerHTML = '';
+
+      entityMetadata.forEach(tbl => {
+        const card = document.createElement('div');
+        card.className = 'bg-white hover:bg-slate-50 rounded-lg p-2.5 border border-slate-200 shadow-sm transition group cursor-pointer entity-card';
+        card.setAttribute('data-name', tbl.name.toLowerCase());
+        card.setAttribute('data-cols', tbl.columns.map(c => c.name.toLowerCase()).join(' '));
+
+        let colHtml = tbl.columns.map(c => {
+          let badge = '';
+          if (c.key.includes('PK')) badge += `<span class="bg-emerald-100 text-emerald-700 border border-emerald-200 px-1 py-0.2 rounded font-mono text-[9px] font-bold mr-1">PK</span>`;
+          if (c.key.includes('FK')) badge += `<span class="bg-purple-100 text-purple-700 border border-purple-200 px-1 py-0.2 rounded font-mono text-[9px] font-bold mr-1">FK</span>`;
+          if (c.key.includes('UK')) badge += `<span class="bg-amber-100 text-amber-700 border border-amber-200 px-1 py-0.2 rounded font-mono text-[9px] font-bold mr-1">UK</span>`;
+          return `
+            <div class="flex items-center justify-between py-1 border-b border-slate-100 text-[11px]">
+              <div class="flex items-center gap-1.5">
+                ${badge}
+                <span class="font-medium text-slate-800 mono">${c.name}</span>
+              </div>
+              <span class="text-slate-500 mono text-[10px]">${c.type}</span>
+            </div>
+          `;
+        }).join('');
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between pb-1.5 border-b border-slate-100" onclick="toggleEntityCollapse('${tbl.name}')">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+              <span class="font-bold text-xs text-slate-900 mono">${tbl.name}</span>
+            </div>
+            <span class="text-[10px] text-slate-500 font-medium px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200">${tbl.columns.length} cột</span>
+          </div>
+          <p class="text-[11px] text-slate-500 mt-1 italic">${tbl.desc}</p>
+          <div id="cols-${tbl.name}" class="mt-2 hidden">
+            ${colHtml}
+          </div>
+        `;
+        listContainer.appendChild(card);
+      });
+    }
+
+    function toggleEntityCollapse(tableName) {
+      const el = document.getElementById(`cols-${tableName}`);
+      if (el) {
+        el.classList.toggle('hidden');
+      }
+    }
+
+    function filterEntities() {
+      const q = document.getElementById('search-table').value.toLowerCase().trim();
+      const cards = document.querySelectorAll('.entity-card');
+      cards.forEach(card => {
+        const name = card.getAttribute('data-name');
+        const cols = card.getAttribute('data-cols');
+        if (!q || name.includes(q) || cols.includes(q)) {
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+    }
+
+    // Khởi chạy khi load trang
+    window.addEventListener('DOMContentLoaded', () => {
+      populateEntityList();
+      renderDiagram('all');
+    });
+
+    // Xử lý resize cửa sổ
+    window.addEventListener('resize', () => {
+      if (currentPanZoom) {
+        currentPanZoom.resize();
+      }
+    });
+  </script>
+</body>
+</html>
