@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cổng Thông Tin Học Vụ & Đăng Ký Tín Chỉ | DBMS330284</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="login-page">
+
+  <div class="login-wrapper">
+    <!-- Cột bên trái: Form Đăng nhập -->
+    <div class="login-form-pane">
+      <div class="brand" style="color: var(--color-primary-dark); margin-bottom: 2rem;">
+        <div class="brand-logo" style="background: var(--color-primary); color: white;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>ĐẠI HỌC QUỐC GIA</h1>
+          <p style="color: var(--color-text-muted);">Hệ Thống Quản Lý Đào Tạo Tín Chỉ</p>
+        </div>
+      </div>
+
+      <h2 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 0.5rem;">Đăng nhập hệ thống</h2>
+      <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-bottom: 1.5rem;">
+        Vui lòng sử dụng tài khoản học vụ được cấp để tiếp tục.
+      </p>
+
+      <form id="login-form">
+        <div style="margin-bottom: 1.25rem;">
+          <label for="username" style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.35rem;">Tên đăng nhập</label>
+          <input type="text" id="username" class="form-control" placeholder="Nhập mã sinh viên hoặc tài khoản cán bộ" required autocomplete="username">
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label for="password" style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.35rem;">Mật khẩu</label>
+          <input type="password" id="password" class="form-control" placeholder="Nhập mật khẩu" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem;">
+          Đăng nhập ngay
+        </button>
+      </form>
+    </div>
+
+    <!-- Cột bên phải: Quick Login Presets -->
+    <div class="quick-presets-pane">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--color-primary-dark);">Quick Login Demo</h3>
+        <span class="badge badge-info">1-Click Test</span>
+      </div>
+      <p style="font-size: 0.8125rem; color: var(--color-text-muted); margin-top: 0.25rem;">
+        Chọn nhanh tài khoản mẫu trong CSDL để kiểm tra chức năng và phân quyền:
+      </p>
+
+      <div class="preset-list">
+        <!-- Preset 1: Sinh viên bình thường -->
+        <button type="button" class="preset-btn" onclick="fillQuickLogin('sv_23000001', '123456')">
+          <div class="preset-btn-info">
+            <span class="preset-title">Sinh viên Khóa 23 (Vũ Thảo Quân)</span>
+            <span class="preset-sub">sv_23000001 • Đang học • Đăng ký tín chỉ & TKB</span>
+          </div>
+          <span class="badge badge-success">SINH_VIEN</span>
+        </button>
+
+        <!-- Preset 2: Sinh viên nợ học phí -->
+        <button type="button" class="preset-btn" onclick="fillQuickLogin('sv_23000005', '123456')">
+          <div class="preset-btn-info">
+            <span class="preset-title">Sinh viên Nợ học phí (Huỳnh Bảo Tâm)</span>
+            <span class="preset-sub">sv_23000005 • Có hồ sơ học phí chưa đóng</span>
+          </div>
+          <span class="badge badge-warning">NỢ HỌC PHÍ</span>
+        </button>
+
+        <!-- Preset 3: Sinh viên bị khóa (Bảo lưu) -->
+        <button type="button" class="preset-btn" onclick="fillQuickLogin('sv_23000495', '123456')">
+          <div class="preset-btn-info">
+            <span class="preset-title">Sinh viên Bảo lưu (Nguyễn Văn Minh)</span>
+            <span class="preset-sub">sv_23000495 • Trạng thái LOCKED • Test chặn đăng nhập</span>
+          </div>
+          <span class="badge badge-danger">LOCKED</span>
+        </button>
+
+        <!-- Preset 4: Giảng viên -->
+        <button type="button" class="preset-btn" onclick="fillQuickLogin('gv_gv0001', '123456')">
+          <div class="preset-btn-info">
+            <span class="preset-title">Giảng viên CNTT (Nguyễn Văn An)</span>
+            <span class="preset-sub">gv_gv0001 • Xem danh sách lớp & bảng điểm</span>
+          </div>
+          <span class="badge badge-info">GIẢNG VIÊN</span>
+        </button>
+
+        <!-- Preset 5: Phòng Đào tạo -->
+        <button type="button" class="preset-btn" onclick="fillQuickLogin('daotao01', '123456')">
+          <div class="preset-btn-info">
+            <span class="preset-title">Cán bộ Phòng Đào tạo</span>
+            <span class="preset-sub">daotao01 • Báo cáo học phí, quản lý sinh viên</span>
+          </div>
+          <span class="badge badge-info">ĐÀO TẠO</span>
+        </button>
+
+        <!-- Preset 6: Quản trị viên -->
+        <button type="button" class="preset-btn" onclick="fillQuickLogin('admin', '123456')">
+          <div class="preset-btn-info">
+            <span class="preset-title">Quản trị viên Hệ thống</span>
+            <span class="preset-sub">admin • Toàn quyền hệ thống & CSDL</span>
+          </div>
+          <span class="badge badge-primary" style="background: var(--color-primary); color: white;">QUẢN TRỊ</span>
+        </button>
+      </div>
+
+      <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--color-border-subtle); font-size: 0.75rem; color: var(--color-text-muted);">
+        🔒 <em>Mật khẩu chung của tất cả tài khoản test: <strong>123456</strong></em>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      if (username && password) {
+        handleLogin(username, password);
+      }
+    });
+  </script>
+</body>
+</html>
