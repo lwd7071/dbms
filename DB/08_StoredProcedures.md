@@ -688,3 +688,184 @@ BEGIN
         hk.NamHoc;
 END;
 GO
+
+-- ============================================================================
+-- 8. SP_XacNhanThanhToan: Xác nhận giao dịch học phí (CHO_XAC_NHAN -> DA_XAC_NHAN)
+-- ============================================================================
+CREATE OR ALTER PROCEDURE dbo.SP_XacNhanThanhToan
+    @MaThanhToan BIGINT,
+    @MaTaiKhoanXacNhan INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    BEGIN TRANSACTION;
+    BEGIN TRY
+        -- 1. Kiểm tra giao dịch tồn tại
+        DECLARE @CurrentStatus VARCHAR(20);
+        DECLARE @MaHocPhi INT;
+        DECLARE @SoTien DECIMAL(18, 2);
+
+        SELECT 
+            @CurrentStatus = TrangThai,
+            @MaHocPhi = MaHocPhi,
+            @SoTien = SoTien
+        FROM dbo.CHITIETTHANHTOAN WITH (UPDLOCK, ROWLOCK)
+        WHERE MaThanhToan = @MaThanhToan;
+
+        IF @CurrentStatus IS NULL
+        BEGIN
+            THROW 51401, N'Giao dịch thanh toán không tồn tại.', 1;
+        END;
+
+        -- 2. Kiểm tra trạng thái hiện tại
+        IF @CurrentStatus = 'DA_XAC_NHAN'
+        BEGIN
+            THROW 51402, N'Giao dịch đã được xác nhận trước đó.', 1;
+        END;
+
+        IF @CurrentStatus = 'TU_CHOI'
+        BEGIN
+            THROW 51403, N'Không thể xác nhận giao dịch đã bị từ chối.', 1;
+        END;
+
+        IF @CurrentStatus <> 'CHO_XAC_NHAN'
+        BEGIN
+            THROW 51405, N'Chỉ có thể xác nhận giao dịch đang ở trạng thái chờ xác nhận.', 1;
+        END;
+
+        -- 3. Kiểm tra quyền tài khoản
+        DECLARE @VaiTro VARCHAR(20);
+        DECLARE @TrangThaiTK VARCHAR(20);
+
+        SELECT 
+            @VaiTro = VaiTro,
+            @TrangThaiTK = TrangThai
+        FROM dbo.TAIKHOAN
+        WHERE MaTaiKhoan = @MaTaiKhoanXacNhan;
+
+        IF @VaiTro IS NULL OR @TrangThaiTK <> 'ACTIVE' OR @VaiTro NOT IN ('DAO_TAO', 'QUAN_TRI')
+        BEGIN
+            THROW 51404, N'Tài khoản không có quyền xác nhận thanh toán.', 1;
+        END;
+
+        -- 4. Cập nhật DA_XAC_NHAN (Kích hoạt Trigger cập nhật HOCPHI)
+        UPDATE dbo.CHITIETTHANHTOAN
+        SET 
+            TrangThai = 'DA_XAC_NHAN',
+            MaTaiKhoanXacNhan = @MaTaiKhoanXacNhan,
+            NgayXacNhan = SYSUTCDATETIME()
+        WHERE MaThanhToan = @MaThanhToan;
+
+        COMMIT TRANSACTION;
+
+        -- Trả về dữ liệu chi tiết
+        SELECT 
+            ct.MaThanhToan,
+            ct.MaHocPhi,
+            ct.SoTien,
+            ct.PhuongThuc,
+            ct.TrangThai AS TrangThaiThanhToan,
+            ct.NgayThanhToan,
+            ct.MaTaiKhoanXacNhan,
+            ct.NgayXacNhan,
+            hp.MaSV,
+            hp.TongTien,
+            hp.SoTienDaThanhToan,
+            (hp.TongTien - hp.SoTienDaThanhToan) AS SoTienConLai,
+            hp.TrangThai AS TrangThaiHocPhi
+        FROM dbo.CHITIETTHANHTOAN ct
+        INNER JOIN dbo.HOCPHI hp ON ct.MaHocPhi = hp.MaHocPhi
+        WHERE ct.MaThanhToan = @MaThanhToan;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
+GO
+
+-- ============================================================================
+-- 9. SP_TuChoiThanhToan: Từ chối giao dịch học phí (CHO_XAC_NHAN -> TU_CHOI)
+-- ============================================================================
+CREATE OR ALTER PROCEDURE dbo.SP_TuChoiThanhToan
+    @MaThanhToan BIGINT,
+    @MaTaiKhoanXacNhan INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    BEGIN TRANSACTION;
+    BEGIN TRY
+        -- 1. Kiểm tra giao dịch tồn tại
+        DECLARE @CurrentStatus VARCHAR(20);
+
+        SELECT 
+            @CurrentStatus = TrangThai
+        FROM dbo.CHITIETTHANHTOAN WITH (UPDLOCK, ROWLOCK)
+        WHERE MaThanhToan = @MaThanhToan;
+
+        IF @CurrentStatus IS NULL
+        BEGIN
+            THROW 51401, N'Giao dịch thanh toán không tồn tại.', 1;
+        END;
+
+        -- 2. Kiểm tra trạng thái hiện tại
+        IF @CurrentStatus <> 'CHO_XAC_NHAN'
+        BEGIN
+            THROW 51405, N'Chỉ có thể từ chối giao dịch đang ở trạng thái chờ xác nhận.', 1;
+        END;
+
+        -- 3. Kiểm tra quyền tài khoản
+        DECLARE @VaiTro VARCHAR(20);
+        DECLARE @TrangThaiTK VARCHAR(20);
+
+        SELECT 
+            @VaiTro = VaiTro,
+            @TrangThaiTK = TrangThai
+        FROM dbo.TAIKHOAN
+        WHERE MaTaiKhoan = @MaTaiKhoanXacNhan;
+
+        IF @VaiTro IS NULL OR @TrangThaiTK <> 'ACTIVE' OR @VaiTro NOT IN ('DAO_TAO', 'QUAN_TRI')
+        BEGIN
+            THROW 51404, N'Tài khoản không có quyền từ chối thanh toán.', 1;
+        END;
+
+        -- 4. Cập nhật TU_CHOI
+        UPDATE dbo.CHITIETTHANHTOAN
+        SET 
+            TrangThai = 'TU_CHOI',
+            MaTaiKhoanXacNhan = @MaTaiKhoanXacNhan,
+            NgayXacNhan = SYSUTCDATETIME()
+        WHERE MaThanhToan = @MaThanhToan;
+
+        COMMIT TRANSACTION;
+
+        SELECT 
+            ct.MaThanhToan,
+            ct.MaHocPhi,
+            ct.SoTien,
+            ct.PhuongThuc,
+            ct.TrangThai AS TrangThaiThanhToan,
+            ct.NgayThanhToan,
+            ct.MaTaiKhoanXacNhan,
+            ct.NgayXacNhan,
+            hp.MaSV,
+            hp.TongTien,
+            hp.SoTienDaThanhToan,
+            (hp.TongTien - hp.SoTienDaThanhToan) AS SoTienConLai,
+            hp.TrangThai AS TrangThaiHocPhi
+        FROM dbo.CHITIETTHANHTOAN ct
+        INNER JOIN dbo.HOCPHI hp ON ct.MaHocPhi = hp.MaHocPhi
+        WHERE ct.MaThanhToan = @MaThanhToan;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
+GO

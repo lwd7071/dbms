@@ -172,10 +172,11 @@ BEGIN
         SoTienDaThanhToan DECIMAL(14,2)
     );
 
+    -- Chỉ tính tổng tiền các giao dịch DA_XAC_NHAN
     INSERT INTO @PaymentSummary (MaHocPhi, SoTienDaThanhToan)
     SELECT
         hp.MaHocPhi,
-        ISNULL(SUM(ct.SoTien), 0) AS SoTienDaThanhToan
+        ISNULL(SUM(CASE WHEN ct.TrangThai = 'DA_XAC_NHAN' THEN ct.SoTien ELSE 0 END), 0) AS SoTienDaThanhToan
     FROM @ChangedHocPhi ch
     INNER JOIN dbo.HOCPHI hp
         ON hp.MaHocPhi = ch.MaHocPhi
@@ -672,5 +673,26 @@ BEGIN
     DELETE l
     FROM dbo.LOP l
     INNER JOIN deleted d ON l.MaLop = d.MaLop;
+END;
+GO
+
+-- 14. Trigger kiểm tra tính nhất quán Khoa của Sinh viên và Khoa của Lớp sinh hoạt
+CREATE OR ALTER TRIGGER [dbo].[TR_SINHVIEN_KiemTraKhoaLop]
+ON [dbo].[SINHVIEN]
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        INNER JOIN dbo.LOP l ON i.MaLop = l.MaLop
+        WHERE i.MaLop IS NOT NULL
+          AND i.MaKhoa <> l.MaKhoa
+    )
+    BEGIN
+        THROW 51008, N'Khoa của sinh viên phải trùng khớp với Khoa của lớp sinh hoạt.', 1;
+    END
 END;
 GO

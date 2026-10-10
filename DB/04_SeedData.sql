@@ -864,7 +864,7 @@ GO
 
 -- Dot 1: Thanh toan lan dau (Tat ca cac ho so tru 10% chua nop)
 -- 50% dong 100%, 40% dong 50%, 10% chua dong
-INSERT INTO dbo.CHITIETTHANHTOAN (MaHocPhi, SoTien, NgayThanhToan, PhuongThuc)
+INSERT INTO dbo.CHITIETTHANHTOAN (MaHocPhi, SoTien, NgayThanhToan, PhuongThuc, TrangThai)
 SELECT
     hp.MaHocPhi,
     CASE
@@ -872,18 +872,20 @@ SELECT
         ELSE CAST(hp.TongTien * 0.50 AS DECIMAL(14,2))                  -- Dong 50%
     END AS SoTien,
     DATEADD(DAY, 12 + (hp.MaHocPhi % 15), hk.NgayMoDangKy) AS NgayThanhToan,
-    CASE WHEN hp.MaHocPhi % 2 = 0 THEN 'CHUYEN_KHOAN' ELSE 'TIEN_MAT' END AS PhuongThuc
+    CASE WHEN hp.MaHocPhi % 2 = 0 THEN 'CHUYEN_KHOAN' ELSE 'TIEN_MAT' END AS PhuongThuc,
+    'DA_XAC_NHAN' AS TrangThai
 FROM dbo.HOCPHI hp
 INNER JOIN dbo.HOCKY hk ON hk.MaHocKy = hp.MaHocKy
 WHERE (hp.MaHocPhi % 10) <> 9; -- 10% chua dong gi
 
 -- Dot 2: Nop them 25% cho mot nua so ho so dang tra gop
-INSERT INTO dbo.CHITIETTHANHTOAN (MaHocPhi, SoTien, NgayThanhToan, PhuongThuc)
+INSERT INTO dbo.CHITIETTHANHTOAN (MaHocPhi, SoTien, NgayThanhToan, PhuongThuc, TrangThai)
 SELECT
     hp.MaHocPhi,
     CAST(hp.TongTien * 0.25 AS DECIMAL(14,2)) AS SoTien,
     DATEADD(DAY, 28 + (hp.MaHocPhi % 10), hk.NgayMoDangKy) AS NgayThanhToan,
-    'CHUYEN_KHOAN' AS PhuongThuc
+    'CHUYEN_KHOAN' AS PhuongThuc,
+    'DA_XAC_NHAN' AS TrangThai
 FROM dbo.HOCPHI hp
 INNER JOIN dbo.HOCKY hk ON hk.MaHocKy = hp.MaHocKy
 WHERE (hp.MaHocPhi % 10 BETWEEN 5 AND 8) -- Cac ho so da dong 50% o dot 1

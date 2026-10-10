@@ -1,4 +1,4 @@
-﻿-- ENCODING: UTF-8 WITH BOM
+-- ENCODING: UTF-8 WITH BOM
 USE [DBMS330284];
 GO
 
@@ -12,7 +12,7 @@ GO
 
 
 /* =========================================================
-   1. KIEM TRA 18 BANG
+   1. KIEM TRA 19 BANG
    ========================================================= */
 
 DECLARE @ExpectedTables TABLE
@@ -28,6 +28,7 @@ VALUES
 ('MONHOC'),
 ('CTDT_MONHOC'),
 ('MONHOCTIENQUYET'),
+('LOP'),
 ('SINHVIEN'),
 ('GIANGVIEN'),
 ('TAIKHOAN'),
@@ -47,9 +48,9 @@ IF EXISTS
     FROM @ExpectedTables e
     WHERE OBJECT_ID(N'dbo.' + e.TableName, N'U') IS NULL
 )
-    THROW 51301, N'Thieu mot hoac nhieu bang trong mo hinh 18 bang.', 1;
+    THROW 51301, N'Thieu mot hoac nhieu bang trong mo hinh 19 bang.', 1;
 
-PRINT N'PASS - Du 18 bang da ton tai.';
+PRINT N'PASS - Du 19 bang da ton tai.';
 GO
 
 /* =========================================================
@@ -212,7 +213,8 @@ VALUES
 ('V_TaiKhoanNguoiDung'),
 ('V_ThoiKhoaBieuSinhVien'),
 ('V_BangDiemChiTiet'),
-('V_HocPhiSinhVien');
+('V_HocPhiSinhVien'),
+('V_DanhSachLopSinhHoat');
 
 IF EXISTS
 (
@@ -222,7 +224,7 @@ IF EXISTS
 )
     THROW 51304, N'Thieu VIEW trong he thong.', 1;
 
-PRINT N'PASS - Du 5 VIEW.';
+PRINT N'PASS - Du 6 VIEW.';
 GO
 
 SELECT *
@@ -248,6 +250,10 @@ FROM dbo.V_HocPhiSinhVien
 ORDER BY MaHocPhi;
 GO
 
+SELECT *
+FROM dbo.V_DanhSachLopSinhHoat;
+GO
+
 
 /* =========================================================
    7. KIEM TRA FUNCTION
@@ -265,7 +271,8 @@ VALUES
 ('FN_KiemTraThoiGianDangKy'),
 ('FN_TongTinChiDangKy'),
 ('FN_TinhDiemTongKet'),
-('FN_LayDonGiaTinChi');
+('FN_LayDonGiaTinChi'),
+('FN_DemSiSoLopSinhHoat');
 
 IF EXISTS
 (
@@ -275,7 +282,7 @@ IF EXISTS
 )
     THROW 51305, N'Thieu FUNCTION trong he thong.', 1;
 
-PRINT N'PASS - FUNCTION da ton tai.';
+PRINT N'PASS - Du 7 FUNCTION da ton tai.';
 GO
 
 
@@ -295,7 +302,10 @@ VALUES
 ('SP_TaoTaiKhoan'),
 ('SP_KhoaTaiKhoan'),
 ('SP_TinhHocPhiSinhVien'),
-('SP_ThongKeHocPhi');
+('SP_ThongKeHocPhi'),
+('SP_ThongKeHocPhiTheoLop'),
+('SP_XacNhanThanhToan'),
+('SP_TuChoiThanhToan');
 
 IF EXISTS
 (
@@ -305,7 +315,7 @@ IF EXISTS
 )
     THROW 51306, N'Thieu STORED PROCEDURE trong he thong.', 1;
 
-PRINT N'PASS - STORED PROCEDURE da ton tai.';
+PRINT N'PASS - Du 9 STORED PROCEDURE da ton tai.';
 GO
 
 
@@ -349,6 +359,15 @@ IF OBJECT_ID(N'dbo.TR_HOCPHI_Audit', N'TR') IS NULL
 IF OBJECT_ID(N'dbo.TR_CHITIETTHANHTOAN_Audit', N'TR') IS NULL
     THROW 51311, N'Thiếu trigger TR_CHITIETTHANHTOAN_Audit.', 1;
 
+IF OBJECT_ID(N'dbo.TR_LOP_Audit', N'TR') IS NULL
+    THROW 51312, N'Thiếu trigger TR_LOP_Audit.', 1;
+
+IF OBJECT_ID(N'dbo.TR_LOP_KiemTraXoa', N'TR') IS NULL
+    THROW 51313, N'Thiếu trigger TR_LOP_KiemTraXoa.', 1;
+
+IF OBJECT_ID(N'dbo.TR_SINHVIEN_KiemTraKhoaLop', N'TR') IS NULL
+    THROW 51314, N'Thiếu trigger TR_SINHVIEN_KiemTraKhoaLop.', 1;
+
 IF EXISTS
 (
     SELECT 1
@@ -356,9 +375,9 @@ IF EXISTS
     WHERE parent_class = 1
       AND is_disabled = 1
 )
-    THROW 51312, N'Có TRIGGER đang bị disable.', 1;
+    THROW 51315, N'Có TRIGGER đang bị disable.', 1;
 
-PRINT N'PASS: Các trigger bắt buộc đều tồn tại và đang hoạt động.';
+PRINT N'PASS: Đủ 14 trigger bắt buộc đều tồn tại và đang hoạt động.';
 GO
 
 
@@ -523,6 +542,7 @@ IF EXISTS
         SELECT ISNULL(SUM(ct.SoTien), 0) AS TongThanhToan
         FROM dbo.CHITIETTHANHTOAN ct
         WHERE ct.MaHocPhi = hp.MaHocPhi
+          AND ct.TrangThai = 'DA_XAC_NHAN'
     ) p
     WHERE hp.SoTienDaThanhToan <> p.TongThanhToan
 )
@@ -781,7 +801,7 @@ GO
 PRINT N'============================================================';
 PRINT N'INTEGRATION TEST HOAN TAT';
 PRINT N'============================================================';
-PRINT N'PASS - Schema 18 bang';
+PRINT N'PASS - Schema 19 bang';
 PRINT N'PASS - PK / FK / CHECK / UNIQUE';
 PRINT N'PASS - Trigger';
 PRINT N'PASS - View';
