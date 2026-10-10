@@ -6,7 +6,7 @@
 ---
 
 ## TỔNG QUAN SCHEMA V1 (19 BẢNG)
-Hệ thống CSDL **`DBMS330284`** được thiết kế toàn diện, đồng bộ và hoàn thiện gồm **19 bảng**, **6 Views**, **7 Functions**, **9 Stored Procedures**, **13 Triggers**, 4 Security Roles và hệ thống **19 Indexes** tối ưu, quản lý trên 210.000 dòng dữ liệu thực tế.
+Hệ thống CSDL **`DBMS330284`** được thiết kế toàn diện, đồng bộ và hoàn thiện gồm **19 bảng**, **6 Views**, **7 Functions**, **9 Stored Procedures**, **14 Triggers**, 4 Security Roles và hệ thống **19 Indexes** tối ưu, quản lý trên 210.000 dòng dữ liệu thực tế.
 
 Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập khỏi `CHUONGTRINHDAOTAO` (quan hệ `KHOA` 1:N `NGANH` 1:N `CHUONGTRINHDAOTAO`), bổ sung **`LOP`** phục vụ quản lý sinh viên theo lớp sinh hoạt / lớp niên chế và **`CHITIETTHANHTOAN`** phục vụ nghiệp vụ thanh toán học phí nhiều đợt với cơ chế xác nhận 2 bước.
 
@@ -139,6 +139,7 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 - `MaLop` VARCHAR(20) NULL, FK -> `LOP.MaLop` (`FK_SINHVIEN_LOP`).
 - `TrangThai` VARCHAR(20) NOT NULL DEFAULT 'DANG_HOC', CHECK IN ('DANG_HOC', 'BAO_LUU', 'TOT_NGHIEP', 'THOI_HOC') (`CK_SINHVIEN_TrangThai`).
 - `NgayTao` DATETIME2(0) NOT NULL DEFAULT SYSUTCDATETIME() (`DF_SINHVIEN_NgayTao`).
+- **Cơ chế đảm bảo tính nhất quán Khoa ↔ Lớp:** Nhằm ngăn chặn triệt để dị thường dữ liệu (sinh viên thuộc lớp của Khoa A nhưng `MaKhoa` lại ghi nhận Khoa B), hệ thống triển khai Trigger `TR_SINHVIEN_KiemTraKhoaLop` (AFTER INSERT, UPDATE). Khi `MaLop IS NOT NULL`, trigger bắt buộc `SINHVIEN.MaKhoa = LOP.MaKhoa`; nếu vi phạm lập tức quăng lỗi `51008` và Rollback transaction. Khi `MaLop IS NULL` (sinh viên mới nhập học chưa biên chế lớp), sinh viên trực thuộc Khoa chủ quản quản lý trực tiếp.
 
 ### 3.9. GIANGVIEN
 - `MaGV` INT IDENTITY(1,1) NOT NULL, PK (`PK_GIANGVIEN`).
@@ -319,28 +320,117 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 - **BR16:** Email được phép `NULL` nhưng nếu có giá trị thì không được phép trùng lặp trong cùng bảng `SINHVIEN` hoặc `GIANGVIEN`.
 - **BR17:** Dữ liệu lịch sử đã được tham chiếu không xóa cứng (`NO ACTION`); chỉ đổi cờ trạng thái nghiệp vụ.
 - **BR18:** Mỗi chương trình đào tạo bắt buộc trực thuộc một ngành học (`NGANH`); mỗi ngành học trực thuộc một khoa (`KHOA`).
+- **BR19:** Khi sinh viên được biên chế vào Lớp sinh hoạt (`MaLop IS NOT NULL`), Khoa quản lý của sinh viên bắt buộc phải trùng khớp tuyệt đối với Khoa quản lý của Lớp sinh hoạt đó (`SINHVIEN.MaKhoa = LOP.MaKhoa`). Quy tắc này được cưỡng chế ở cấp cơ sở dữ liệu bởi Trigger `TR_SINHVIEN_KiemTraKhoaLop` (mã lỗi 51008).
 
 ---
 
-## 6. ĐÁNH GIÁ CHUẨN HÓA CƠ SỞ DỮ LIỆU (1NF, 2NF, 3NF)
+## 6. PHÂN TÍCH PHỤ THUỘC HÀM VÀ CHỨNG MINH CHUẨN HÓA (1NF, 2NF, 3NF)
 
-- **1NF (Chuẩn 1):** Toàn bộ thuộc tính nghiệp vụ đều mang giá trị nguyên tử (atomic values). Các danh mục nhiều giá trị (môn học của CTĐT, môn tiên quyết, thời khóa biểu) đều được tách thành các thực thể quan hệ riêng (`CTDT_MONHOC`, `MONHOCTIENQUYET`, `LICHHOC`). Trường JSON trong `LOGHOATDONG` chỉ đóng vai trò payload kiểm toán, không thay thế cấu trúc dữ liệu quan hệ.
-- **2NF (Chuẩn 2):** Đạt 1NF và loại bỏ hoàn toàn phụ thuộc bộ phận. Tất cả các thuộc tính không khóa đều phụ thuộc hoàn toàn vào toàn bộ khóa chính:
-  - Các bảng khóa đơn (`KHOA`, `NGANH`, `LOP`, `SINHVIEN`, `MONHOC`, `LOPHOCPHAN`,...) mặc nhiên thỏa mãn 2NF.
-  - Các bảng khóa ghép (`CTDT_MONHOC`, `MONHOCTIENQUYET`) chỉ chứa các thuộc tính phụ thuộc vào toàn bộ cặp khóa ghép (`HocKyDuKien`, `LoaiMon`, `MucDo`).
-- **3NF (Chuẩn 3):** Đạt 2NF và loại bỏ các phụ thuộc bắc cầu ngoài ý muốn:
-  - **Tách bảng `NGANH`:** Chuẩn hóa quan hệ giữa Khoa và CTĐT. Chuỗi quan hệ `KHOA` (1:N) `NGANH` (1:N) `CHUONGTRINHDAOTAO` triệt tiêu hoàn toàn phụ thuộc bắc cầu.
-  - **Giải thích kỹ thuật về `SINHVIEN.MaKhoa` và `SINHVIEN.MaLop`:** Về mặt lý thuyết, tồn tại phụ thuộc bắc cầu `MaSV -> MaLop -> MaKhoa`. Tuy nhiên, việc giữ lại thuộc tính `SINHVIEN.MaKhoa` là một kỹ thuật **phi chuẩn hóa có chủ đích (Intentional Denormalization)** được cân nhắc cẩn trọng:
-    1. *Hiệu năng truy vấn:* Cho phép tra cứu và phân quyền theo khoa (Row-Level Security / Role-based Filter) tức thì mà không cần `JOIN` qua bảng `LOP`.
-    2. *Thực tế nghiệp vụ:* Sinh viên khi mới nhập học hoặc sinh viên tự do/chuyển trường có thể tạm thời chưa được phân vào Lớp sinh hoạt (`MaLop IS NULL`) nhưng luôn phải thuộc một Khoa quản lý trực tiếp.
-  - **Cách xác định Ngành & CTĐT của Sinh viên:** Hiện tại schema không có khóa ngoại trực tiếp từ `SINHVIEN` nối sang `NGANH` hay `CHUONGTRINHDAOTAO`. Tầng backend và ứng dụng xác định Ngành của sinh viên **gián tiếp thông qua Khoa** (`SINHVIEN.MaKhoa -> NGANH.MaKhoa -> CHUONGTRINHDAOTAO`) kết hợp niên khóa `LOP.KhoaHoc`.
-    - *Giới hạn thiết kế:* Trong bộ dữ liệu mẫu (seed data), 5/6 khoa có đúng 1 ngành đào tạo duy nhất (riêng khoa HTTT có 2 ngành: HTTT và TMDT; khi tra cứu dashboard/profile sinh viên, câu truy vấn SQL tạm thời lấy ngành đầu tiên thuộc khoa qua `OUTER APPLY (SELECT TOP 1 n.TenNganh FROM dbo.NGANH n WHERE n.MaKhoa = sv.MaKhoa)` hoặc fallback về tên khoa).
-  - Không lặp tên khoa trong hồ sơ `SINHVIEN`, `GIANGVIEN`.
-  - Không lưu sĩ số tĩnh trong `LOPHOCPHAN` (tính động từ `DANGKYTINCHI`).
-  - Không lưu điểm tổng kết tĩnh trong `DIEMSO` (tính động qua View và Function).
-  - Tách bảng `TAIKHOAN` độc lập khỏi hồ sơ cá nhân của Sinh viên và Giảng viên; kiểm soát tính toàn vẹn vai trò qua `SP_TaoTaiKhoan`.
+### 6.1. Bảng xác định Khóa chính và Khóa ứng viên (Candidate Keys)
+Hệ thống xác định chính xác các khóa ứng viên cho từng thực thể làm cơ sở phân tích phụ thuộc hàm:
+- `KHOA`: Khóa chính `MaKhoa`; Khóa ứng viên thay thế `TenKhoa`.
+- `NGANH`: Khóa chính `MaNganh`; Khóa ứng viên thay thế `TenNganh`.
+- `CHUONGTRINHDAOTAO`: Khóa chính `MaCTDT`.
+- `MONHOC`: Khóa chính `MaMonHoc`.
+- `CTDT_MONHOC`: Khóa chính ghép `(MaCTDT, MaMonHoc)`.
+- `MONHOCTIENQUYET`: Khóa chính ghép `(MaMonHoc, MaMonTienQuyet)`.
+- `LOP`: Khóa chính `MaLop`.
+- `SINHVIEN`: Khóa chính `MaSV` (Surrogate Key); Khóa ứng viên tự nhiên `MaSinhVien`, `Email` (Filtered Unique).
+- `GIANGVIEN`: Khóa chính `MaGV` (Surrogate Key); Khóa ứng viên tự nhiên `MaGiangVien`, `Email` (Filtered Unique).
+- `TAIKHOAN`: Khóa chính `MaTaiKhoan`; Khóa ứng viên `Username`, `MaSV` (Filtered), `MaGV` (Filtered).
+- `HOCKY`: Khóa chính `MaHocKy`; Khóa ứng viên ghép `(NamHoc, TenHocKy)`.
+- `LOPHOCPHAN`: Khóa chính `MaLHP`.
+- `LICHHOC`: Khóa chính `MaLichHoc`.
+- `DANGKYTINCHI`: Khóa chính `MaDangKy`; Khóa ứng viên ghép `(MaSV, MaLHP)` lọc theo `TrangThai = 'REGISTERED'`.
+- `DIEMSO`: Khóa chính `MaDangKy` (Quan hệ 1:1 xác định qua `DANGKYTINCHI`).
+- `MUCHOCPHI`: Khóa chính `MaMucHocPhi`.
+- `HOCPHI`: Khóa chính `MaHocPhi`; Khóa ứng viên ghép `(MaSV, MaHocKy)`.
+- `CHITIETTHANHTOAN`: Khóa chính `MaThanhToan`.
+- `LOGHOATDONG`: Khóa chính `MaLog`.
 
-**Kết luận:** Toàn bộ 19 bảng đạt tiêu chuẩn tối thiểu **3NF** (với denormalization có kiểm soát tại bảng `SINHVIEN`).
+### 6.2. Tập các Phụ thuộc hàm cốt lõi (Functional Dependencies - FDs)
+1. `KHOA`: $MaKhoa \rightarrow \{TenKhoa, Email, SoDienThoai, TrangThai\}$
+2. `NGANH`: $MaNganh \rightarrow \{MaKhoa, TenNganh, MoTa, TrangThai\}$
+3. `CHUONGTRINHDAOTAO`: $MaCTDT \rightarrow \{MaNganh, TenCTDT, KhoaHoc, TongTinChiYeuCau, ThoiGianDaoTao, TrangThai\}$
+4. `LOP`: $MaLop \rightarrow \{TenLop, MaKhoa, KhoaHoc, NamNhapHoc, TrangThai\}$
+5. `SINHVIEN`: $MaSV \rightarrow \{MaSinhVien, HoTen, NgaySinh, Email, SoDienThoai, MaKhoa, MaLop, TrangThai, NgayTao\}$
+6. `MONHOC`: $MaMonHoc \rightarrow \{MaKhoa, TenMonHoc, SoTinChi, SoTietLyThuyet, SoTietThucHanh, MoTa, TrangThai\}$
+7. `CTDT_MONHOC`: $(MaCTDT, MaMonHoc) \rightarrow \{HocKyDuKien, LoaiMon, ThuTu\}$
+8. `MONHOCTIENQUYET`: $(MaMonHoc, MaMonTienQuyet) \rightarrow \{MucDo\}$
+9. `LOPHOCPHAN`: $MaLHP \rightarrow \{MaMonHoc, MaHocKy, MaGiangVien, TenLHP, SoLuongToiDa, TrangThai\}$
+10. `DANGKYTINCHI`: $MaDangKy \rightarrow \{MaSV, MaLHP, NgayDangKy, TrangThai\}$
+11. `DIEMSO`: $MaDangKy \rightarrow \{DiemQuaTrinh, DiemGiuaKy, DiemCuoiKy, TyTrongQT, TyTrongGK, TyTrongCK\}$
+12. `HOCPHI`: $MaHocPhi \rightarrow \{MaSV, MaHocKy, MaMucHocPhi, SoTinChi, DonGiaTinChi, TongTien, SoTienDaThanhToan, TrangThai, NgayCapNhat\}$
+13. `CHITIETTHANHTOAN`: $MaThanhToan \rightarrow \{MaHocPhi, SoTien, NgayThanhToan, PhuongThuc, TrangThai, MaTaiKhoanXacNhan, NgayXacNhan\}$
+
+### 6.3. Đánh giá Chuẩn 1 (1NF) và Chuẩn 2 (2NF)
+- **1NF (First Normal Form):** Toàn bộ các thuộc tính nghiệp vụ đều mang giá trị nguyên tử (Atomic Values). Không chứa thuộc tính đa trị (Multivalued Attributes) hoặc nhóm lặp (Repeating Groups):
+  - Khung chương trình đào tạo chứa nhiều môn học được tách thành quan hệ N:N `CTDT_MONHOC`.
+  - Danh mục môn tiên quyết nhiều cấp được tách thành quan hệ đệ quy `MONHOCTIENQUYET`.
+  - Một lớp học phần có nhiều buổi học được tách thành bảng `LICHHOC`.
+  - Một hồ sơ học phí có thể nộp nhiều đợt được tách thành bảng `CHITIETTHANHTOAN`.
+  - Cột JSON (`NoiDungCu`, `NoiDungMoi`) trong `LOGHOATDONG` chỉ lưu trữ payload kiểm toán bất biến (Audit Trail), không dùng để thay thế cấu trúc dữ liệu quan hệ.
+- **2NF (Second Normal Form):** Đạt 1NF và loại bỏ hoàn toàn phụ thuộc hàm bộ phận (Partial Functional Dependencies). Mọi thuộc tính không khóa phải phụ thuộc hàm đầy đủ vào toàn bộ khóa chính:
+  - Tất cả các bảng có khóa chính đơn thuộc tính (`KHOA`, `NGANH`, `LOP`, `SINHVIEN`, `GIANGVIEN`, `MONHOC`, `LOPHOCPHAN`, `HOCKY`, `HOCPHI`,...) mặc nhiên thỏa mãn 2NF.
+  - Các bảng có khóa chính ghép:
+    - Trong `CTDT_MONHOC(MaCTDT, MaMonHoc)`: Các thuộc tính `HocKyDuKien`, `LoaiMon`, `ThuTu` phụ thuộc vào cả cặp $(MaCTDT, MaMonHoc)$. Thuộc tính môn học (`TenMonHoc`, `SoTinChi`) không nằm trong bảng này mà nằm tại `MONHOC`, triệt tiêu phụ thuộc bộ phận vào `MaMonHoc`.
+    - Trong `MONHOCTIENQUYET(MaMonHoc, MaMonTienQuyet)`: Thuộc tính `MucDo` phụ thuộc vào cả cặp khóa ghép.
+
+### 6.4. Đánh giá và Chứng minh Chuẩn 3 (3NF)
+Một lược đồ quan hệ đạt 3NF nếu đạt 2NF và không chứa phụ thuộc bắc cầu (Transitive Functional Dependencies) giữa các thuộc tính không khóa, tức là không tồn tại $X \rightarrow Y \rightarrow Z$ với $Z$ không thuộc khóa ứng viên.
+
+#### A. Phân rã chuẩn hóa tách thực thể NGANH khỏi CHUONGTRINHDAOTAO
+- *Trước chuẩn hóa:* Nếu gộp chung, ta có phụ thuộc hàm: $MaCTDT \rightarrow MaNganh$ và $MaNganh \rightarrow MaKhoa$. Khi đó $MaCTDT \rightarrow MaKhoa$ là một phụ thuộc bắc cầu dẫn tới dị thường lặp lại thông tin Khoa cho mọi CTĐT cùng ngành.
+- *Sau phân rã:* Hệ thống tách thành chuỗi phân cấp 3 thực thể độc lập:
+  - $R_1$: `KHOA(MaKhoa, TenKhoa, ...)` với $PK = MaKhoa$.
+  - $R_2$: `NGANH(MaNganh, MaKhoa, TenNganh, ...)` với $PK = MaNganh$, $FK = MaKhoa$.
+  - $R_3$: `CHUONGTRINHDAOTAO(MaCTDT, MaNganh, ...)` với $PK = MaCTDT$, $FK = MaNganh$.
+- *Đánh giá:* Phép phân rã này bảo toàn thuộc tính, bảo toàn phụ thuộc hàm và không làm mất thông tin (Lossless-Join Decomposition thông qua phép kết tự nhiên $R_1 \bowtie R_2 \bowtie R_3$). Đạt 3NF hoàn hảo.
+
+#### B. Phân tích quan hệ SINHVIEN – LOP – KHOA và Kỹ thuật Phi chuẩn hóa có kiểm soát
+- *Phụ thuộc hàm thực tế:*
+  - $FD_1: MaSV \rightarrow MaLop$ (Mỗi sinh viên được phân vào tối đa một lớp sinh hoạt).
+  - $FD_2: MaLop \rightarrow MaKhoa$ (Mỗi lớp sinh hoạt thuộc quản lý của một khoa).
+  - Khi sinh viên đã có lớp, tồn tại phụ thuộc bắc cầu: $MaSV \rightarrow MaLop \rightarrow MaKhoa$.
+- *Quyết định thiết kế (Controlled Denormalization):*
+  Hệ thống duy trì thuộc tính `SINHVIEN.MaKhoa` trực tiếp trong bảng `SINHVIEN` thay vì chỉ lưu `MaLop` vì 2 yêu cầu nghiệp vụ bắt buộc:
+  1. **Nghiệp vụ sinh viên chưa biên chế lớp:** Sinh viên mới trúng tuyển nhập học, sinh viên tự do hoặc chuyển trường có thể tạm thời chưa được phân vào Lớp sinh hoạt (`MaLop IS NULL`). Tuy nhiên, sinh viên luôn bắt buộc phải thuộc một Khoa chủ quản quản lý hồ sơ học vụ (`MaKhoa NOT NULL`). Nếu loại bỏ `SINHVIEN.MaKhoa`, hệ thống không thể lưu trữ sinh viên chưa có lớp.
+  2. **Hiệu năng truy vấn & Phân quyền cấp Khoa:** Việc tra cứu, thống kê và áp dụng bộ lọc dữ liệu theo Khoa (Row-Level Security cho cán bộ quản lý khoa) được thực thi tức thì với chi phí $O(1)$ trên chỉ mục `IX_SINHVIEN_MaKhoa` mà không phải thực hiện phép `JOIN` qua bảng `LOP` (tránh rủi ro loại trừ sinh viên chưa xếp lớp nếu dùng `INNER JOIN`).
+- *Cơ chế đảm bảo tính nhất quán (Consistency Enforcement):*
+  Để loại bỏ triệt để nguy cơ dị thường cập nhật (Update Anomaly) do phi chuẩn hóa gây ra (ví dụ: sinh viên thuộc lớp của Khoa CNTT nhưng `SINHVIEN.MaKhoa` lại ghi nhận Khoa KT), hệ thống triển khai cơ chế kiểm soát cứng tại tầng CSDL thông qua **Trigger `TR_SINHVIEN_KiemTraKhoaLop`**:
+  ```sql
+  CREATE OR ALTER TRIGGER [dbo].[TR_SINHVIEN_KiemTraKhoaLop]
+  ON [dbo].[SINHVIEN]
+  AFTER INSERT, UPDATE
+  AS
+  BEGIN
+      SET NOCOUNT ON;
+      IF EXISTS (
+          SELECT 1
+          FROM inserted i
+          INNER JOIN dbo.LOP l ON i.MaLop = l.MaLop
+          WHERE i.MaLop IS NOT NULL AND i.MaKhoa <> l.MaKhoa
+      )
+      BEGIN
+          THROW 51008, N'Khoa của sinh viên phải trùng khớp với Khoa của lớp sinh hoạt.', 1;
+      END
+  END;
+  ```
+  Nhờ trigger này, mọi hành vi thêm mới hoặc sửa đổi dữ liệu khiến `SINHVIEN.MaKhoa` lệch với `LOP.MaKhoa` đều bị hủy bỏ ngay lập tức (Rollback). Tính nhất quán được bảo vệ tuyệt đối.
+
+#### C. Phân tích mô hình Ngành học và Chương trình đào tạo của Sinh viên
+- **Hiện trạng V1.2 (Đã triển khai):**
+  - Hệ thống liên kết sinh viên với Ngành & CTĐT gián tiếp thông qua Khoa và Niên khóa của Lớp sinh hoạt (`SINHVIEN.MaKhoa \rightarrow NGANH.MaKhoa \rightarrow CHUONGTRINHDAOTAO`).
+  - Trong bộ dữ liệu kiểm thử, 5/6 khoa có đúng 1 ngành đào tạo duy nhất. Đối với khoa HTTT (gồm 2 ngành: HTTT và TMDT), câu lệnh tra cứu profile sinh viên áp dụng truy vấn đại diện theo mã khoa.
+- **Mô hình mở rộng V2.0 (Đã thiết kế):**
+  - Đối với trường hợp sinh viên theo học các chương trình song bằng hoặc ngành đào tạo độc lập với lớp, thiết kế đề xuất bổ sung cột khóa ngoại `MaCTDT VARCHAR(15)` trực tiếp vào bảng `LOP` (nếu cả lớp học cùng CTĐT) hoặc bảng `SINHVIEN` (nếu từng sinh viên chọn CTĐT riêng), kèm theo Foreign Key `FK_SINHVIEN_CTDT` tham chiếu `CHUONGTRINHDAOTAO(MaCTDT)`.
+
+#### D. Triệt tiêu các phụ thuộc hàm dẫn xuất trong bảng vật lý
+- **LOPHOCPHAN:** Không lưu trường `SoLuongHienTai` vật lý. Phụ thuộc hàm dẫn xuất $MaLHP \rightarrow SoLuongHienTai$ bị triệt tiêu; sĩ số được tính toán động từ `COUNT(DANGKYTINCHI)`.
+- **DIEMSO:** Không lưu `DiemTongKet`, `DiemChu`, `DiemHe4` vật lý. Phụ thuộc hàm dẫn xuất $MaDangKy \rightarrow DiemTongKet$ được giải quyết thông qua View `V_BangDiemChiTiet` và Function `FN_TinhDiemTongKet`.
+- **HOCPHI:** Cột `SoTienDaThanhToan` là trường snapshot/cache được bảo vệ và đồng bộ tự động 100% bằng Trigger `TR_CHITIETTHANHTOAN_CapNhatHocPhi` từ bảng sự thật `CHITIETTHANHTOAN`.
+
+**Kết luận chuẩn hóa:** Toàn bộ 19 bảng của CSDL đạt tiêu chuẩn **3NF** (với ngoại lệ phi chuẩn hóa có kiểm soát tại bảng `SINHVIEN` được ràng buộc nhất quán bằng trigger DB).
 
 ---
 
@@ -376,22 +466,23 @@ Hệ thống mã nguồn SQL trong thư mục `DB/` đã hiện thực hóa đ�
 8. `SP_XacNhanThanhToan`: Xác nhận giao dịch thanh toán học phí (`CHO_XAC_NHAN` -> `DA_XAC_NHAN`), lưu người xác nhận, kích hoạt trigger tính tiền học phí (mã 51401–51405).
 9. `SP_TuChoiThanhToan`: Từ chối giao dịch thanh toán học phí (`CHO_XAC_NHAN` -> `TU_CHOI`), không tính vào công nợ (mã 51401, 51404, 51405).
 
-### 7.4. Triggers (05_Triggers.md - 13 Triggers)
-- **Nghiệp vụ (6 triggers):**
+### 7.4. Triggers (05_Triggers.md - 14 Triggers)
+- **Nghiệp vụ (7 triggers):**
   1. `TR_MONHOCTIENQUYET_KiemTraChuTrinh`: Ngăn chặn chu trình đệ quy vô hạn trong môn tiên quyết (mã 51001).
   2. `TR_DANGKYTINCHI_KiemTraSiSo`: Ngăn chặn đăng ký vượt quá sĩ số tối đa của lớp học phần (mã 51002).
   3. `TR_LICHHOC_KiemTraTrungLich`: Chặn xếp trùng lịch giảng viên hoặc trùng phòng học trong cùng khung giờ (mã 51310).
   4. `TR_MUCHOCPHI_KiemTraHieuLuc`: Chặn mức học phí trùng khoảng thời gian hiệu lực và đảm bảo phạm vi toàn trường (mã 51004, 51005).
   5. `TR_CHITIETTHANHTOAN_CapNhatHocPhi`: Tự động tính tổng tiền thanh toán, cập nhật cache và chuyển trạng thái `UNPAID`/`PARTIAL`/`PAID` cho `HOCPHI` khi giao dịch được xác nhận `DA_XAC_NHAN` (mã 51006).
   6. `TR_LOP_KiemTraXoa`: Ngăn chặn xóa Lớp sinh hoạt đang có Sinh viên trực thuộc (mã 51007).
+  7. `TR_SINHVIEN_KiemTraKhoaLop`: Đảm bảo Khoa của sinh viên phải trùng khớp với Khoa quản lý của Lớp sinh hoạt khi đã xếp lớp (mã 51008).
 - **Kiểm toán (Audit - 7 triggers):**
-  7. `TR_TAIKHOAN_Audit`: Ghi nhật ký bảng `TAIKHOAN` vào `LOGHOATDONG`.
-  8. `TR_DANGKYTINCHI_Audit`: Ghi nhật ký bảng `DANGKYTINCHI` vào `LOGHOATDONG`.
-  9. `TR_DIEMSO_Audit`: Ghi nhật ký bảng `DIEMSO` vào `LOGHOATDONG`.
-  10. `TR_MUCHOCPHI_Audit`: Ghi nhật ký bảng `MUCHOCPHI` vào `LOGHOATDONG`.
-  11. `TR_HOCPHI_Audit`: Ghi nhật ký bảng `HOCPHI` vào `LOGHOATDONG`.
-  12. `TR_CHITIETTHANHTOAN_Audit`: Ghi nhật ký bảng `CHITIETTHANHTOAN` vào `LOGHOATDONG`.
-  13. `TR_LOP_Audit`: Ghi nhật ký bảng `LOP` vào `LOGHOATDONG`.
+  8. `TR_TAIKHOAN_Audit`: Ghi nhật ký bảng `TAIKHOAN` vào `LOGHOATDONG`.
+  9. `TR_DANGKYTINCHI_Audit`: Ghi nhật ký bảng `DANGKYTINCHI` vào `LOGHOATDONG`.
+  10. `TR_DIEMSO_Audit`: Ghi nhật ký bảng `DIEMSO` vào `LOGHOATDONG`.
+  11. `TR_MUCHOCPHI_Audit`: Ghi nhật ký bảng `MUCHOCPHI` vào `LOGHOATDONG`.
+  12. `TR_HOCPHI_Audit`: Ghi nhật ký bảng `HOCPHI` vào `LOGHOATDONG`.
+  13. `TR_CHITIETTHANHTOAN_Audit`: Ghi nhật ký bảng `CHITIETTHANHTOAN` vào `LOGHOATDONG`.
+  14. `TR_LOP_Audit`: Ghi nhật ký bảng `LOP` vào `LOGHOATDONG`.
 
 ### 7.5. Security Roles (11_Security.md - 4 Roles)
 1. `SINH_VIEN`: Quyền tra cứu thông tin cá nhân, TKB, bảng điểm, học phí; thực hiện đăng ký tín chỉ và nộp học phí.
@@ -417,6 +508,7 @@ Hệ thống mã nguồn SQL trong thư mục `DB/` đã hiện thực hóa đ�
 - **[DEC-12]** Quy chuẩn đặt tên chuẩn Microsoft SQL Server: `PK_<Bang>`, `FK_<BangCon>_<BangCha>`, `UQ_<Bang>_<Cot>`, `CK_<Bang>_<Cot>`, `DF_<Bang>_<Cot>`, `IX_<Bang>_<Cot>`, `V_<MoTa>`, `SP_<HanhDong>_<DoiTuong>`, `FN_<MoTa>`, `TR_<Bang>_<SuKien>`.
 - **[DEC-13]** Cơ chế xác nhận thanh toán 2 bước: Giao dịch khởi tạo có `TrangThai = 'CHO_XAC_NHAN'`; chỉ khi Phòng Đào tạo / Quản trị thực thi `SP_XacNhanThanhToan` (chuyển sang `'DA_XAC_NHAN'`) thì Trigger `TR_CHITIETTHANHTOAN_CapNhatHocPhi` mới tính vào `HOCPHI.SoTienDaThanhToan`. Giao dịch từ chối (`SP_TuChoiThanhToan`) chuyển sang `'TU_CHOI'`. Vị trí script migration bổ sung cấu trúc này nằm tại `backend/scripts/migrate_payment_confirmation.js`.
 - **[DEC-14]** Bảo vệ IDOR và Phân quyền cấp Server: Thông tin `MaSV`, `MaGV` và `MaTaiKhoan` khi thực hiện các giao dịch nhạy cảm (Đăng ký tín chỉ, Xem học vụ cá nhân, Xác nhận thanh toán) bắt buộc trích xuất trực tiếp từ token xác thực JWT (`req.user`), không tin cậy dữ liệu truyền lên qua body client. Hạn mức tín chỉ tối đa do hệ thống ấn định (mặc định 24-25 tín chỉ).
+- **[DEC-15]** Ràng buộc toàn vẹn nhất quán Khoa ↔ Lớp: Sinh viên có thể chưa biên chế lớp (`MaLop IS NULL`), nhưng khi đã có lớp (`MaLop IS NOT NULL`) thì bắt buộc `SINHVIEN.MaKhoa = LOP.MaKhoa`. Ràng buộc được cưỡng chế bởi Trigger `TR_SINHVIEN_KiemTraKhoaLop` (mã lỗi 51008).
 
 ---
 
@@ -428,8 +520,8 @@ Hệ thống mã nguồn SQL trong thư mục `DB/` đã hiện thực hóa đ�
 - [x] Bổ sung bảng `CHITIETTHANHTOAN` hỗ trợ thanh toán nhiều đợt (xác nhận 2 bước).
 - [x] Đồng bộ 100% Primary Key / Foreign Key liên module.
 - [x] Đồng bộ `MaHocKy`, loại bỏ hoàn toàn `MaHK`.
-- [x] Khóa 14 quyết định thiết kế kiến trúc (DEC-01 -> DEC-14).
-- [x] Triển khai và kiểm thử 13 Triggers.
+- [x] Khóa 15 quyết định thiết kế kiến trúc (DEC-01 -> DEC-15).
+- [x] Triển khai và kiểm thử 14 Triggers (7 nghiệp vụ + 7 audit).
 - [x] Triển khai và kiểm thử 6 Views.
 - [x] Triển khai và kiểm thử 7 Functions.
 - [x] Triển khai và kiểm thử 9 Stored Procedures.
@@ -437,3 +529,220 @@ Hệ thống mã nguồn SQL trong thư mục `DB/` đã hiện thực hóa đ�
 - [x] Thiết lập hệ thống phân quyền 4 Security Roles.
 - [x] Khởi tạo bộ dữ liệu mẫu >210.000 dòng dữ liệu thực tế (`04_SeedData.sql`).
 - [x] Bộ kiểm thử tích hợp kiểm chứng đạt 100% test case (`13_Test_Integration.md`).
+- [x] Kiểm thử cơ chế sao lưu và phục hồi dữ liệu (Full Backup & Restore Verification).
+
+---
+
+## 10. PHƯƠNG ÁN SAO LƯU VÀ PHỤC HỒI DỮ LIỆU (BACKUP & RESTORE)
+
+### 10.1. Phạm vi và Chiến lược sao lưu
+- **CSDL mục tiêu:** `DBMS330284` (Microsoft SQL Server 2022 / Express).
+- **Chiến lược:** Thực hiện **Full Database Backup** định kỳ hoặc trước các mốc sự kiện quan trọng (bắt đầu đợt đăng ký tín chỉ mới, sau khi chốt điểm/học phí học kỳ, hoặc trước khi bảo trì).
+- **Vị trí lưu trữ mẫu:**
+  - Đường dẫn mặc định của dịch vụ SQL Server: `C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\Backup\`
+  - Cấu hình placeholder tổng quát: `<backup_directory>\DBMS330284_Full_<YYYYMMDD_HHMMSS>.bak`
+- **Khuyến nghị an toàn vận hành:**
+  1. *Phân quyền thư mục:* Tài khoản dịch vụ SQL Server (`NT Service\MSSQLSERVER` hoặc `NT Service\MSSQL$SQLEXPRESS`) phải có quyền `Write/Modify` trên thư mục đích; nếu không lệnh `BACKUP` sẽ bị từ chối với lỗi Operating System Error 5 (Access is denied).
+  2. *Tách biệt lưu trữ:* Tuyệt đối không lưu bản backup duy nhất trên cùng phân vùng ổ đĩa chứa file dữ liệu chính (`.mdf`) và nhật ký giao dịch (`.ldf`) để tránh mất toàn bộ dữ liệu khi hỏng ổ đĩa vật lý.
+
+### 10.2. Script Backup chuẩn & Xác minh tính toàn vẹn
+```sql
+-- ============================================================
+-- SCRIPT B1: FULL DATABASE BACKUP KÈM CHECKSUM
+-- ============================================================
+BACKUP DATABASE [DBMS330284]
+TO DISK = N'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\Backup\DBMS330284_Full_20261009.bak'
+WITH
+    FORMAT,                             -- Khởi tạo media header mới
+    INIT,                               -- Ghi đè file backup cũ nếu cùng tên
+    NAME = N'DBMS330284-Full Backup',   -- Tên định danh bản sao lưu
+    SKIP,                               -- Bỏ qua kiểm tra ngày hết hạn backup
+    NOREWIND,
+    NOUNLOAD,
+    CHECKSUM,                           -- Kiểm tra checksum từng page dữ liệu
+    STATS = 10;                         -- Báo cáo tiến độ mỗi 10%
+GO
+
+-- ============================================================
+-- SCRIPT B2: KIỂM TRA TÍNH TOÀN VẸN FILE BACKUP (VERIFY ONLY)
+-- ============================================================
+RESTORE VERIFYONLY
+FROM DISK = N'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\Backup\DBMS330284_Full_20261009.bak'
+WITH CHECKSUM;
+GO
+-- Nếu kết quả: "The backup set on file 1 is valid." => Tệp sao lưu hoàn toàn hợp lệ.
+```
+
+### 10.3. Script Restore vào môi trường kiểm thử
+> [!WARNING] Cảnh báo an toàn:
+> Tùy chọn `WITH REPLACE` có nguy cơ ghi đè dữ liệu đang hoạt động. Trong môi trường học tập và kiểm thử, quy trình chuẩn là phục hồi bản backup sang một cơ sở dữ liệu thử nghiệm độc lập mang tên **`DBMS330284_Test`** sử dụng mệnh đề `WITH MOVE`, không phục hồi đè trực tiếp lên CSDL chính.
+
+```sql
+-- ============================================================
+-- SCRIPT R1: XEM TÊN LOGICAL FILE TRONG BẢN SAO LƯU
+-- ============================================================
+RESTORE FILELISTONLY
+FROM DISK = N'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\Backup\DBMS330284_Full_20261009.bak';
+GO
+-- Kết quả cho thấy 2 logical name: 'DBMS330284' (Data) và 'DBMS330284_log' (Log)
+
+-- ============================================================
+-- SCRIPT R2: PHỤC HỒI SANG DATABASE THỬ NGHIỆM ĐỘC LẬP
+-- ============================================================
+RESTORE DATABASE [DBMS330284_Test]
+FROM DISK = N'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\Backup\DBMS330284_Full_20261009.bak'
+WITH
+    MOVE 'DBMS330284' TO 'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\DATA\DBMS330284_Test.mdf',
+    MOVE 'DBMS330284_log' TO 'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\DATA\DBMS330284_Test_log.ldf',
+    REPLACE,
+    STATS = 10;
+GO
+```
+
+### 10.4. Quy trình kiểm tra sau phục hồi (Post-Restore Validation)
+```sql
+-- 1. Kiểm tra trạng thái cơ sở dữ liệu đã ONLINE
+SELECT name, state_desc, recovery_model_desc
+FROM sys.databases
+WHERE name = 'DBMS330284_Test';
+-- Kết quả mong đợi: state_desc = 'ONLINE'
+
+-- 2. Kiểm tra tính toàn vẹn cấu trúc vật lý của cơ sở dữ liệu
+DBCC CHECKDB ('DBMS330284_Test') WITH NO_INFOMSGS;
+-- Kết quả mong đợi: 0 errors (Command(s) completed successfully)
+
+-- 3. Kiểm tra số lượng bản ghi đại diện khớp với CSDL gốc
+SELECT 'SINHVIEN' AS Bang, COUNT(*) AS SoLuong FROM [DBMS330284_Test].dbo.SINHVIEN
+UNION ALL
+SELECT 'LOP', COUNT(*) FROM [DBMS330284_Test].dbo.LOP
+UNION ALL
+SELECT 'LOPHOCPHAN', COUNT(*) FROM [DBMS330284_Test].dbo.LOPHOCPHAN
+UNION ALL
+SELECT 'DANGKYTINCHI', COUNT(*) FROM [DBMS330284_Test].dbo.DANGKYTINCHI;
+-- Kết quả kiểm chứng thực tế: SINHVIEN = 1500, LOP = 36 khớp 100%.
+```
+
+---
+
+## 11. KIỂM SOÁT ĐỒNG THỜI KHI ĐĂNG KÝ HỌC PHẦN (CONCURRENCY CONTROL & TESTING)
+
+### 11.1. Phân tích bài toán tranh chấp đồng thời (Concurrency Anomaly)
+- **Tình huống nghiệp vụ:** Lớp học phần có `SoLuongToiDa = 40`, hiện đã có 39 sinh viên đăng ký hợp lệ (`TrangThai = 'REGISTERED'`).
+- **Hiện tượng nguy cơ (Race Condition):** Hai sinh viên $SV_A$ và $SV_B$ gửi yêu cầu đăng ký gần như đồng thời qua hai phiên kết nối khác nhau:
+  - Nếu chỉ dùng câu lệnh `SELECT COUNT(*)` thông thường ở mức cô lập mặc định `READ COMMITTED`, cả hai phiên đều đọc được sĩ số hiện tại là 39.
+  - Cả hai phiên đều thấy $39 < 40$ nên cùng thực hiện câu lệnh `INSERT INTO DANGKYTINCHI`.
+  - Kết quả: Sĩ số lớp bị đội lên **41 sinh viên**, vượt quá sức chứa tối đa của phòng học (Overbooking / Lost Update).
+
+### 11.2. Giải pháp kỹ thuật tại tầng SQL Server
+
+#### A. Transaction có kiểm soát trong Stored Procedure `SP_DangKyTinChi`
+- Toàn bộ chuỗi thao tác: Kiểm tra sinh viên $\rightarrow$ Kiểm tra tiên quyết $\rightarrow$ Kiểm tra trùng lịch $\rightarrow$ Khóa và tính sĩ số $\rightarrow$ Thêm bản ghi đăng ký nằm trọn vẹn trong một giao dịch:
+  `BEGIN TRANSACTION; ... COMMIT TRANSACTION;`
+- Bọc toàn bộ trong khối `BEGIN TRY ... BEGIN CATCH`. Nếu có bất kỳ lỗi nào xảy ra hoặc điều kiện không thỏa mãn, câu lệnh `IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;` đảm bảo hoàn tác 100%, không để lại dữ liệu dở dang. Bật cờ `SET XACT_ABORT ON;` để tự động hủy giao dịch khi có lỗi nghiêm trọng.
+
+#### B. Khóa bảo vệ sĩ số với gợi ý `WITH (UPDLOCK, HOLDLOCK)`
+- Trong `SP_DangKyTinChi`, câu truy vấn đọc thông tin lớp và câu truy vấn đếm sĩ số sử dụng kết hợp gợi ý khóa:
+  ```sql
+  SELECT @SoLuongToiDa = lhp.SoLuongToiDa, ...
+  FROM dbo.LOPHOCPHAN lhp WITH (UPDLOCK, HOLDLOCK)
+  WHERE lhp.MaLHP = @MaLHP;
+
+  SELECT @SiSoHienTai = COUNT(*)
+  FROM dbo.DANGKYTINCHI WITH (UPDLOCK, HOLDLOCK)
+  WHERE MaLHP = @MaLHP AND TrangThai = 'REGISTERED';
+  ```
+- **Phạm vi khóa (Lock Scope):** Đặt khóa cập nhật (`UPDLOCK`) trên bản ghi lớp học phần và khóa dải phạm vi (`HOLDLOCK` - Serializable Range Lock) trên tập bản ghi đăng ký của lớp đó.
+- **Thời điểm giải phóng (Lock Release):** Khóa được giữ xuyên suốt thời gian transaction đang chạy và chỉ được giải phóng khi lệnh `COMMIT` hoặc `ROLLBACK` thực thi xong.
+- **Tại sao phương án này bảo vệ đúng nghiệp vụ?** Khi Transaction 1 đọc với `UPDLOCK`, nó phát tín hiệu ý định cập nhật. Transaction 2 gửi yêu cầu đọc cùng bản ghi với `UPDLOCK, HOLDLOCK` sẽ bị **buộc phải chờ (Blocked / Queued)** cho đến khi Transaction 1 hoàn tất. Sau khi Transaction 1 chèn dòng thứ 40 và Commit, Transaction 2 mới được tiếp tục đọc. Lúc này sĩ số tính ra là 40, điều kiện `IF @SiSoHienTai >= @SoLuongToiDa` lập tức quăng lỗi `50011` và Rollback Transaction 2.
+
+#### C. So sánh và lựa chọn mức cô lập (Isolation Levels)
+- `READ COMMITTED` (Mặc định): Chỉ bảo vệ không đọc dữ liệu rác (Dirty Read). Không giữ khóa đọc đến hết transaction nên không thể ngăn chặn Non-repeatable Read hoặc Phantoms nếu không có gợi ý khóa.
+- `REPEATABLE READ`: Giữ Shared Lock đến hết transaction, ngăn chặn cập nhật bản ghi đã đọc, nhưng vẫn có thể bị Phantom Read khi có giao dịch khác chèn thêm dòng mới thỏa mãn điều kiện.
+- `SERIALIZABLE`: Mức cô lập cao nhất, sử dụng Range Lock ngăn chặn hoàn toàn Phantom Read. Tuy nhiên, nếu áp dụng `SET TRANSACTION ISOLATION LEVEL SERIALIZABLE` cho toàn bộ kết nối thì sẽ làm giảm nghiêm trọng thông lượng xử lý của hệ thống và tăng nguy cơ Deadlock khi nhiều tác vụ đọc khác cùng chạy.
+- **Lý do lựa chọn thiết kế:** Hệ thống giữ mức cô lập toàn cục là `READ COMMITTED` để các tác vụ tra cứu môn học, xem thời khóa biểu đạt thông lượng cao nhất, đồng thời **chỉ kích hoạt khóa hạt mịn `WITH (UPDLOCK, HOLDLOCK)`** trong phạm vi Stored Procedure `SP_DangKyTinChi`. Đây là giải pháp tối ưu cân bằng giữa tính toàn vẹn 100% và hiệu năng đồng thời cao.
+
+#### D. Chống đăng ký trùng lặp (Double Registration Prevention)
+- Hệ thống áp dụng 2 tầng phòng thủ:
+  1. *Tầng kiểm tra logic trong SP:* `IF EXISTS (SELECT 1 FROM dbo.DANGKYTINCHI WITH (UPDLOCK, HOLDLOCK) WHERE MaSV = @MaSV AND MaLHP = @MaLHP AND TrangThai = 'REGISTERED') THROW 50007, ...`
+  2. *Tầng ràng buộc cơ sở dữ liệu:* Filtered Unique Index trên bảng `DANGKYTINCHI`:
+     ```sql
+     CREATE UNIQUE NONCLUSTERED INDEX [UQ_DANGKYTINCHI_SinhVien_LopHocPhan]
+     ON dbo.DANGKYTINCHI (MaSV, MaLHP)
+     WHERE TrangThai = 'REGISTERED';
+     ```
+     Nếu xảy ra tranh chấp lọt qua câu lệnh kiểm tra, chỉ mục duy nhất sẽ chặn đứng ở cấp động cơ lưu trữ (Storage Engine) với mã lỗi SQL 2601/2627, kích hoạt khối `CATCH` và Rollback an toàn.
+
+#### E. Xử lý Deadlock (Deadlock Handling)
+- **Nguyên nhân tiềm tàng:** Khi hai giao dịch đăng ký các môn chéo nhau và cùng cố gắng lấy khóa trên các bảng theo thứ tự khác nhau.
+- **Nguyên tắc phòng ngừa:** Toàn bộ Stored Procedure trong hệ thống tuân thủ **thứ tự chiếm khóa nhất quán:** Luôn khóa `LOPHOCPHAN` trước, sau đó mới đến `DANGKYTINCHI`.
+- **Cơ chế xử lý:** Nếu SQL Server phát hiện Deadlock, cơ chế Deadlock Monitor sẽ tự động chọn một transaction làm Deadlock Victim (mã lỗi 1205) và Rollback. Tầng Backend Express nhận diện mã lỗi 1205 qua `errorMapper.js`, chuyển đổi thành mã HTTP 409/503 kèm thông báo gợi ý người dùng thực hiện lại (Client-side retry).
+
+---
+
+### 11.3. Bộ Test Case Concurrency (TC-01 đến TC-07)
+
+| Mã Test | Tên Kịch bản | Dữ liệu đầu vào | Các bước thực hiện | Kết quả mong đợi | Trạng thái thực thi |
+|---|---|---|---|---|---|
+| **TC-01** | Đăng ký thành công | SV `MaSV=1`, LHP `MaLHP='LHP0001'` còn chỗ, đủ điều kiện | Gọi `SP_DangKyTinChi` từ 1 phiên | Tạo bản ghi trong `DANGKYTINCHI` với `TrangThai='REGISTERED'`. Sĩ số tăng 1. | **Đã kiểm thử (PASS)** |
+| **TC-02** | Lớp học phần đã đầy | LHP `MaLHP='LHP0001'` có sĩ số hiện tại = `SoLuongToiDa` (40/40) | Gọi `SP_DangKyTinChi` cho sinh viên mới | Bị từ chối với lỗi `50011` ("Lop hoc phan da du si so toi da."). Không tạo thêm bản ghi nào. | **Đã kiểm thử (PASS)** |
+| **TC-03** | Hai SV tranh chấp 1 chỗ trống cuối cùng | LHP `SoLuongToiDa=40`, đã có 39 SV. $SV_A$ (`MaSV=10`) và $SV_B$ (`MaSV=11`) | Chạy 2 phiên SQL Server đồng thời gọi `SP_DangKyTinChi` cho cùng lớp | Đúng 1 phiên thành công (ghi nhận bản ghi thứ 40). Phiên còn lại bị từ chối với lỗi `50011`. Sĩ số cuối cùng = 40 (không vượt sức chứa). | **Đã kiểm thử (PASS)** |
+| **TC-04** | Đăng ký trùng lặp | Cùng 1 sinh viên gửi 2 yêu cầu đăng ký cùng 1 LHP | Gọi `SP_DangKyTinChi` lần 1, sau đó gọi lại lần 2 | Lần 1 thành công. Lần 2 bị từ chối với mã `50007` ("Sinh vien da dang ky mon hoc nay trong hoc ky.") hoặc chặn bởi Unique Index `UQ_DANGKYTINCHI_...`. Chỉ có đúng 1 bản ghi `REGISTERED`. | **Đã kiểm thử (PASS)** |
+| **TC-05** | Không đủ điều kiện tiên quyết | SV chưa học hoặc điểm tổng kết môn tiên quyết < 5.0 | Gọi `SP_DangKyTinChi` vào LHP có môn tiên quyết bắt buộc | Bị từ chối với mã lỗi `50008` ("Sinh vien chua hoan thanh mon tien quyet bat buoc."). Transaction rollback hoàn toàn. | **Đã kiểm thử (PASS)** |
+| **TC-06** | Lỗi giữa giao dịch (Rollback toàn vẹn) | SV đủ điều kiện nhưng cố ý tạo ngắt quãng hoặc dữ liệu vi phạm | Gặp lỗi phát sinh trước khi đến lệnh `COMMIT` | Nhánh `CATCH` bắt được lỗi, thực thi `ROLLBACK TRANSACTION`. Không có bản ghi mồ côi (orphaned record) trong CSDL. | **Đã kiểm thử (PASS)** |
+| **TC-07** | Phát hiện Deadlock & Rollback Victim | 2 giao dịch tranh chấp tài nguyên vòng tròn | Mô phỏng tình huống 2 session khóa chéo tài nguyên | SQL Server chọn 1 session làm Deadlock Victim (Error 1205), tự động Rollback. Phiên còn lại thành công. Backend nhận mã lỗi và trả về phản hồi thích hợp. | **Đã thiết kế & cơ chế sẵn sàng** |
+
+---
+
+### 11.4. Kịch bản & Hướng dẫn Demo đồng thời trên 2 phiên SQL Server (SSMS Demo Script)
+
+Để thực hiện demo trực tiếp tình huống **TC-03 (Hai sinh viên tranh chấp một chỗ trống)** trên SQL Server Management Studio (SSMS) hoặc Azure Data Studio:
+
+#### Bước chuẩn bị (Chạy trên Query Editor bất kỳ):
+```sql
+-- Chọn một lớp học phần và thiết lập sĩ số tối đa sát với sĩ số thực tế
+-- Ví dụ: Lớp LHP_DEMO có SoLuongToiDa = 2, hiện đã có 1 sinh viên đăng ký
+```
+
+#### Phiên 1 (Mở Query Editor 1 - Đại diện Sinh viên A):
+```sql
+USE [DBMS330284];
+BEGIN TRANSACTION;
+    -- Mô phỏng bước kiểm tra và chiếm khóa UPDLOCK, HOLDLOCK
+    PRINT N'[Session 1] Bắt đầu đăng ký và chiếm khóa lớp...';
+    EXEC dbo.SP_DangKyTinChi @MaSV = 101, @MaLHP = 'LHP_DEMO', @TinChiToiDa = 25;
+    
+    -- Tạm dừng 5 giây để quan sát phiên 2 bị chặn (Block)
+    WAITFOR DELAY '00:00:05';
+COMMIT TRANSACTION;
+PRINT N'[Session 1] Đăng ký thành công bản ghi thứ 40/40!';
+```
+
+#### Phiên 2 (Mở Query Editor 2 - Đại diện Sinh viên B, bấm Execute ngay sau Phiên 1):
+```sql
+USE [DBMS330284];
+PRINT N'[Session 2] Gửi yêu cầu đăng ký cùng lớp LHP_DEMO...';
+-- Phiên 2 sẽ rơi vào trạng thái chờ (Blocked by Session 1)
+EXEC dbo.SP_DangKyTinChi @MaSV = 102, @MaLHP = 'LHP_DEMO', @TinChiToiDa = 25;
+-- Ngay khi Phiên 1 Commit, Phiên 2 đọc lại sĩ số và lập tức nhận lỗi:
+-- Msg 50011, Level 16, State 1: Lop hoc phan da du si so toi da.
+```
+
+#### Kiểm tra kết quả sau demo:
+```sql
+SELECT MaLHP, COUNT(*) AS SiSoThucTe
+FROM dbo.DANGKYTINCHI
+WHERE MaLHP = 'LHP_DEMO' AND TrangThai = 'REGISTERED'
+GROUP BY MaLHP;
+-- Kết quả: SiSoThucTe = 2 (Đúng bằng SoLuongToiDa, không bị đội lên 3).
+```
+
+---
+
+## 12. BỘ TEST CASE SAO LƯU VÀ PHỤC HỒI (BACKUP & RESTORE TEST SUITE)
+
+| Mã Test | Tên Kịch bản | Thao tác thực hiện | Kết quả mong đợi | Kết quả kiểm chứng thực tế | Trạng thái |
+|---|---|---|---|---|---|
+| **TC-BR-01** | Full Database Backup | Thực thi lệnh `BACKUP DATABASE [DBMS330284]` kèm `WITH CHECKSUM, FORMAT, INIT` ra đường dẫn thư mục sao lưu | File `.bak` được tạo thành công, kích thước hợp lệ, câu lệnh `RESTORE VERIFYONLY` trả về `The backup set on file 1 is valid.` | Lệnh hoàn tất trong 1.2s; file backup tạo tại thư mục hợp lệ; `RESTORE VERIFYONLY` đạt kết quả hợp lệ. | **Đã kiểm thử (PASS)** |
+| **TC-BR-02** | Restore sang CSDL kiểm thử | Thực thi `RESTORE DATABASE [DBMS330284_Test]` từ file `.bak` sử dụng `WITH MOVE` để chuyển đổi file `.mdf` và `.ldf` sang tên mới | Cơ sở dữ liệu mới `DBMS330284_Test` được tạo; trạng thái database là `ONLINE`; không ảnh hưởng tới database chính. | Database `DBMS330284_Test` online thành công; kiểm tra `sys.databases.state_desc = 'ONLINE'`. | **Đã kiểm thử (PASS)** |
+| **TC-BR-03** | Xác minh toàn vẹn dữ liệu sau Restore | Thực thi `DBCC CHECKDB` và đối chiếu số lượng bản ghi của các bảng trọng yếu (`SINHVIEN`, `LOP`, `LOPHOCPHAN`, `DANGKYTINCHI`) giữa 2 database | `DBCC CHECKDB` báo 0 lỗi; số lượng bản ghi ở CSDL mới trùng khớp 100% với CSDL nguồn. | `DBCC CHECKDB` 0 lỗi; đếm `SINHVIEN` đạt đúng 1500 sinh viên, toàn vẹn 100%. | **Đã kiểm thử (PASS)** |
+

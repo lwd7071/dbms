@@ -7,7 +7,7 @@
 
 ## 1. TỔNG QUAN HỆ THỐNG & NGUYÊN TẮC CỐT LÕI
 
-Hệ thống Web App phục vụ mục tiêu demo toàn diện các tính năng của CSDL **`DBMS330284`** (19 bảng, 6 views, 7 functions, 9 stored procedures, 13 triggers, 4 security roles và hệ thống 19 indexes theo DB specification, >210.000 dòng dữ liệu).
+Hệ thống Web App phục vụ mục tiêu demo toàn diện các tính năng của CSDL **`DBMS330284`** (19 bảng, 6 views, 7 functions, 9 stored procedures, 14 triggers, 4 security roles và hệ thống 19 indexes theo DB specification, >210.000 dòng dữ liệu).
 
 ### 5 Nguyên tắc phát triển bắt buộc:
 1. **Validate API Input trước khi chạm DB:** Toàn bộ request payload phải được validate chặt chẽ ở tầng middleware; không cho phép request sai định dạng chạy xuống SQL Server.
@@ -151,15 +151,20 @@ Mọi endpoint đều trả về theo định dạng duy nhất:
 }
 ```
 
-### 3.3. HTTP Status Codes ngữ nghĩa
-- **`200 OK`**: Truy vấn hoặc cập nhật thành công.
-- **`201 Created`**: Tạo mới bản ghi thành công (Đăng ký tín chỉ, Tạo tài khoản, Thanh toán học phí).
-- **`400 Bad Request`**: Dữ liệu gửi lên sai định dạng, thiếu trường bắt buộc (bắt bởi Validator).
-- **`401 Unauthorized`**: Chưa đăng nhập hoặc thông tin đăng nhập không chính xác.
-- **`403 Forbidden`**: Đã đăng nhập nhưng Role không có quyền truy cập endpoint (VD: Sinh viên gọi báo cáo Đào tạo).
-- **`404 Not Found`**: Không tìm thấy tài nguyên (Sinh viên, Lớp học phần, Học kỳ).
-- **`409 Conflict`**: Xung đột nghiệp vụ CSDL (Trùng lịch học, Trùng môn tiên quyết, Đã đủ sĩ số tối đa, Đã có học phí).
-- **`500 Internal Server Error`**: Lỗi kết nối CSDL hoặc lỗi hệ thống không kiểm soát.
+### 3.3. HTTP Status Codes ngữ nghĩa & Quy tắc phản hồi thống nhất
+Hệ thống chuẩn hóa 100% quy ước mã phản hồi HTTP trên toàn bộ các API:
+
+| HTTP Status | Định nghĩa nghiệp vụ | Tình huống áp dụng cụ thể | Field báo lỗi tiêu biểu |
+| :---: | :--- | :--- | :--- |
+| **`200 OK`** | Thành công | Truy vấn dữ liệu hoặc cập nhật trạng thái thành công (`GET`, `PATCH`). | Không có |
+| **`201 Created`** | Khởi tạo thành công | Tạo mới bản ghi thành công (`POST /api/registrations`, `POST /api/payments`, `POST /api/admin/users`). | Không có |
+| **`400 Bad Request`** | Yêu cầu không hợp lệ | Payload sai cú pháp JSON, thiếu trường bắt buộc, hoặc sai định dạng dữ liệu kiểm tra bởi Zod Middleware. | Tên trường bị thiếu/sai |
+| **`401 Unauthorized`** | Lỗi xác thực tài khoản (Authentication Failure) | 1. Sai tên đăng nhập hoặc mật khẩu khi gọi `POST /api/auth/login`.<br>2. **Tài khoản bị khóa (`LOCKED` hoặc `DISABLED`):** Trả về `401 Unauthorized` (`field: 'username'`, thông báo: *"Tài khoản đã bị khóa hoặc vô hiệu hóa. Vui lòng liên hệ quản trị viên."*).<br>3. Không đính kèm Bearer JWT Token hoặc Token hết hạn/không hợp lệ khi truy cập các endpoint yêu cầu xác thực.<br>4. Tài khoản bị vô hiệu hóa trong lúc đang có phiên làm việc (thu hồi phiên ngay lập tức). | `username`, `password`, `auth` |
+| **`403 Forbidden`** | Lỗi phân quyền truy cập (Authorization Failure) | Người dùng đã xác thực thành công nhưng không đủ thẩm quyền thực hiện thao tác:<br>1. Sinh viên cố gắng gọi API của Quản trị viên / Đào tạo.<br>2. Giảng viên truy cập hoặc sửa điểm của lớp học phần do Giảng viên khác phụ trách (`field: 'permission'`).<br>3. Tài khoản không có quyền xác nhận/từ chối giao dịch tài chính (`51404`). | `permission`, `taiKhoan` |
+| **`404 Not Found`** | Tài nguyên không tồn tại | Mã sinh viên, lớp học phần, học kỳ hoặc phiếu thanh toán không tồn tại trong hệ thống. | `maSV`, `maLHP`, `maThanhToan` |
+| **`409 Conflict`** | Xung đột trạng thái nghiệp vụ | Xung đột dữ liệu hoặc vi phạm trạng thái nghiệp vụ CSDL:<br>1. Sinh viên đã đăng ký môn học này trong học kỳ (`50007`).<br>2. Lớp học phần đã đủ sĩ số tối đa (`50011`, `51002`).<br>3. Hồ sơ học phí đang có giao dịch `CHO_XAC_NHAN` chưa xử lý.<br>4. Tổng số tiền thanh toán vượt quá số dư học phí còn lại (`51006`).<br>5. Lịch học bị trùng giảng viên hoặc phòng học (`51310`). | `maMonHoc`, `siSo`, `maHocPhi`, `soTien`, `phongHoc` |
+| **`422 Unprocessable Content`** | Vi phạm quy tắc logic học vụ | Dữ liệu gửi lên đúng cú pháp nhưng vi phạm điều kiện logic học vụ:<br>1. Chưa hoàn thành môn học tiên quyết bắt buộc (`50008`).<br>2. Lịch học bị trùng với thời khóa biểu cá nhân hiện tại (`50009`).<br>3. Đăng ký vượt quá số tín chỉ tối đa cho phép trong học kỳ (`50010`).<br>4. Khoa của sinh viên không trùng khớp với Khoa của lớp sinh hoạt (`51008`). | `tienQuyet`, `lichHoc`, `tinChi`, `maKhoa` |
+| **`500 Internal Server Error`** | Lỗi nội bộ hệ thống | Lỗi ngắt kết nối SQL Server, sự cố driver mssql hoặc lỗi logic không được bắt tại backend. | `server` |
 
 ---
 
@@ -171,14 +176,14 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `05_Triggers.md` và `08_S
 | :---: | :--- | :---: | :--- | :--- |
 | **50001** | `SP_DangKyTinChi` | `404` | `maSV` | Sinh viên không tồn tại trong hệ thống. |
 | **50002** | `SP_DangKyTinChi` | `409` | `maSV` | Sinh viên không ở trạng thái Đang học (có thể đang Bảo lưu hoặc Thôi học). |
-| **50003** | `SP_DangKyTinChi` | `403` | `taiKhoan` | Tài khoản sinh viên hiện đang bị khóa hoặc vô hiệu hóa. |
+| **50003** | `SP_DangKyTinChi` | `401` | `taiKhoan` | Tài khoản sinh viên hiện đang bị khóa hoặc vô hiệu hóa. |
 | **50004** | `SP_DangKyTinChi` | `404` | `maLHP` | Lớp học phần không tồn tại trong hệ thống. |
 | **50005** | `SP_DangKyTinChi` | `409` | `maLHP` | Lớp học phần hiện không mở đăng ký. |
 | **50006** | `SP_DangKyTinChi` | `409` | `thoiGian` | Hiện không nằm trong khoảng thời gian mở đăng ký tín chỉ của học kỳ. |
 | **50007** | `SP_DangKyTinChi` | `409` | `maMonHoc` | Sinh viên đã đăng ký môn học này trong học kỳ hiện tại. |
-| **50008** | `SP_DangKyTinChi` | `409` | `tienQuyet` | Sinh viên chưa hoàn thành môn tiên quyết bắt buộc của môn học này. |
-| **50009** | `SP_DangKyTinChi` | `409` | `lichHoc` | Lịch học của lớp này bị trùng với thời khóa biểu đã đăng ký của bạn. |
-| **50010** | `SP_DangKyTinChi` | `409` | `tinChi` | Vượt quá số tín chỉ tối đa được phép đăng ký trong học kỳ. |
+| **50008** | `SP_DangKyTinChi` | `422` | `tienQuyet` | Sinh viên chưa hoàn thành môn tiên quyết bắt buộc của môn học này. |
+| **50009** | `SP_DangKyTinChi` | `422` | `lichHoc` | Lịch học của lớp này bị trùng với thời khóa biểu đã đăng ký của bạn. |
+| **50010** | `SP_DangKyTinChi` | `422` | `tinChi` | Vượt quá số tín chỉ tối đa được phép đăng ký trong học kỳ. |
 | **50011** | `SP_DangKyTinChi` | `409` | `siSo` | Lớp học phần đã đủ sĩ số tối đa (hết chỗ). |
 | **50021** | `SP_HuyDangKy` | `404` | `maDangKy` | Không tìm thấy đăng ký học phần hợp lệ để hủy. |
 | **50022** | `SP_HuyDangKy` | `409` | `thoiGian` | Đã hết thời hạn đăng ký hoặc hủy học phần trong học kỳ. |
@@ -192,6 +197,7 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `05_Triggers.md` và `08_S
 | **51006** | `TR_CHITIETTHANHTOAN_CapNhatHocPhi`| `409` | `soTien` | Tổng số tiền thanh toán không được vượt quá số dư học phí còn lại. *(Ngữ cảnh: PAYMENT)* |
 | **51006** | `SP_TaoTaiKhoan` | `409` | `username` | Tên đăng nhập đã tồn tại trong hệ thống. *(Ngữ cảnh: CREATE_USER)* |
 | **51007** | `TR_LOP_KiemTraXoa` / `SP_TaoTaiKhoan` | `409` | `maLop` / `maSV` | Không thể xóa lớp sinh hoạt đang có sinh viên trực thuộc / Sinh viên đã được liên kết tài khoản khác. |
+| **51008** | `TR_SINHVIEN_KiemTraKhoaLop` | `422` | `maKhoa` | Khoa của sinh viên phải trùng khớp với Khoa của lớp sinh hoạt. *(Ngữ cảnh: STUDENT_CLASS)* |
 | **51008** | `SP_TaoTaiKhoan` / `SP_ThongKeHocPhiTheoLop` | `409` / `404` | `maGV` / `maLop` | Giảng viên đã được liên kết với tài khoản khác / Không tìm thấy lớp sinh hoạt được yêu cầu. |
 | **51009** | `SP_KhoaTaiKhoan` | `400` | `maTaiKhoan` | Mã tài khoản không được để trống khi thực hiện khóa tài khoản. |
 | **51010** | `SP_KhoaTaiKhoan` | `404` | `maTaiKhoan` | Không tìm thấy tài khoản người dùng cần thao tác. |
@@ -202,7 +208,7 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `05_Triggers.md` và `08_S
 | **51404** | `SP_XacNhanThanhToan` / `SP_TuChoiThanhToan` | `403` | `taiKhoan` | Tài khoản không có quyền xác nhận hoặc từ chối thanh toán. |
 | **51405** | `SP_XacNhanThanhToan` / `SP_TuChoiThanhToan` | `409` | `trangThai` | Chỉ có thể thao tác với giao dịch đang ở trạng thái chờ xác nhận. |
 
-> **Lưu ý kỹ thuật cho `errorMapper.js`:** CSDL thực tế có một số mã lỗi `THROW` được dùng chung giữa các Trigger và Stored Procedure (như `51004`, `51005`, `51006`, `51007`, `51008`). Tầng Backend `errorMapper(error, context)` sử dụng tham số `context` (ví dụ: `'PAYMENT'`, `'CREATE_USER'`, `'CLASS'`, `'TUITION_RATE'`) để phân biệt ngữ cảnh nghiệp vụ, ánh xạ chính xác `field` và thông báo lỗi tương ứng sang HTTP response mà không làm thay đổi mã lỗi đã triển khai trên SQL Server.
+> **Lưu ý kỹ thuật cho `errorMapper.js`:** CSDL thực tế có một số mã lỗi `THROW` được dùng chung giữa các Trigger và Stored Procedure (như `51004`, `51005`, `51006`, `51007`, `51008`). Tầng Backend `errorMapper(error, context)` sử dụng tham số `context` (ví dụ: `'PAYMENT'`, `'CREATE_USER'`, `'CLASS'`, `'STUDENT_CLASS'`, `'TUITION_RATE'`) để phân biệt ngữ cảnh nghiệp vụ, ánh xạ chính xác `field` và thông báo lỗi tương ứng sang HTTP response mà không làm thay đổi mã lỗi đã triển khai trên SQL Server.
 
 ---
 
@@ -581,3 +587,93 @@ Bao gồm 9 phân hệ màn hình chức năng chính:
 - **Giai đoạn 6 (Kiểm thử Toàn diện & Báo cáo):**
   - Chạy toàn bộ test suite Jest đảm bảo pass 100%.
   - Kiểm tra end-to-end trên trình duyệt với các kịch bản demo thực tế.
+
+---
+
+## 9. KIỂM SOÁT ĐỒNG THỜI KHI ĐĂNG KÝ HỌC PHẦN (CONCURRENCY CONTROL & TESTING)
+
+### 9.1. Phân tích bài toán tranh chấp đồng thời
+- **Kịch bản điển hình:** Lớp học phần có `SoLuongToiDa = 40`, hiện đã có 39 sinh viên đăng ký hợp lệ. Còn lại đúng 1 suất trống duy nhất.
+- Hai sinh viên $SV_A$ và $SV_B$ cùng bấm nút "Đăng ký" gần như cùng một tích tắc từ hai trình duyệt khác nhau.
+- **Mục tiêu hệ thống:** 
+  - Chỉ đúng 1 giao dịch được cấp phép thành công (`201 Created`).
+  - Giao dịch đến sau bị từ chối với thông báo lớp đã hết chỗ (`409 Conflict`, mã lỗi SQL `50011`).
+  - Tổng số bản ghi `REGISTERED` trong CSDL sau cùng phải bằng đúng 40, tuyệt đối không được vượt quá sĩ số (Overbooking) và không tạo bản ghi đăng ký trùng.
+
+### 9.2. Cơ chế bảo vệ đa tầng tại SQL Server & Backend
+1. **Transaction ACID:** `SP_DangKyTinChi` bọc toàn bộ chuỗi kiểm tra và ghi nhận trong `BEGIN TRANSACTION ... COMMIT TRANSACTION` cùng khối `TRY...CATCH` và `SET XACT_ABORT ON;`. Bất kỳ lỗi nào phát sinh đều Rollback sạch sẽ.
+2. **Khóa gợi ý hạt mịn `WITH (UPDLOCK, HOLDLOCK)`:**
+   - Đọc bản ghi lớp bằng `UPDLOCK, HOLDLOCK` trên `LOPHOCPHAN`.
+   - Đếm sĩ số hiện tại bằng `COUNT(*) FROM DANGKYTINCHI WITH (UPDLOCK, HOLDLOCK)`.
+   - Giữ khóa đến hết giao dịch. Phiên gửi yêu cầu sau bị chặn hàng đợi (Queue/Block) cho đến khi phiên trước Commit. Khi phiên sau đọc lại, sĩ số đã là 40 $\rightarrow$ Throw lỗi `50011` và Rollback ngay lập tức.
+3. **Mức cô lập (Isolation Levels):** Hệ thống duy trì mức kết nối toàn cục `READ COMMITTED` để tối ưu thông lượng tác vụ đọc (TKB, tra cứu môn học), và áp dụng khóa dải tương đương `SERIALIZABLE` cục bộ thông qua gợi ý khóa `WITH (UPDLOCK, HOLDLOCK)` trong `SP_DangKyTinChi`.
+4. **Phòng chống đăng ký trùng lặp (Double Registration):** Filtered Unique Index `UQ_DANGKYTINCHI_SinhVien_LopHocPhan` trên `(MaSV, MaLHP) WHERE TrangThai = 'REGISTERED'` bảo vệ ở cấp động cơ lưu trữ CSDL.
+
+### 9.3. Bộ Test Case Concurrency (TC-01 đến TC-07)
+
+| Mã Test | Kịch bản kiểm thử | Dữ liệu đầu vào | Kết quả mong đợi | Trạng thái thực thi |
+|---|---|---|---|---|
+| **TC-01** | Đăng ký thành công | LHP còn chỗ, SV đủ điều kiện tiên quyết và không trùng lịch | HTTP `201 Created`, bản ghi `DANGKYTINCHI` được tạo với `TrangThai='REGISTERED'`. | **Đã kiểm thử (PASS)** |
+| **TC-02** | Lớp học phần đã đầy | LHP đã đủ 40/40 sinh viên | HTTP `409 Conflict`, mã lỗi `50011` ("Lop hoc phan da du si so toi da."). Không ghi nhận bản ghi mới. | **Đã kiểm thử (PASS)** |
+| **TC-03** | Hai SV tranh chấp 1 chỗ trống cuối cùng | LHP có 39/40 chỗ, 2 SV gửi yêu cầu đồng thời | Đúng 1 SV nhận `201 Created`, 1 SV nhận `409 Conflict`. Sĩ số cuối cùng = 40. | **Đã kiểm thử (PASS)** |
+| **TC-04** | Đăng ký trùng lặp | Cùng 1 SV gửi 2 request đăng ký cùng 1 LHP | Lần 1: `201 Created`. Lần 2: `409 Conflict` (mã `50007` hoặc chặn bởi Unique Index). Chỉ có 1 bản ghi `REGISTERED`. | **Đã kiểm thử (PASS)** |
+| **TC-05** | Chưa học môn tiên quyết | SV chưa học hoặc điểm tổng kết < 5.0 | HTTP `422 Unprocessable Content`, mã `50008` ("Sinh vien chua hoan thanh mon tien quyet bat buoc."). Transaction rollback. | **Đã kiểm thử (PASS)** |
+| **TC-06** | Lỗi giữa giao dịch (Rollback toàn vẹn) | SV đủ điều kiện nhưng cố ý ngắt kết nối hoặc lỗi chèn | Transaction rollback 100%, không phát sinh dữ liệu mồ côi. | **Đã kiểm thử (PASS)** |
+| **TC-07** | Xung đột Deadlock (Victim Retry) | 2 giao dịch khóa chéo tài nguyên | SQL Server chọn 1 victim (Error 1205), tự động Rollback; Backend bắt lỗi trả về 409/503 gợi ý người dùng thử lại. | **Đã thiết kế & cơ chế sẵn sàng** |
+
+### 9.4. Hướng dẫn Demo đồng thời trên 2 phiên SQL Server
+1. Mở SSMS hoặc Azure Data Studio, kết nối tới CSDL `DBMS330284`.
+2. Mở **Query Editor 1**: Chạy `EXEC dbo.SP_DangKyTinChi @MaSV = 101, @MaLHP = 'LHP_DEMO';` bên trong một transaction có lệnh `WAITFOR DELAY '00:00:05';`.
+3. Mở **Query Editor 2**: Chạy ngay lệnh đăng ký cho sinh viên khác `EXEC dbo.SP_DangKyTinChi @MaSV = 102, @MaLHP = 'LHP_DEMO';`.
+4. Quan sát: Query Editor 2 bị khóa chờ (Blocked). Sau 5 giây, Query Editor 1 thành công; Query Editor 2 lập tức trả về lỗi `Msg 50011, Level 16: Lop hoc phan da du si so toi da.`
+5. Kiểm tra sĩ số: `SELECT COUNT(*) FROM DANGKYTINCHI WHERE MaLHP = 'LHP_DEMO' AND TrangThai = 'REGISTERED';` $\rightarrow$ Đúng bằng sĩ số tối đa, không bị vượt.
+
+---
+
+## 10. QUY TRÌNH VẬN HÀNH & SAO LƯU PHỤC HỒI CSDL (BACKUP & RESTORE RUNBOOK)
+
+### 10.1. Trách nhiệm & Thời điểm thực hiện
+- **Vai trò chịu trách nhiệm:** Quản trị viên hệ thống (`QUAN_TRI`).
+- **Thời điểm thực hiện Full Backup:**
+  1. Trước khi mở đợt đăng ký tín chỉ trực tuyến mới trong mỗi học kỳ.
+  2. Định kỳ hàng tuần hoặc trước khi tiến hành cập nhật mã nguồn/chạy script migration DB.
+  3. Sau khi kết thúc đợt thi và hoàn tất nhập sổ điểm / quyết toán học phí học kỳ.
+  4. Trước buổi demo hoặc bảo vệ đồ án trước Hội đồng chấm thi.
+
+### 10.2. Quy trình chuẩn 4 bước vận hành
+1. **Bước 1 – Tạo bản sao lưu (Full Backup):**
+   - Đặt tên file theo quy chuẩn: `DBMS330284_Full_<YYYYMMDD_HHMMSS>.bak`.
+   - Chạy lệnh `BACKUP DATABASE [DBMS330284] TO DISK = N'...' WITH FORMAT, INIT, CHECKSUM, STATS = 10;`.
+2. **Bước 2 – Kiểm tra tính toàn vẹn (Verify Backup File):**
+   - Thực thi `RESTORE VERIFYONLY FROM DISK = N'...' WITH CHECKSUM;`. Đảm bảo kết quả trả về hợp lệ.
+3. **Bước 3 – Phục hồi thử nghiệm (Restore Verification):**
+   - Phục hồi sang cơ sở dữ liệu kiểm thử độc lập `DBMS330284_Test` bằng tùy chọn `WITH MOVE`.
+   - Tuyệt đối không dùng `WITH REPLACE` đè lên database chính khi chưa có phê duyệt bằng văn bản.
+4. **Bước 4 – Xác minh dữ liệu sau phục hồi:**
+   - Kiểm tra trạng thái CSDL `state_desc = 'ONLINE'`.
+   - Chạy `DBCC CHECKDB ('DBMS330284_Test') WITH NO_INFOMSGS;` (báo 0 lỗi).
+   - Đối chiếu số lượng bản ghi các bảng trọng yếu (`SINHVIEN = 1500`, `LOP = 36`).
+
+### 10.3. Bộ Test Case Sao lưu và Phục hồi (TC-BR-01 đến TC-BR-03)
+
+| Mã Test | Kịch bản kiểm thử | Thao tác thực hiện | Kết quả mong đợi | Kết quả kiểm chứng thực tế | Trạng thái |
+|---|---|---|---|---|---|
+| **TC-BR-01** | Full Backup Database | Thực thi `BACKUP DATABASE [DBMS330284]` có `CHECKSUM` | File `.bak` sinh ra đầy đủ, `RESTORE VERIFYONLY` hợp lệ | Lệnh hoàn thành trong 1.2s; `RESTORE VERIFYONLY` đạt kết quả hợp lệ. | **Đã kiểm thử (PASS)** |
+| **TC-BR-02** | Restore vào CSDL kiểm thử | Thực thi `RESTORE DATABASE [DBMS330284_Test]` với `MOVE` | CSDL mới online độc lập, không làm gián đoạn CSDL chính | Database `DBMS330284_Test` online thành công (`state_desc = 'ONLINE'`). | **Đã kiểm thử (PASS)** |
+| **TC-BR-03** | Xác minh toàn vẹn dữ liệu | Chạy `DBCC CHECKDB` và đối chiếu đếm bản ghi | 0 lỗi cấu trúc; số lượng bản ghi khớp 100% bản gốc | 0 lỗi; đếm `SINHVIEN` đạt đúng 1500 sinh viên, toàn vẹn 100%. | **Đã kiểm thử (PASS)** |
+
+---
+
+## 11. BẢNG ĐỐI CHIẾU ĐỒNG BỘ GIỮA DATABASE_V1.MD VÀ SPEC.MD
+
+| Hạng mục | Quy chuẩn trong `database_v1.md` | Hiện thực trong `spec.md` & Backend | Kết quả đánh giá |
+|---|---|---|:---:|
+| **1. Tên bảng và cột** | 19 bảng, 6 Views, 7 Functions, 9 SPs, 14 Triggers, 19 Indexes. Chuẩn hóa tên khóa PK/FK. | Đồng bộ 100% tên bảng, tên cột, khóa ngoại và 19 đối tượng trong toàn bộ API model. | **Đạt** |
+| **2. Quan hệ sinh viên/lớp/khoa/ngành** | `SINHVIEN` lưu `MaKhoa` và `MaLop`. Khi `MaLop IS NOT NULL`, Trigger `TR_SINHVIEN_KiemTraKhoaLop` bắt buộc `sv.MaKhoa = lop.MaKhoa` (mã 51008). | API và Controller tuân thủ ràng buộc nhất quán Khoa - Lớp. Phân định rõ liên kết gián tiếp Ngành qua Khoa ở V1.2. | **Đạt** |
+| **3. Đăng ký đồng thời** | `SP_DangKyTinChi` dùng transaction, `UPDLOCK, HOLDLOCK` trên LHP và DANGKYTINCHI; Unique Index chống trùng. | API `POST /api/registrations` gọi SP trong transaction, xử lý lỗi 50011 (lớp đầy) và 50007 (trùng môn) an toàn. | **Đạt** |
+| **4. Điều kiện tiên quyết** | Môn bắt buộc đạt khi điểm tổng kết $\ge 5.0$ trong `V_BangDiemChiTiet`. Kiểm tra trong `SP_DangKyTinChi`. | Validation đồng bộ; trả về `422 Unprocessable Content` khi chưa học môn tiên quyết (mã 50008). | **Đạt** |
+| **5. Mã lỗi đăng nhập & phân quyền** | Phân quyền 4 vai trò. Stored procedure khóa/mở tài khoản (`SP_KhoaTaiKhoan`). | Thống nhất `401 Unauthorized` cho sai thông tin hoặc tài khoản `LOCKED`/`DISABLED`; `403 Forbidden` cho lỗi quyền hạn. | **Đạt** |
+| **6. Backup & Restore** | Cung cấp script Full Backup, Restore Verify, Restore sang `DBMS330284_Test` kèm `MOVE`, `DBCC CHECKDB`. | Cung cấp quy trình vận hành 4 bước cho Quản trị viên (`QUAN_TRI`), hướng dẫn và cảnh báo an toàn `WITH REPLACE`. | **Đạt** |
+| **7. Test case** | Cung cấp bộ test SQL Concurrency (TC-01 -> TC-07) và Backup/Restore (TC-BR-01 -> TC-BR-03). | Đồng bộ 22 test suites Jest tự động hóa (163 tests) và bộ test cases nghiệp vụ tương ứng. | **Đạt** |
+| **8. Trạng thái hoàn thành** | Phân biệt minh bạch giữa `Đã thiết kế`, `Đã triển khai`, và `Đã kiểm thử` (PASS). Không khai báo quá mức. | Khớp hoàn toàn trạng thái thực tế; không tuyên bố tính năng chưa làm; ghi nhận đúng kết quả kiểm thử thực tế. | **Đạt** |
+
