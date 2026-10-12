@@ -144,8 +144,50 @@ const getClassStudents = async (maLHP) => {
   }));
 };
 
+// Cập nhật điểm cho sinh viên trong lớp học phần (UPSERT vào bảng DIEMSO)
+const updateClassGrades = async (maLHP, grades) => {
+  const pool = await getPool();
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin();
+
+  try {
+    let updatedCount = 0;
+    for (const g of grades) {
+      const request = new sql.Request(transaction);
+      request.input('MaDangKy', sql.BigInt, g.maDangKy);
+      request.input('DiemQuaTrinh', sql.Decimal(4, 2), g.diemQuaTrinh !== undefined ? g.diemQuaTrinh : null);
+      request.input('DiemGiuaKy', sql.Decimal(4, 2), g.diemGiuaKy !== undefined ? g.diemGiuaKy : null);
+      request.input('DiemCuoiKy', sql.Decimal(4, 2), g.diemCuoiKy !== undefined ? g.diemCuoiKy : null);
+
+      await request.query(`
+        IF EXISTS (SELECT 1 FROM dbo.DIEMSO WHERE MaDangKy = @MaDangKy)
+        BEGIN
+          UPDATE dbo.DIEMSO
+          SET DiemQuaTrinh = @DiemQuaTrinh,
+              DiemGiuaKy = @DiemGiuaKy,
+              DiemCuoiKy = @DiemCuoiKy
+          WHERE MaDangKy = @MaDangKy;
+        END
+        ELSE
+        BEGIN
+          INSERT INTO dbo.DIEMSO (MaDangKy, DiemQuaTrinh, DiemGiuaKy, DiemCuoiKy, TyTrongQT, TyTrongGK, TyTrongCK)
+          VALUES (@MaDangKy, @DiemQuaTrinh, @DiemGiuaKy, @DiemCuoiKy, 20, 30, 50);
+        END
+      `);
+      updatedCount++;
+    }
+
+    await transaction.commit();
+    return { updatedCount };
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
+  }
+};
+
 module.exports = {
   getLecturerSchedule,
   getLecturerClasses,
-  getClassStudents
+  getClassStudents,
+  updateClassGrades
 };

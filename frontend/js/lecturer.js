@@ -143,6 +143,8 @@ if (typeof document !== 'undefined') {
   });
 }
 
+let currentOpenMaLHP = null;
+
 // 3. Xem danh sách sinh viên và bảng điểm trong lớp (UI/UX Pro Max)
 async function viewClassStudents(maLHP, tenMonHoc) {
   const modal = document.getElementById('classStudentsModal');
@@ -152,6 +154,8 @@ async function viewClassStudents(maLHP, tenMonHoc) {
   const classFilter = document.getElementById('classStudentClassFilter');
   const tbody = document.getElementById('classStudentsTbody');
   if (!modal || !tbody) return;
+
+  currentOpenMaLHP = maLHP;
 
   // Khóa cuộn trang nền để trải nghiệm cuộn modal mượt mà
   document.body.style.overflow = 'hidden';
@@ -182,7 +186,56 @@ async function viewClassStudents(maLHP, tenMonHoc) {
   }
 }
 
-// Hàm render bảng sinh viên
+// Tính điểm tổng kết và điểm chữ realtime
+function calculateGrade(qt, gk, ck) {
+  if (qt === null || gk === null || ck === null || isNaN(qt) || isNaN(gk) || isNaN(ck)) {
+    return { diemTongKet: null, diemChu: '-' };
+  }
+  const total = Number((qt * 0.2 + gk * 0.3 + ck * 0.5).toFixed(2));
+  let letter = 'F';
+  if (total >= 8.5) letter = 'A';
+  else if (total >= 8.0) letter = 'B+';
+  else if (total >= 7.0) letter = 'B';
+  else if (total >= 6.5) letter = 'C+';
+  else if (total >= 5.5) letter = 'C';
+  else if (total >= 5.0) letter = 'D+';
+  else if (total >= 4.0) letter = 'D';
+  else letter = 'F';
+  return { diemTongKet: total, diemChu: letter };
+}
+
+// Xử lý khi giảng viên nhập điểm vào ô input
+function onGradeInputChange(inputElem, maDangKy, field) {
+  const valStr = inputElem.value.trim();
+  const val = valStr === '' ? null : Number(valStr);
+
+  if (val !== null && (isNaN(val) || val < 0 || val > 10)) {
+    inputElem.style.borderColor = '#DC2626';
+    inputElem.style.backgroundColor = '#FEF2F2';
+  } else {
+    inputElem.style.borderColor = '';
+    inputElem.style.backgroundColor = '';
+  }
+
+  const student = currentClassStudents.find(s => s.maDangKy === maDangKy);
+  if (student) {
+    student[field] = val;
+    const { diemTongKet, diemChu } = calculateGrade(student.diemQuaTrinh, student.diemGiuaKy, student.diemCuoiKy);
+    student.diemTongKet = diemTongKet;
+    student.diemChu = diemChu;
+
+    const totalEl = document.getElementById(`total-grade-${maDangKy}`);
+    const letterEl = document.getElementById(`letter-grade-${maDangKy}`);
+    if (totalEl) totalEl.textContent = diemTongKet !== null ? diemTongKet.toFixed(2) : '-';
+    if (letterEl) {
+      letterEl.innerHTML = diemChu !== '-' 
+        ? `<span class="badge ${diemChu === 'F' ? 'badge-danger' : 'badge-neutral'}">${diemChu}</span>`
+        : '-';
+    }
+  }
+}
+
+// Hàm render bảng sinh viên với ô input điểm
 function renderClassStudentsTable(students) {
   const tbody = document.getElementById('classStudentsTbody');
   const countBadge = document.getElementById('classStudentsCountBadge');
@@ -198,7 +251,7 @@ function renderClassStudentsTable(students) {
   }
 
   if (summaryElem) {
-    summaryElem.textContent = `Hiển thị ${students.length} sinh viên. Cuộn chuột để xem chi tiết.`;
+    summaryElem.textContent = `Hiển thị ${students.length} sinh viên. Nhập điểm và bấm Lưu bảng điểm.`;
   }
 
   if (!students || students.length === 0) {
@@ -223,15 +276,95 @@ function renderClassStudentsTable(students) {
           ${s.lopHoc || s.maLop || '-'}
         </span>
       </td>
-      <td class="cell-nowrap" style="text-align: right; font-family: monospace;">${s.diemQuaTrinh !== null ? s.diemQuaTrinh.toFixed(1) : '-'}</td>
-      <td class="cell-nowrap" style="text-align: right; font-family: monospace;">${s.diemGiuaKy !== null ? s.diemGiuaKy.toFixed(1) : '-'}</td>
-      <td class="cell-nowrap" style="text-align: right; font-family: monospace;">${s.diemCuoiKy !== null ? s.diemCuoiKy.toFixed(1) : '-'}</td>
-      <td class="cell-nowrap" style="text-align: right; font-weight: 700; font-family: monospace; color: var(--color-primary);">${s.diemTongKet !== null ? s.diemTongKet.toFixed(2) : '-'}</td>
-      <td class="cell-nowrap" style="text-align: center; font-weight: 600;">
+      <td class="cell-nowrap" style="text-align: center;">
+        <input 
+          type="number" 
+          class="form-control form-control-sm" 
+          min="0" max="10" step="0.1" 
+          style="width: 75px; text-align: right; display: inline-block; font-family: monospace; font-size: 0.8125rem;"
+          value="${s.diemQuaTrinh !== null && s.diemQuaTrinh !== undefined ? s.diemQuaTrinh : ''}"
+          oninput="onGradeInputChange(this, ${s.maDangKy}, 'diemQuaTrinh')"
+          placeholder="-"
+        >
+      </td>
+      <td class="cell-nowrap" style="text-align: center;">
+        <input 
+          type="number" 
+          class="form-control form-control-sm" 
+          min="0" max="10" step="0.1" 
+          style="width: 75px; text-align: right; display: inline-block; font-family: monospace; font-size: 0.8125rem;"
+          value="${s.diemGiuaKy !== null && s.diemGiuaKy !== undefined ? s.diemGiuaKy : ''}"
+          oninput="onGradeInputChange(this, ${s.maDangKy}, 'diemGiuaKy')"
+          placeholder="-"
+        >
+      </td>
+      <td class="cell-nowrap" style="text-align: center;">
+        <input 
+          type="number" 
+          class="form-control form-control-sm" 
+          min="0" max="10" step="0.1" 
+          style="width: 75px; text-align: right; display: inline-block; font-family: monospace; font-size: 0.8125rem;"
+          value="${s.diemCuoiKy !== null && s.diemCuoiKy !== undefined ? s.diemCuoiKy : ''}"
+          oninput="onGradeInputChange(this, ${s.maDangKy}, 'diemCuoiKy')"
+          placeholder="-"
+        >
+      </td>
+      <td class="cell-nowrap" style="text-align: right; font-weight: 700; font-family: monospace; color: var(--color-primary);" id="total-grade-${s.maDangKy}">
+        ${s.diemTongKet !== null && s.diemTongKet !== undefined ? s.diemTongKet.toFixed(2) : '-'}
+      </td>
+      <td class="cell-nowrap" style="text-align: center; font-weight: 600;" id="letter-grade-${s.maDangKy}">
         ${s.diemChu ? `<span class="badge ${s.diemChu === 'F' ? 'badge-danger' : 'badge-neutral'}">${s.diemChu}</span>` : '-'}
       </td>
     </tr>
   `).join('');
+}
+
+// Lưu bảng điểm cả lớp lên backend API
+async function saveClassGrades() {
+  if (!currentOpenMaLHP) return;
+  const saveBtn = document.getElementById('btnSaveClassGrades');
+  const originalText = saveBtn ? saveBtn.innerHTML : '💾 Lưu bảng điểm';
+
+  const invalidGrades = currentClassStudents.some(s => {
+    const check = v => v === null || v === undefined || (!isNaN(v) && v >= 0 && v <= 10);
+    return !check(s.diemQuaTrinh) || !check(s.diemGiuaKy) || !check(s.diemCuoiKy);
+  });
+
+  if (invalidGrades) {
+    showToast('Vui lòng kiểm tra lại: Điểm số phải từ 0.0 đến 10.0', 'warning');
+    return;
+  }
+
+  const payload = {
+    grades: currentClassStudents.map(s => ({
+      maDangKy: s.maDangKy,
+      diemQuaTrinh: s.diemQuaTrinh ?? null,
+      diemGiuaKy: s.diemGiuaKy ?? null,
+      diemCuoiKy: s.diemCuoiKy ?? null
+    }))
+  };
+
+  if (payload.grades.length === 0) {
+    showToast('Lớp chưa có sinh viên nào để lưu điểm', 'info');
+    return;
+  }
+
+  try {
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '⏳ Đang lưu...';
+    }
+
+    const res = await api.put(`/lecturers/classes/${currentOpenMaLHP}/grades`, payload);
+    showToast(`Đã lưu thành công điểm của ${res.updatedCount || payload.grades.length} sinh viên!`, 'success');
+  } catch (err) {
+    showToast(`Lỗi khi lưu bảng điểm: ${err.message}`, 'danger');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = originalText;
+    }
+  }
 }
 
 // Hàm lọc sinh viên tức thời
@@ -270,3 +403,6 @@ window.loadLecturerSchedule = loadLecturerSchedule;
 window.viewClassStudents = viewClassStudents;
 window.closeClassStudentsModal = closeClassStudentsModal;
 window.filterClassStudents = filterClassStudents;
+window.onGradeInputChange = onGradeInputChange;
+window.saveClassGrades = saveClassGrades;
+

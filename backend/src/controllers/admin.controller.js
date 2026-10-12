@@ -130,6 +130,35 @@ const getAuditLogs = async (req, res, next) => {
   }
 };
 
+const createStudent = async (req, res, next) => {
+  try {
+    const student = await adminRepo.createStudent(req.body);
+    return res.status(201).json(successResponse(student));
+  } catch (err) {
+    next(err);
+  }
+};
+
+const updateStudent = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const student = await adminRepo.updateStudent(Number(id), req.body);
+    return res.status(200).json(successResponse(student));
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deleteStudent = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await adminRepo.deleteStudent(Number(id));
+    return res.status(200).json(successResponse(result));
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getTuitionReport,
   getUsers,
@@ -139,5 +168,8 @@ module.exports = {
   getStudents,
   getAllClasses,
   getRegistrations,
-  getAuditLogs
+  getAuditLogs,
+  createStudent,
+  updateStudent,
+  deleteStudent
 };

@@ -63,8 +63,20 @@ const getClassStudents = async (req, res, next) => {
   }
 };
 
+const updateGrades = async (req, res, next) => {
+  try {
+    const { maLHP } = req.params;
+    const { grades } = req.body;
+    const result = await lecturerService.updateGrades(maLHP, grades);
+    return res.status(200).json(successResponse(result));
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getSchedule,
   getClasses,
-  getClassStudents
+  getClassStudents,
+  updateGrades
 };

@@ -167,9 +167,9 @@
                 <th style="width: 100px;">Mã SV</th>
                 <th>Họ và tên</th>
                 <th>Lớp sinh hoạt</th>
-                <th style="text-align: right; width: 75px;">Quá trình</th>
-                <th style="text-align: right; width: 75px;">Giữa kỳ</th>
-                <th style="text-align: right; width: 75px;">Cuối kỳ</th>
+                <th style="text-align: center; width: 95px;">Quá trình (20%)</th>
+                <th style="text-align: center; width: 95px;">Giữa kỳ (30%)</th>
+                <th style="text-align: center; width: 95px;">Cuối kỳ (50%)</th>
                 <th style="text-align: right; width: 85px;">Tổng kết</th>
                 <th style="text-align: center; width: 80px;">Điểm chữ</th>
               </tr>
@@ -180,11 +180,16 @@
           </table>
         </div>
       </div>
-      <div class="modal-footer">
-        <div id="classStudentsStatusSummary" style="margin-right: auto; font-size: 0.8125rem; color: var(--color-text-muted);">
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <div id="classStudentsStatusSummary" style="font-size: 0.8125rem; color: var(--color-text-muted);">
           Cuộn chuột để xem toàn bộ danh sách
         </div>
-        <button class="btn btn-secondary" onclick="closeClassStudentsModal()">Đóng</button>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button id="btnSaveClassGrades" class="btn btn-primary" onclick="saveClassGrades()">
+            💾 Lưu bảng điểm
+          </button>
+          <button class="btn btn-secondary" onclick="closeClassStudentsModal()">Đóng</button>
+        </div>
       </div>
     </div>
   </div>

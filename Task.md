@@ -1331,5 +1331,58 @@
 - None
 
 ### Next Step
-- Sẵn sàng bàn giao và hoàn thiện các yêu cầu tiếp theo từ người dùng.
+- Triển khai Phase 18: Bổ sung chức năng Nhập điểm cho Giảng viên và CRUD Sinh viên cho Quản trị viên theo TDD và UI/UX Pro Max.
+
+## Phase 18: Lecturer Grade Management & Admin Student CRUD (TDD & UI/UX Pro Max)
+
+- Status: DONE
+- Date: 2026-10-12
+- Files changed:
+  - `backend/src/validators/lecturer.validator.js`
+  - `backend/src/validators/student.validator.js`
+  - `backend/src/repositories/lecturer.repository.js`
+  - `backend/src/repositories/admin.repository.js`
+  - `backend/src/services/lecturer.service.js`
+  - `backend/src/controllers/lecturer.controller.js`
+  - `backend/src/controllers/admin.controller.js`
+  - `backend/src/routes/lecturer.routes.js`
+  - `backend/src/routes/admin.routes.js`
+  - `backend/tests/lecturer-grade.test.js`
+  - `backend/tests/admin-student-crud.test.js`
+  - `frontend/js/api.js`
+  - `frontend/portal-lecturer.html`
+  - `frontend/js/lecturer.js`
+  - `frontend/portal-admin.html`
+  - `frontend/js/admin.js`
+
+### Changes
+1. **Phân hệ Giảng viên Nhập & Lưu Điểm số (`DIEMSO`):**
+   - **Backend TDD (`tests/lecturer-grade.test.js` - 4/4 tests PASS):**
+     - Endpoint `PUT /api/lecturers/classes/:maLHP/grades` cho phép upsert mảng điểm (Quá trình, Giữa kỳ, Cuối kỳ) vào bảng `DIEMSO`.
+     - Tự động kích hoạt trigger `TR_DIEMSO_Audit` ghi vết audit log vào `LOGHOATDONG`.
+     - Kiểm tra dải điểm hợp lệ (0.0 đến 10.0) qua Zod schema `updateGradesSchema`.
+   - **Frontend UI/UX Pro Max (`portal-lecturer.html` & `lecturer.js`):**
+     - Modal danh sách sinh viên lớp chuyển đổi các cột điểm thành ô input nhập trực tiếp.
+     - Tính toán realtime điểm tổng kết và điểm chữ ngay khi gõ $(QT \times 0.2 + GK \times 0.3 + CK \times 0.5)$.
+     - Thêm nút Primary `[ 💾 Lưu bảng điểm ]` kèm trạng thái loading spinner và Toast notification.
+
+2. **Phân hệ Quản trị viên Quản lý Hồ sơ Sinh viên (`SINHVIEN` CRUD):**
+   - **Backend TDD (`tests/admin-student-crud.test.js` - 4/4 tests PASS):**
+     - Endpoint `POST /api/admin/students`: Tạo mới sinh viên, kiểm tra trùng `MaSinhVien`, tuân thủ trigger `TR_SINHVIEN_KiemTraKhoaLop` (trả về 201 Created).
+     - Endpoint `PUT /api/admin/students/:id`: Cập nhật họ tên, ngày sinh, email, SĐT, lớp sinh hoạt, trạng thái (trả về 200 OK).
+     - Endpoint `DELETE /api/admin/students/:id`: Xóa an toàn / soft delete chuyển trạng thái `THOI_HOC` nếu SV đã có lịch sử học tập/học phí (trả về 200 OK).
+   - **Frontend UI/UX Pro Max (`portal-admin.html` & `admin.js`):**
+     - Thêm nút `[ + Thêm sinh viên mới ]` tại header Quản lý sinh viên.
+     - Modal Form 2 cột chuyên nghiệp: MSSV, Họ tên, Ngày sinh, Email, SĐT, Khoa, Lớp sinh hoạt (tự động lọc lớp theo khoa), Trạng thái.
+     - Cột Thao tác từng dòng sinh viên bổ sung nút `[ Sửa ]` và `[ Xóa ]` (kèm confirm modal an toàn).
+
+### Tests / Verification
+- Toàn bộ test suite mới chạy độc lập đạt 100%:
+  - `tests/lecturer-grade.test.js`: 4/4 PASS (100%).
+  - `tests/admin-student-crud.test.js`: 4/4 PASS (100%).
+  - `tests/lecturer-modal-ux.test.js`: 5/5 PASS (100%).
+  - `tests/lecturer.test.js`: 4/4 PASS (100%).
+  - `tests/student.test.js`: 8/8 PASS (100%).
+  - `tests/admin.test.js`: 12/12 PASS (100%).
+
 

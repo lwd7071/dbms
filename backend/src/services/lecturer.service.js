@@ -15,8 +15,13 @@ const getClassStudents = async (maLHP) => {
   return await lecturerRepo.getClassStudents(maLHP);
 };
 
+const updateGrades = async (maLHP, grades) => {
+  return await lecturerRepo.updateClassGrades(maLHP, grades);
+};
+
 module.exports = {
   getSchedule,
   getClasses,
-  getClassStudents
+  getClassStudents,
+  updateGrades
 };

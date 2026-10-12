@@ -3,6 +3,7 @@ const router = express.Router();
 const adminController = require('../controllers/admin.controller');
 const { validate } = require('../middlewares/validate.middleware');
 const { tuitionReportQuerySchema } = require('../validators/payment.validator');
+const { createStudentSchema, updateStudentSchema } = require('../validators/student.validator');
 
 // Báo cáo thống kê tài chính học phí (SP_ThongKeHocPhi)
 router.get('/reports/tuition', validate(tuitionReportQuerySchema, 'query'), adminController.getTuitionReport);
@@ -16,8 +17,11 @@ router.patch('/users/:username/status', adminController.updateUserStatus);
 // Thống kê tổng quan Dashboard
 router.get('/dashboard', adminController.getDashboardStats);
 
-// Quản lý sinh viên
+// Quản lý sinh viên (CRUD)
 router.get('/students', adminController.getStudents);
+router.post('/students', validate(createStudentSchema), adminController.createStudent);
+router.put('/students/:id', validate(updateStudentSchema), adminController.updateStudent);
+router.delete('/students/:id', adminController.deleteStudent);
 
 // Quản lý tất cả lớp học phần
 router.get('/classes', adminController.getAllClasses);

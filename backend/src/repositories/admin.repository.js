@@ -525,6 +525,206 @@ const getAuditLogs = async (filters = {}) => {
   };
 };
 
+// Thêm mới sinh viên
+const createStudent = async (data) => {
+  const pool = await getPool();
+  const { maSinhVien, hoTen, ngaySinh, email, soDienThoai, maKhoa, maLop, trangThai } = data;
+
+  // Kiểm tra trùng mã sinh viên
+  const dupCheck = await pool.request()
+    .input('MaSinhVien', sql.VarChar(20), maSinhVien)
+    .query('SELECT MaSV FROM dbo.SINHVIEN WHERE MaSinhVien = @MaSinhVien');
+
+  if (dupCheck.recordset.length > 0) {
+    const error = new Error(`Mã sinh viên ${maSinhVien} đã tồn tại trong hệ thống.`);
+    error.status = 409;
+    throw error;
+  }
+
+  // Nếu có mã lớp, kiểm tra khoa của lớp phải khớp với khoa của sinh viên
+  if (maLop) {
+    const lopCheck = await pool.request()
+      .input('MaLop', sql.VarChar(20), maLop)
+      .query('SELECT MaKhoa FROM dbo.LOP WHERE MaLop = @MaLop');
+
+    if (lopCheck.recordset.length > 0 && lopCheck.recordset[0].MaKhoa !== maKhoa) {
+      const error = new Error(`Khoa của lớp sinh hoạt (${lopCheck.recordset[0].MaKhoa}) không khớp với khoa đã chọn (${maKhoa}).`);
+      error.status = 400;
+      throw error;
+    }
+  }
+
+  const result = await pool.request()
+    .input('MaSinhVien', sql.VarChar(20), maSinhVien)
+    .input('HoTen', sql.NVarChar(100), hoTen)
+    .input('NgaySinh', sql.Date, ngaySinh || null)
+    .input('Email', sql.VarChar(254), email || null)
+    .input('SoDienThoai', sql.VarChar(20), soDienThoai || null)
+    .input('MaKhoa', sql.VarChar(10), maKhoa)
+    .input('MaLop', sql.VarChar(20), maLop || null)
+    .input('TrangThai', sql.VarChar(20), trangThai || 'DANG_HOC')
+    .query(`
+      DECLARE @OutputTable TABLE (
+        MaSV INT,
+        MaSinhVien VARCHAR(20),
+        HoTen NVARCHAR(100),
+        NgaySinh DATE,
+        Email VARCHAR(254),
+        SoDienThoai VARCHAR(20),
+        MaKhoa VARCHAR(10),
+        MaLop VARCHAR(20),
+        TrangThai VARCHAR(20),
+        NgayTao DATETIME2(0)
+      );
+
+      INSERT INTO dbo.SINHVIEN (MaSinhVien, HoTen, NgaySinh, Email, SoDienThoai, MaKhoa, MaLop, TrangThai)
+      OUTPUT inserted.MaSV, inserted.MaSinhVien, inserted.HoTen, inserted.NgaySinh, inserted.Email, inserted.SoDienThoai, inserted.MaKhoa, inserted.MaLop, inserted.TrangThai, inserted.NgayTao
+      INTO @OutputTable
+      VALUES (@MaSinhVien, @HoTen, @NgaySinh, @Email, @SoDienThoai, @MaKhoa, @MaLop, @TrangThai);
+
+      SELECT * FROM @OutputTable;
+    `);
+
+  const created = result.recordset[0];
+  return {
+    maSV: created.MaSV,
+    maSinhVien: created.MaSinhVien,
+    hoTen: created.HoTen,
+    ngaySinh: created.NgaySinh,
+    email: created.Email,
+    soDienThoai: created.SoDienThoai,
+    maKhoa: created.MaKhoa,
+    maLop: created.MaLop,
+    trangThai: created.TrangThai,
+    ngayTao: created.NgayTao
+  };
+};
+
+// Cập nhật thông tin sinh viên
+const updateStudent = async (maSV, data) => {
+  const pool = await getPool();
+  const { hoTen, ngaySinh, email, soDienThoai, maKhoa, maLop, trangThai } = data;
+
+  const curCheck = await pool.request()
+    .input('MaSV', sql.Int, maSV)
+    .query('SELECT * FROM dbo.SINHVIEN WHERE MaSV = @MaSV');
+
+  if (curCheck.recordset.length === 0) {
+    const error = new Error(`Không tìm thấy sinh viên có ID ${maSV}.`);
+    error.status = 404;
+    throw error;
+  }
+
+  const cur = curCheck.recordset[0];
+  const finalKhoa = maKhoa || cur.MaKhoa;
+  const finalLop = maLop !== undefined ? maLop : cur.MaLop;
+
+  if (finalLop) {
+    const lopCheck = await pool.request()
+      .input('MaLop', sql.VarChar(20), finalLop)
+      .query('SELECT MaKhoa FROM dbo.LOP WHERE MaLop = @MaLop');
+
+    if (lopCheck.recordset.length > 0 && lopCheck.recordset[0].MaKhoa !== finalKhoa) {
+      const error = new Error(`Khoa của lớp sinh hoạt (${lopCheck.recordset[0].MaKhoa}) không khớp với khoa (${finalKhoa}).`);
+      error.status = 400;
+      throw error;
+    }
+  }
+
+  const result = await pool.request()
+    .input('MaSV', sql.Int, maSV)
+    .input('HoTen', sql.NVarChar(100), hoTen || cur.HoTen)
+    .input('NgaySinh', sql.Date, ngaySinh !== undefined ? (ngaySinh || null) : cur.NgaySinh)
+    .input('Email', sql.VarChar(254), email !== undefined ? (email || null) : cur.Email)
+    .input('SoDienThoai', sql.VarChar(20), soDienThoai !== undefined ? (soDienThoai || null) : cur.SoDienThoai)
+    .input('MaKhoa', sql.VarChar(10), finalKhoa)
+    .input('MaLop', sql.VarChar(20), finalLop || null)
+    .input('TrangThai', sql.VarChar(20), trangThai || cur.TrangThai)
+    .query(`
+      DECLARE @OutputTable TABLE (
+        MaSV INT,
+        MaSinhVien VARCHAR(20),
+        HoTen NVARCHAR(100),
+        NgaySinh DATE,
+        Email VARCHAR(254),
+        SoDienThoai VARCHAR(20),
+        MaKhoa VARCHAR(10),
+        MaLop VARCHAR(20),
+        TrangThai VARCHAR(20),
+        NgayTao DATETIME2(0)
+      );
+
+      UPDATE dbo.SINHVIEN
+      SET HoTen = @HoTen,
+          NgaySinh = @NgaySinh,
+          Email = @Email,
+          SoDienThoai = @SoDienThoai,
+          MaKhoa = @MaKhoa,
+          MaLop = @MaLop,
+          TrangThai = @TrangThai
+      OUTPUT inserted.MaSV, inserted.MaSinhVien, inserted.HoTen, inserted.NgaySinh, inserted.Email, inserted.SoDienThoai, inserted.MaKhoa, inserted.MaLop, inserted.TrangThai, inserted.NgayTao
+      INTO @OutputTable
+      WHERE MaSV = @MaSV;
+
+      SELECT * FROM @OutputTable;
+    `);
+
+  const updated = result.recordset[0];
+  return {
+    maSV: updated.MaSV,
+    maSinhVien: updated.MaSinhVien,
+    hoTen: updated.HoTen,
+    ngaySinh: updated.NgaySinh,
+    email: updated.Email,
+    soDienThoai: updated.SoDienThoai,
+    maKhoa: updated.MaKhoa,
+    maLop: updated.MaLop,
+    trangThai: updated.TrangThai,
+    ngayTao: updated.NgayTao
+  };
+};
+
+// Xóa hoặc chuyển trạng thái thôi học
+const deleteStudent = async (maSV) => {
+  const pool = await getPool();
+
+  const regCheck = await pool.request()
+    .input('MaSV', sql.Int, maSV)
+    .query(`
+      SELECT 
+        (SELECT COUNT(*) FROM dbo.DANGKYTINCHI WHERE MaSV = @MaSV) AS SoDangKy,
+        (SELECT COUNT(*) FROM dbo.HOCPHI WHERE MaSV = @MaSV) AS SoHocPhi
+    `);
+
+  const { SoDangKy, SoHocPhi } = regCheck.recordset[0] || { SoDangKy: 0, SoHocPhi: 0 };
+
+  if (SoDangKy > 0 || SoHocPhi > 0) {
+    await pool.request()
+      .input('MaSV', sql.Int, maSV)
+      .query(`UPDATE dbo.SINHVIEN SET TrangThai = 'THOI_HOC' WHERE MaSV = @MaSV`);
+
+    return {
+      success: true,
+      action: 'SOFT_DELETE',
+      message: 'Sinh viên đã có lịch sử học tập/học phí, đã chuyển trạng thái sang THÔI HỌC.'
+    };
+  } else {
+    await pool.request()
+      .input('MaSV', sql.Int, maSV)
+      .query(`DELETE FROM dbo.TAIKHOAN WHERE MaSV = @MaSV`);
+
+    await pool.request()
+      .input('MaSV', sql.Int, maSV)
+      .query(`DELETE FROM dbo.SINHVIEN WHERE MaSV = @MaSV`);
+
+    return {
+      success: true,
+      action: 'HARD_DELETE',
+      message: 'Đã xóa hoàn toàn hồ sơ sinh viên thành công.'
+    };
+  }
+};
+
 module.exports = {
   getUsersList,
   updateUserStatus,
@@ -533,5 +733,8 @@ module.exports = {
   getStudentsList,
   getAllClasses,
   getRegistrationsList,
-  getAuditLogs
+  getAuditLogs,
+  createStudent,
+  updateStudent,
+  deleteStudent
 };

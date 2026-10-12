@@ -545,11 +545,13 @@ async function loadAdminStudents(page = 1, pageSize = 10) {
               <th>Email</th>
               <th style="width: 120px;">Số điện thoại</th>
               <th style="width: 120px; text-align: center;">Trạng thái</th>
-              <th style="width: 150px; text-align: center;">Thao tác</th>
+              <th style="width: 220px; text-align: center;">Thao tác</th>
             </tr>
           </thead>
           <tbody>
-            ${list.map(s => `
+            ${list.map(s => {
+              const studentJson = JSON.stringify(s).replace(/"/g, '&quot;');
+              return `
               <tr>
                 <td class="cell-nowrap"><strong>${s.maSinhVien}</strong></td>
                 <td class="cell-nowrap"><strong>${s.hoTen}</strong></td>
@@ -559,12 +561,18 @@ async function loadAdminStudents(page = 1, pageSize = 10) {
                 <td class="cell-nowrap">${s.soDienThoai || '-'}</td>
                 <td class="cell-nowrap" style="text-align: center;">${renderStatusBadge(s.trangThai)}</td>
                 <td class="cell-nowrap" style="text-align: center;">
-                  <button class="btn btn-secondary btn-sm" onclick="viewStudentDetailModal(${s.maSV}, '${s.maSinhVien}', '${s.hoTen}')">
-                    Chi tiết & Học phí
+                  <button class="btn btn-secondary btn-sm" onclick="viewStudentDetailModal(${s.maSV}, '${s.maSinhVien}', '${s.hoTen}')" title="Xem chi tiết & học phí">
+                    Chi tiết
+                  </button>
+                  <button class="btn btn-primary btn-sm" onclick="openStudentModal('edit', ${studentJson})" title="Chỉnh sửa thông tin">
+                    Sửa
+                  </button>
+                  <button class="btn btn-danger btn-sm" onclick="confirmDeleteStudent(${s.maSV}, '${s.hoTen}', '${s.maSinhVien}')" title="Xóa hoặc cho thôi học">
+                    Xóa
                   </button>
                 </td>
               </tr>
-            `).join('')}
+            `;}).join('')}
           </tbody>
         </table>
       </div>
@@ -659,6 +667,134 @@ async function viewStudentDetailModal(maSV, maSinhVien, hoTen) {
 function closeStudentDetailModal() {
   const modal = document.getElementById('adminStudentDetailModal');
   if (modal) modal.classList.remove('show');
+}
+
+// ==========================================
+// 7.1. CRUD SINH VIÊN (THÊM, SỬA, XÓA) - UI/UX PRO MAX
+// ==========================================
+async function openStudentModal(mode = 'create', student = null) {
+  const modal = document.getElementById('adminStudentFormModal');
+  const title = document.getElementById('adminStudentFormTitle');
+  const form = document.getElementById('adminStudentForm');
+  const mssvInput = document.getElementById('studentFormMSSV');
+  const khoaSelect = document.getElementById('studentFormKhoa');
+  if (!modal || !form) return;
+
+  form.reset();
+  document.getElementById('studentFormMaSV').value = '';
+
+  await populateFaculties('studentFormKhoa', '-- Chọn khoa --');
+
+  if (mode === 'create') {
+    title.textContent = 'Thêm sinh viên mới';
+    mssvInput.readOnly = false;
+    document.getElementById('studentFormTrangThai').value = 'DANG_HOC';
+    document.getElementById('studentFormLop').innerHTML = '<option value="">-- Chưa phân lớp --</option>';
+  } else if (mode === 'edit' && student) {
+    title.textContent = `Chỉnh sửa sinh viên: ${student.hoTen} (${student.maSinhVien})`;
+    document.getElementById('studentFormMaSV').value = student.maSV;
+    mssvInput.value = student.maSinhVien;
+    mssvInput.readOnly = true;
+    document.getElementById('studentFormHoTen').value = student.hoTen;
+    document.getElementById('studentFormNgaySinh').value = student.ngaySinh ? String(student.ngaySinh).substring(0, 10) : '';
+    document.getElementById('studentFormEmail').value = student.email || '';
+    document.getElementById('studentFormSDT').value = student.soDienThoai || '';
+    document.getElementById('studentFormTrangThai').value = student.trangThai || 'DANG_HOC';
+    khoaSelect.value = student.maKhoa || '';
+
+    await onStudentFormKhoaChange(student.maLop);
+  }
+
+  modal.classList.add('show');
+}
+
+function closeStudentFormModal() {
+  const modal = document.getElementById('adminStudentFormModal');
+  if (modal) modal.classList.remove('show');
+}
+
+async function onStudentFormKhoaChange(preselectedLop = '') {
+  const khoaSelect = document.getElementById('studentFormKhoa');
+  const lopSelect = document.getElementById('studentFormLop');
+  if (!khoaSelect || !lopSelect) return;
+
+  const maKhoa = khoaSelect.value;
+  if (!maKhoa) {
+    lopSelect.innerHTML = '<option value="">-- Chọn khoa trước --</option>';
+    return;
+  }
+
+  try {
+    const classes = await api.getClasses();
+    const filtered = classes.filter(c => c.maKhoa === maKhoa);
+    lopSelect.innerHTML = '<option value="">-- Chưa phân lớp --</option>' + 
+      filtered.map(c => `<option value="${c.maLop}">${c.tenLop || c.maLop}</option>`).join('');
+
+    if (preselectedLop) {
+      lopSelect.value = preselectedLop;
+    }
+  } catch (err) {
+    lopSelect.innerHTML = '<option value="">-- Lỗi tải lớp --</option>';
+  }
+}
+
+async function handleSaveStudent(event) {
+  event.preventDefault();
+  const maSV = document.getElementById('studentFormMaSV').value;
+  const isEdit = Boolean(maSV);
+
+  const payload = {
+    maSinhVien: document.getElementById('studentFormMSSV').value.trim(),
+    hoTen: document.getElementById('studentFormHoTen').value.trim(),
+    ngaySinh: document.getElementById('studentFormNgaySinh').value || null,
+    email: document.getElementById('studentFormEmail').value.trim() || null,
+    soDienThoai: document.getElementById('studentFormSDT').value.trim() || null,
+    maKhoa: document.getElementById('studentFormKhoa').value,
+    maLop: document.getElementById('studentFormLop').value || null,
+    trangThai: document.getElementById('studentFormTrangThai').value
+  };
+
+  const submitBtn = document.getElementById('btnSubmitStudentForm');
+  const originalText = submitBtn ? submitBtn.textContent : 'Lưu hồ sơ';
+
+  try {
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = '⏳ Đang lưu...';
+    }
+
+    if (isEdit) {
+      await api.put(`/admin/students/${maSV}`, payload);
+      showToast(`Đã cập nhật sinh viên ${payload.hoTen} thành công!`, 'success');
+    } else {
+      await api.post('/admin/students', payload);
+      showToast(`Đã thêm mới sinh viên ${payload.hoTen} (${payload.maSinhVien}) thành công!`, 'success');
+    }
+
+    closeStudentFormModal();
+    await loadAdminStudents();
+  } catch (err) {
+    showToast(`Lỗi: ${err.message}`, 'danger');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }
+  }
+}
+
+async function confirmDeleteStudent(maSV, hoTen, maSinhVien) {
+  if (!confirm(`Bạn có chắc chắn muốn xóa/chuyển trạng thái thôi học cho sinh viên "${hoTen}" (${maSinhVien})?`)) {
+    return;
+  }
+
+  try {
+    const res = await api.delete(`/admin/students/${maSV}`);
+    showToast(res.message || `Đã xử lý hồ sơ sinh viên ${maSinhVien} thành công!`, 'success');
+    await loadAdminStudents();
+  } catch (err) {
+    showToast(`Xóa thất bại: ${err.message}`, 'danger');
+  }
 }
 
 // ==========================================
@@ -1351,6 +1487,12 @@ window.loadAdminDashboard = loadAdminDashboard;
 window.loadAdminStudents = loadAdminStudents;
 window.viewStudentDetailModal = viewStudentDetailModal;
 window.closeStudentDetailModal = closeStudentDetailModal;
+window.openStudentModal = openStudentModal;
+window.closeStudentFormModal = closeStudentFormModal;
+window.onStudentFormKhoaChange = onStudentFormKhoaChange;
+window.handleSaveStudent = handleSaveStudent;
+window.confirmDeleteStudent = confirmDeleteStudent;
+
 window.loadAdminAdministrativeClasses = loadAdminAdministrativeClasses;
 window.viewClassDetailModal = viewClassDetailModal;
 window.closeClassDetailModal = closeClassDetailModal;

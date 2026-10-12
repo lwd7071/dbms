@@ -182,7 +182,7 @@
     <!-- MÀN HÌNH 2: QUẢN LÝ SINH VIÊN -->
     <div id="tab-students" class="tab-pane">
       <section class="card">
-        <div class="card-header">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
           <h2 class="card-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -190,6 +190,9 @@
             </svg>
             Danh sách hồ sơ sinh viên
           </h2>
+          <button class="btn btn-primary btn-sm" onclick="openStudentModal('create')">
+            + Thêm sinh viên mới
+          </button>
         </div>
         <div class="card-body">
           <div class="toolbar">
@@ -545,6 +548,79 @@
         </div>
         <button class="btn btn-secondary" onclick="closeClassDetailModal()">Đóng</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal Thêm / Sửa Sinh Viên (UI/UX Pro Max) -->
+  <div id="adminStudentFormModal" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width: 650px; width: 95%;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="adminStudentFormTitle">Thêm sinh viên mới</h3>
+        <button class="modal-close" onclick="closeStudentFormModal()">&times;</button>
+      </div>
+      <form id="adminStudentForm" onsubmit="handleSaveStudent(event)">
+        <div class="modal-body" style="padding: 1.5rem;">
+          <input type="hidden" id="studentFormMaSV">
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="studentFormMSSV">Mã sinh viên (MSSV) <span style="color: var(--color-danger);">*</span></label>
+              <input type="text" id="studentFormMSSV" class="form-control" required placeholder="Ví dụ: 24110201">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="studentFormHoTen">Họ và tên <span style="color: var(--color-danger);">*</span></label>
+              <input type="text" id="studentFormHoTen" class="form-control" required placeholder="Ví dụ: Nguyễn Văn A">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="studentFormNgaySinh">Ngày sinh</label>
+              <input type="date" id="studentFormNgaySinh" class="form-control">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="studentFormEmail">Email</label>
+              <input type="email" id="studentFormEmail" class="form-control" placeholder="sv_mssv@student.edu.vn">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="studentFormSDT">Số điện thoại</label>
+              <input type="tel" id="studentFormSDT" class="form-control" placeholder="0987654321">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="studentFormTrangThai">Trạng thái học vụ</label>
+              <select id="studentFormTrangThai" class="form-control">
+                <option value="DANG_HOC">Đang học</option>
+                <option value="BAO_LUU">Bảo lưu</option>
+                <option value="TOT_NGHIEP">Tốt nghiệp</option>
+                <option value="THOI_HOC">Thôi học</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="studentFormKhoa">Khoa quản lý <span style="color: var(--color-danger);">*</span></label>
+              <select id="studentFormKhoa" class="form-control" required onchange="onStudentFormKhoaChange()">
+                <option value="">-- Chọn khoa --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="studentFormLop">Lớp sinh hoạt</label>
+              <select id="studentFormLop" class="form-control">
+                <option value="">-- Chưa phân lớp --</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeStudentFormModal()">Hủy</button>
+          <button type="submit" id="btnSubmitStudentForm" class="btn btn-primary">Lưu hồ sơ</button>
+        </div>
+      </form>
     </div>
   </div>
 
