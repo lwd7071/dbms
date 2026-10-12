@@ -1,6 +1,6 @@
 # TÀI LIỆU ĐẶC TẢ KỸ THUẬT WEB DEMO HỆ THỐNG DBMS330284
 > **Hệ thống Quản lý Đăng ký Tín chỉ & Học vụ Đại học**  
-> **Phiên bản:** 1.2.0 | **Ngày cập nhật:** 09/10/2026  
+> **Phiên bản:** 1.3.0 | **Ngày cập nhật:** 12/10/2026  
 > **Kiến trúc:** Node.js (Express) + Vanilla HTML/CSS/JS + Microsoft SQL Server 2022
 
 ---
@@ -39,8 +39,10 @@ ProjectDBMS/
 │   │   ├── validators/
 │   │   │   ├── auth.validator.js
 │   │   │   ├── course.validator.js
+│   │   │   ├── lecturer.validator.js
 │   │   │   ├── registration.validator.js
-│   │   │   └── payment.validator.js
+│   │   │   ├── payment.validator.js
+│   │   │   └── student.validator.js
 │   │   ├── repositories/
 │   │   │   ├── admin.repository.js
 │   │   │   ├── auth.repository.js
@@ -86,7 +88,7 @@ ProjectDBMS/
 │   │   │   ├── student.routes.js
 │   │   │   └── index.js
 │   │   └── app.js               # Khởi tạo Express app & gắn route
-│   ├── tests/                   # 22 Test Suites Jest tự động hóa 100%
+│   ├── tests/                   # 24 Test Suites Jest tự động hóa 100%
 │   ├── scripts/
 │   │   └── migrate_payment_confirmation.js # Script migrate xác nhận 2 bước
 │   ├── package.json
@@ -324,7 +326,10 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `05_Triggers.md` và `08_S
 - **`GET /api/admin/reports/tuition`**: Báo cáo thống kê tài chính học phí theo học kỳ (gọi Stored Procedure `SP_ThongKeHocPhi`).
 - **`GET /api/admin/users`**: Quản lý danh sách tài khoản người dùng từ View `V_TaiKhoanNguoiDung`.
 - **`PATCH /api/admin/users/:username/status`**: Khóa / kích hoạt tài khoản người dùng (gọi Stored Procedure `SP_KhoaTaiKhoan`).
-- **`GET /api/admin/students`**: Danh sách sinh viên toàn trường kèm thông tin Lớp sinh hoạt và Khoa.
+- **`GET /api/admin/students`**: Danh sách sinh viên toàn trường kèm thông tin Lớp sinh hoạt và Khoa (hỗ trợ phân trang, tìm kiếm MSSV/họ tên/email, lọc khoa, lớp).
+- **`POST /api/admin/students`**: Thêm mới hồ sơ sinh viên (validate schema Zod, kiểm tra trùng `MaSinhVien` 409, tuân thủ trigger `TR_SINHVIEN_KiemTraKhoaLop` 400). Trả về `201 Created`.
+- **`PUT /api/admin/students/:id`**: Cập nhật thông tin sinh viên (họ tên, ngày sinh, email, SĐT, lớp sinh hoạt, trạng thái). Trả về `200 OK`.
+- **`DELETE /api/admin/students/:id`**: Xóa an toàn / soft delete chuyển trạng thái `THOI_HOC` nếu sinh viên đã có lịch sử học tập/công nợ (tránh lỗi khóa ngoại FK). Trả về `200 OK`.
 - **`GET /api/admin/classes`**: Danh sách tất cả lớp học phần đang mở và sĩ số động.
 - **`GET /api/admin/registrations`**: Tra cứu toàn bộ giao dịch đăng ký tín chỉ của sinh viên.
 - **`GET /api/admin/audit-logs`**: Nhật ký kiểm toán bảo mật từ bảng `LOGHOATDONG` (chỉ role `QUAN_TRI`).
@@ -332,6 +337,7 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `05_Triggers.md` và `08_S
 - **`GET /api/lecturers/:id/schedule`**: Lịch giảng dạy theo tuần của Giảng viên.
 - **`GET /api/lecturers/:id/classes`**: Danh sách các lớp học phần Giảng viên đang phụ trách.
 - **`GET /api/lecturers/classes/:maLHP/students`**: Danh sách sinh viên và bảng điểm thành phần của lớp học phần.
+- **`PUT /api/lecturers/classes/:maLHP/grades`**: Giảng viên cập nhật điểm số (Quá trình, Giữa kỳ, Cuối kỳ) cho sinh viên lớp học phần phụ trách (upsert bảng `DIEMSO`, tự động trigger audit `TR_DIEMSO_Audit`, validate điểm 0.0 - 10.0). Trả về `200 OK`.
 - **`GET /api/classes`**: Danh sách 36 lớp sinh hoạt niên chế kèm sĩ số từ View `V_DanhSachLopSinhHoat`.
 - **`GET /api/classes/:id`**: Chi tiết lớp sinh hoạt và danh sách sinh viên trực thuộc.
 - **`GET /api/classes/:id/tuition-report`**: Thống kê học phí theo lớp sinh hoạt (gọi `SP_ThongKeHocPhiTheoLop`).
@@ -587,6 +593,11 @@ Bao gồm 9 phân hệ màn hình chức năng chính:
 - **Giai đoạn 6 (Kiểm thử Toàn diện & Báo cáo):**
   - Chạy toàn bộ test suite Jest đảm bảo pass 100%.
   - Kiểm tra end-to-end trên trình duyệt với các kịch bản demo thực tế.
+- **Giai đoạn 7 (Bổ sung CRUD Quản trị & Nhập điểm Giảng viên - Chuẩn Rubric 20%):**
+  - Backend TDD: Bộ test suite Jest `tests/admin-student-crud.test.js` và `tests/lecturer-grade.test.js` đạt 100% PASS.
+  - Hoàn thiện trọn vẹn CRUD Quản trị Sinh viên (`POST`, `PUT`, `DELETE /api/admin/students`), xử lý `OUTPUT INTO @tableVar` tương thích Trigger SQL Server và Soft Delete chuyển trạng thái `THOI_HOC`.
+  - Hoàn thiện nghiệp vụ Giảng viên nhập/sửa điểm hàng loạt (`PUT /api/lecturers/classes/:maLHP/grades`) cập nhật bảng `DIEMSO`, tự động tính điểm trung bình và kích hoạt audit trigger `TR_DIEMSO_Audit`.
+  - Giao diện Admin Portal & Lecturer Portal tích hợp modal CRUD, dynamic dropdown Khoa/Lớp và bảng điểm trực quan.
 
 ---
 
@@ -674,6 +685,6 @@ Bao gồm 9 phân hệ màn hình chức năng chính:
 | **4. Điều kiện tiên quyết** | Môn bắt buộc đạt khi điểm tổng kết $\ge 5.0$ trong `V_BangDiemChiTiet`. Kiểm tra trong `SP_DangKyTinChi`. | Validation đồng bộ; trả về `422 Unprocessable Content` khi chưa học môn tiên quyết (mã 50008). | **Đạt** |
 | **5. Mã lỗi đăng nhập & phân quyền** | Phân quyền 4 vai trò. Stored procedure khóa/mở tài khoản (`SP_KhoaTaiKhoan`). | Thống nhất `401 Unauthorized` cho sai thông tin hoặc tài khoản `LOCKED`/`DISABLED`; `403 Forbidden` cho lỗi quyền hạn. | **Đạt** |
 | **6. Backup & Restore** | Cung cấp script Full Backup, Restore Verify, Restore sang `DBMS330284_Test` kèm `MOVE`, `DBCC CHECKDB`. | Cung cấp quy trình vận hành 4 bước cho Quản trị viên (`QUAN_TRI`), hướng dẫn và cảnh báo an toàn `WITH REPLACE`. | **Đạt** |
-| **7. Test case** | Cung cấp bộ test SQL Concurrency (TC-01 -> TC-07) và Backup/Restore (TC-BR-01 -> TC-BR-03). | Đồng bộ 22 test suites Jest tự động hóa (163 tests) và bộ test cases nghiệp vụ tương ứng. | **Đạt** |
+| **7. Test case** | Cung cấp bộ test SQL Concurrency (TC-01 -> TC-07) và Backup/Restore (TC-BR-01 -> TC-BR-03). | Đồng bộ 24 test suites Jest tự động hóa (171 tests) và bộ test cases nghiệp vụ tương ứng. | **Đạt** |
 | **8. Trạng thái hoàn thành** | Phân biệt minh bạch giữa `Đã thiết kế`, `Đã triển khai`, và `Đã kiểm thử` (PASS). Không khai báo quá mức. | Khớp hoàn toàn trạng thái thực tế; không tuyên bố tính năng chưa làm; ghi nhận đúng kết quả kiểm thử thực tế. | **Đạt** |
 

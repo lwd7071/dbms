@@ -1,6 +1,6 @@
 # FINAL DATABASE DESIGN – SCHEMA V1 (19 BẢNG)
 > **Dự án DBMS330284 – Hệ thống Quản lý Học vụ & Đăng ký Tín chỉ Đại học**  
-> **Phiên bản:** 1.2.0 | **Ngày cập nhật:** 09/10/2026  
+> **Phiên bản:** 1.3.0 | **Ngày cập nhật:** 12/10/2026  
 > **Cơ sở dữ liệu:** Microsoft SQL Server 2022 | **Quy chuẩn chuẩn hóa:** Tối thiểu 3NF  
 
 ---
@@ -25,7 +25,8 @@ Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập
 
 ### 1.2. Dữ liệu dẫn xuất và Snapshot (Derived & Snapshot Data)
 - **Không lưu sĩ số tĩnh:** Tuyệt đối không lưu cột vật lý `SoLuongHienTai` trong `LOPHOCPHAN`; sĩ số thực tế được tính toán động từ `DANGKYTINCHI WHERE TrangThai = 'REGISTERED'`. Sĩ số của `LOP` sinh hoạt tính động từ `SINHVIEN WHERE TrangThai = 'DANG_HOC'`.
-- **Không lưu điểm dẫn xuất tĩnh:** Không lưu vật lý `DiemTongKet`, `DiemChu`, `DiemHe4` trong `DIEMSO`; tính toán động thông qua View `V_BangDiemChiTiet` và Function `FN_TinhDiemTongKet`.
+- **Không lưu điểm dẫn xuất tĩnh:** Không lưu vật lý `DiemTongKet`, `DiemChu`, `DiemHe4` trong `DIEMSO`; tính toán động thông qua View `V_BangDiemChiTiet` và Function `FN_TinhDiemTongKet`. Nghiệp vụ nhập điểm của Giảng viên sử dụng cú pháp UPSERT trực tiếp vào bảng `DIEMSO`, tự động kích hoạt trigger kiểm toán `TR_DIEMSO_Audit` ghi nhận vết sửa đổi điểm số.
+- **Quản lý dữ liệu Sinh viên (CRUD):** Thao tác xóa sinh viên tuân thủ ràng buộc toàn vẹn khóa ngoại (FK `NO ACTION` từ `DANGKYTINCHI`, `HOCPHI`). Khi sinh viên đã có lịch sử học tập/học phí, hệ thống tự động thực hiện soft-delete chuyển `TrangThai = 'THOI_HOC'`. Thao tác thêm/sửa sinh viên trên bảng có trigger `TR_SINHVIEN_KiemTraKhoaLop` được xử lý an toàn bằng cấu trúc `OUTPUT ... INTO @OutputTable` tránh xung đột Msg 334 của SQL Server.
 - **Snapshot học phí:** `HOCPHI` lưu snapshot `DonGiaTinChi` và `TongTien` tại thời điểm sinh viên tính học phí.
 - **Cache thanh toán:** `HOCPHI.SoTienDaThanhToan` là trường cache; nguồn sự thật là bảng `CHITIETTHANHTOAN` (chỉ cộng dồn các giao dịch có `TrangThai = 'DA_XAC_NHAN'`) và được đồng bộ tự động qua Trigger `TR_CHITIETTHANHTOAN_CapNhatHocPhi`.
 
