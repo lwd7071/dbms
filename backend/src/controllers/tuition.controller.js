@@ -14,7 +14,8 @@ const createPayment = async (req, res, next) => {
     const result = await tuitionService.processPayment({
       maHocPhi,
       soTien,
-      phuongThuc
+      phuongThuc,
+      ownerMaSV: req.user.vaiTro === 'SINH_VIEN' ? req.user.maSV : null
     });
 
     return res.status(201).json(

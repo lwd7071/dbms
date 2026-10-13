@@ -6,13 +6,13 @@ const { successResponse } = require('../utils/apiResponse');
  */
 const createRegistration = async (req, res, next) => {
   try {
-    const maSV = req.body.maSV || (req.user && req.user.maSV);
-    const { maLHP, tinChiToiDa } = req.body;
+    const maSV = req.user.maSV;
+    const { maLHP } = req.body;
 
     const result = await regService.registerCourse({
       maSV,
       maLHP,
-      tinChiToiDa
+      tinChiToiDa: 25
     });
 
     return res.status(201).json(
@@ -26,7 +26,7 @@ const createRegistration = async (req, res, next) => {
 const cancelRegistration = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const result = await regService.cancelRegistration(id, req.body);
+    const result = await regService.cancelRegistration(id, req.user.maSV);
 
     return res.status(200).json(
       successResponse(result)
@@ -38,15 +38,7 @@ const cancelRegistration = async (req, res, next) => {
 
 const getMyRegistrations = async (req, res, next) => {
   try {
-    const maSV = req.query.maSV || (req.user && req.user.maSV);
-    if (!maSV) {
-      return res.status(400).json(
-        errorResponse({
-          field: 'maSV',
-          message: 'Mã sinh viên là bắt buộc.'
-        })
-      );
-    }
+    const maSV = req.user.maSV;
 
     const result = await regService.getStudentRegistrations(maSV, req.query.maHocKy);
 

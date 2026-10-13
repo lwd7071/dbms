@@ -58,13 +58,7 @@ const getCurrentSemester = async () => {
     };
   }
 
-  // Fallback mặc định
-  return {
-    maHocKy: 7,
-    tenHocKy: 'Học kỳ 1',
-    namHoc: '2026-2027',
-    trangThai: 'DANG_MO'
-  };
+  return null;
 };
 
 module.exports = {

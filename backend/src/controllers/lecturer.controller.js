@@ -1,20 +1,13 @@
 const lecturerService = require('../services/lecturer.service');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
-const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'dbms330284_super_secret_jwt_key_2026';
 
-// Helper kiểm tra quyền truy cập của giảng viên
-const checkLecturerAccess = (req, targetId) => {
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    try {
-      const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-      if (decoded.vaiTro === 'GIANG_VIEN' && decoded.maGV && String(decoded.maGV) !== String(targetId)) {
-        return false;
-      }
-    } catch (_) {}
-  }
-  return true;
+const assertOwnLecturerId = (req, res) => {
+  if (String(req.user.maGV) === String(req.params.id)) return true;
+  res.status(403).json(errorResponse({
+    field: 'permission',
+    message: 'Bạn không có quyền xem dữ liệu giảng viên khác.'
+  }));
+  return false;
 };
 
 /**
@@ -23,12 +16,7 @@ const checkLecturerAccess = (req, targetId) => {
 const getSchedule = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (!checkLecturerAccess(req, id)) {
-      return res.status(403).json(errorResponse({
-        field: 'permission',
-        message: 'Bạn không có quyền xem lịch giảng dạy của giảng viên khác.'
-      }));
-    }
+    if (!assertOwnLecturerId(req, res)) return;
     const { maHocKy } = req.query;
     const schedule = await lecturerService.getSchedule(id, maHocKy);
     return res.status(200).json(successResponse(schedule));
@@ -40,12 +28,7 @@ const getSchedule = async (req, res, next) => {
 const getClasses = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (!checkLecturerAccess(req, id)) {
-      return res.status(403).json(errorResponse({
-        field: 'permission',
-        message: 'Bạn không có quyền xem danh sách lớp học của giảng viên khác.'
-      }));
-    }
+    if (!assertOwnLecturerId(req, res)) return;
     const classes = await lecturerService.getClasses(id);
     return res.status(200).json(successResponse(classes));
   } catch (err) {
@@ -56,7 +39,7 @@ const getClasses = async (req, res, next) => {
 const getClassStudents = async (req, res, next) => {
   try {
     const { maLHP } = req.params;
-    const students = await lecturerService.getClassStudents(maLHP);
+    const students = await lecturerService.getClassStudents(maLHP, req.user.maGV);
     return res.status(200).json(successResponse(students));
   } catch (err) {
     next(err);
@@ -67,7 +50,7 @@ const updateGrades = async (req, res, next) => {
   try {
     const { maLHP } = req.params;
     const { grades } = req.body;
-    const result = await lecturerService.updateGrades(maLHP, grades);
+    const result = await lecturerService.updateGrades(maLHP, req.user.maGV, grades);
     return res.status(200).json(successResponse(result));
   } catch (err) {
     next(err);

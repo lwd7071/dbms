@@ -32,6 +32,16 @@ describe('Protected academic API access', () => {
     expect(response.body.isSuccess).toBe(false);
   });
 
+  it('rejects a student trying to register as another student', async () => {
+    const studentToken = token({ vaiTro: 'SINH_VIEN', maSV: 1 });
+    const response = await request(app)
+      .post('/api/registrations')
+      .set('Authorization', `Bearer ${studentToken}`)
+      .send({ maSV: 2, maLHP: 'LHP_HK7_NMLT_01' });
+
+    expect(response.status).toBe(403);
+  });
+
   it('requires an authorized staff session for admin APIs', async () => {
     const response = await request(app).get('/api/admin/dashboard');
 

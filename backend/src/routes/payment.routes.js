@@ -5,8 +5,8 @@ const { validate } = require('../middlewares/validate.middleware');
 const { createPaymentSchema } = require('../validators/payment.validator');
 const { verifyToken, authorizeRoles } = require('../middlewares/auth.middleware');
 
-// Sinh viên hoặc người dùng tạo giao dịch thanh toán (trạng thái ban đầu: CHO_XAC_NHAN)
-router.post('/', validate(createPaymentSchema, 'body'), tuitionController.createPayment);
+// Sinh viên tạo yêu cầu của mình hoặc cán bộ tạo giao dịch thu tại quầy.
+router.post('/', verifyToken, authorizeRoles('SINH_VIEN', 'DAO_TAO', 'QUAN_TRI'), validate(createPaymentSchema, 'body'), tuitionController.createPayment);
 
 // Lấy danh sách giao dịch chờ xác nhận (Dành cho DAO_TAO hoặc QUAN_TRI)
 router.get('/pending', verifyToken, authorizeRoles('DAO_TAO', 'QUAN_TRI'), tuitionController.getPendingPayments);

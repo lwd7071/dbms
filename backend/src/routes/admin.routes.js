@@ -4,6 +4,9 @@ const adminController = require('../controllers/admin.controller');
 const { validate } = require('../middlewares/validate.middleware');
 const { tuitionReportQuerySchema } = require('../validators/payment.validator');
 const { createStudentSchema, updateStudentSchema } = require('../validators/student.validator');
+const { verifyToken, authorizeRoles } = require('../middlewares/auth.middleware');
+
+router.use(verifyToken, authorizeRoles('DAO_TAO', 'QUAN_TRI'));
 
 // Báo cáo thống kê tài chính học phí (SP_ThongKeHocPhi)
 router.get('/reports/tuition', validate(tuitionReportQuerySchema, 'query'), adminController.getTuitionReport);
@@ -30,7 +33,7 @@ router.get('/classes', adminController.getAllClasses);
 router.get('/registrations', adminController.getRegistrations);
 
 // Nhật ký hoạt động hệ thống (LOGHOATDONG)
-router.get('/audit-logs', adminController.getAuditLogs);
+router.get('/audit-logs', authorizeRoles('QUAN_TRI'), adminController.getAuditLogs);
 
 // Khung chương trình đào tạo (V_CauTrucChuongTrinhDaoTao)
 router.get('/curriculums', adminController.getCurriculums);

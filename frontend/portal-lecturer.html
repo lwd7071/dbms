@@ -139,7 +139,7 @@
               type="text" 
               id="classStudentSearchInput" 
               class="form-control" 
-              placeholder="Tìm kiếm MSSV, họ tên, lớp sinh hoạt..." 
+              placeholder="Tìm kiếm MSSV, họ tên sinh viên..." 
               style="padding-left: 2.25rem; font-size: 0.875rem;" 
               oninput="filterClassStudents()"
             >
@@ -154,7 +154,10 @@
               style="font-size: 0.875rem;" 
               onchange="filterClassStudents()"
             >
-              <option value="">Tất cả lớp sinh hoạt</option>
+              <option value="ALL">Tất cả sinh viên (lớp học phần)</option>
+              <option value="UNGRADED">Chưa nhập điểm</option>
+              <option value="GRADED">Đã có điểm</option>
+              <option value="MISSING_FINAL">Chưa có điểm cuối kỳ</option>
             </select>
           </div>
         </div>
@@ -164,18 +167,17 @@
             <thead>
               <tr>
                 <th style="text-align: center; width: 45px;">STT</th>
-                <th style="width: 100px;">Mã SV</th>
+                <th style="width: 105px;">Mã SV</th>
                 <th>Họ và tên</th>
-                <th>Lớp sinh hoạt</th>
-                <th style="text-align: center; width: 95px;">Quá trình (20%)</th>
-                <th style="text-align: center; width: 95px;">Giữa kỳ (30%)</th>
-                <th style="text-align: center; width: 95px;">Cuối kỳ (50%)</th>
-                <th style="text-align: right; width: 85px;">Tổng kết</th>
-                <th style="text-align: center; width: 80px;">Điểm chữ</th>
+                <th style="text-align: center; width: 100px;">Quá trình (20%)</th>
+                <th style="text-align: center; width: 100px;">Giữa kỳ (30%)</th>
+                <th style="text-align: center; width: 100px;">Cuối kỳ (50%)</th>
+                <th style="text-align: right; width: 90px;">Tổng kết</th>
+                <th style="text-align: center; width: 85px;">Điểm chữ</th>
               </tr>
             </thead>
             <tbody id="classStudentsTbody">
-              <tr><td colspan="9" style="text-align: center; padding: 2rem;">Đang tải...</td></tr>
+              <tr><td colspan="8" style="text-align: center; padding: 2rem;">Đang tải...</td></tr>
             </tbody>
           </table>
         </div>

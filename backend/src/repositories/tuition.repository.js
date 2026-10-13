@@ -5,61 +5,65 @@ const { getPool, sql } = require('../config/db');
  */
 
 // 1. Tạo giao dịch thanh toán mới ở trạng thái CHO_XAC_NHAN
-const createPayment = async (maHocPhi, soTien, phuongThuc = 'CHUYEN_KHOAN') => {
+const createPayment = async (maHocPhi, soTien, phuongThuc = 'CHUYEN_KHOAN', ownerMaSV = null) => {
   const pool = await getPool();
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
 
-  // Kiểm tra hồ sơ học phí và số tiền nộp so với tổng nợ
-  const checkTuition = await pool
-    .request()
-    .input('MaHocPhi', sql.Int, maHocPhi)
-    .query(`
-      SELECT 
-        MaHocPhi, MaSV, MaHocKy, TongTien,
-        SoTienDaThanhToan, (TongTien - SoTienDaThanhToan) AS SoTienConLai,
-        TrangThai
-      FROM dbo.HOCPHI
-      WHERE MaHocPhi = @MaHocPhi;
-    `);
+  try {
+    const checkTuition = await new sql.Request(transaction)
+      .input('MaHocPhi', sql.Int, maHocPhi)
+      .query(`
+        SELECT
+          MaHocPhi, MaSV, MaHocKy, TongTien,
+          SoTienDaThanhToan, (TongTien - SoTienDaThanhToan) AS SoTienConLai,
+          TrangThai
+        FROM dbo.HOCPHI WITH (UPDLOCK, HOLDLOCK)
+        WHERE MaHocPhi = @MaHocPhi;
+      `);
 
-  if (checkTuition.recordset.length === 0) {
-    const err = new Error('Hồ sơ học phí không tồn tại trong hệ thống.');
-    err.status = 404;
-    err.field = 'maHocPhi';
-    throw err;
-  }
+    if (checkTuition.recordset.length === 0) {
+      const err = new Error('Hồ sơ học phí không tồn tại trong hệ thống.');
+      err.status = 404;
+      err.field = 'maHocPhi';
+      throw err;
+    }
 
-  const currentTuition = checkTuition.recordset[0];
-  if (Number(soTien) > Number(currentTuition.SoTienConLai)) {
-    const err = new Error('Tổng số tiền thanh toán không được vượt quá số dư học phí còn lại.');
-    err.status = 409;
-    err.field = 'soTien';
-    throw err;
-  }
+    const currentTuition = checkTuition.recordset[0];
+    if (ownerMaSV !== null && String(currentTuition.MaSV) !== String(ownerMaSV)) {
+      const err = new Error('Bạn không có quyền tạo giao dịch cho hồ sơ học phí này.');
+      err.status = 403;
+      err.field = 'permission';
+      throw err;
+    }
 
-  // Kiểm tra chống spam: Không cho phép tạo thêm yêu cầu khi đang có giao dịch chờ duyệt
-  const checkPending = await pool
-    .request()
-    .input('MaHocPhi', sql.Int, maHocPhi)
-    .query(`
-      SELECT COUNT(*) AS SoLuongPending, ISNULL(SUM(SoTien), 0) AS TongTienPending
-      FROM dbo.CHITIETTHANHTOAN
-      WHERE MaHocPhi = @MaHocPhi AND TrangThai = 'CHO_XAC_NHAN';
-    `);
+    if (Number(soTien) > Number(currentTuition.SoTienConLai)) {
+      const err = new Error('Tổng số tiền thanh toán không được vượt quá số dư học phí còn lại.');
+      err.status = 409;
+      err.field = 'soTien';
+      throw err;
+    }
 
-  if (checkPending.recordset[0]?.SoLuongPending > 0) {
-    const err = new Error('Hồ sơ học phí này đang có yêu cầu nộp tiền chờ duyệt. Vui lòng chờ Cán bộ Đào tạo xác nhận trước khi gửi yêu cầu mới.');
-    err.status = 409;
-    err.field = 'maHocPhi';
-    throw err;
-  }
+    const checkPending = await new sql.Request(transaction)
+      .input('MaHocPhi', sql.Int, maHocPhi)
+      .query(`
+        SELECT COUNT(*) AS SoLuongPending
+        FROM dbo.CHITIETTHANHTOAN
+        WHERE MaHocPhi = @MaHocPhi AND TrangThai = 'CHO_XAC_NHAN';
+      `);
 
-  // Thực thi lệnh insert qua bảng tạm để tương thích với AFTER Trigger
-  const insertResult = await pool
-    .request()
-    .input('MaHocPhi', sql.Int, maHocPhi)
-    .input('SoTien', sql.Decimal(18, 2), soTien)
-    .input('PhuongThuc', sql.VarChar(20), phuongThuc)
-    .query(`
+    if (checkPending.recordset[0]?.SoLuongPending > 0) {
+      const err = new Error('Hồ sơ học phí này đang có yêu cầu nộp tiền chờ duyệt. Vui lòng chờ Cán bộ Đào tạo xác nhận trước khi gửi yêu cầu mới.');
+      err.status = 409;
+      err.field = 'maHocPhi';
+      throw err;
+    }
+
+    const insertResult = await new sql.Request(transaction)
+      .input('MaHocPhi', sql.Int, maHocPhi)
+      .input('SoTien', sql.Decimal(18, 2), soTien)
+      .input('PhuongThuc', sql.VarChar(20), phuongThuc)
+      .query(`
       DECLARE @Inserted TABLE (
         MaThanhToan BIGINT,
         MaHocPhi INT,
@@ -83,13 +87,12 @@ const createPayment = async (maHocPhi, soTien, phuongThuc = 'CHUYEN_KHOAN') => {
       SELECT TOP 1 * FROM @Inserted;
     `);
 
-  const paymentRecord = insertResult.recordset[0];
+    const paymentRecord = insertResult.recordset[0];
 
   // Lấy lại trạng thái của bảng HOCPHI (lúc này chưa đổi vì payment ở trạng thái CHO_XAC_NHAN)
-  const updatedTuitionResult = await pool
-    .request()
-    .input('MaHocPhi', sql.Int, maHocPhi)
-    .query(`
+    const updatedTuitionResult = await new sql.Request(transaction)
+      .input('MaHocPhi', sql.Int, maHocPhi)
+      .query(`
       SELECT 
         MaHocPhi, MaSV, MaHocKy, TongTien,
         SoTienDaThanhToan, (TongTien - SoTienDaThanhToan) AS SoTienConLai,
@@ -98,9 +101,10 @@ const createPayment = async (maHocPhi, soTien, phuongThuc = 'CHUYEN_KHOAN') => {
       WHERE MaHocPhi = @MaHocPhi;
     `);
 
-  const tuitionRecord = updatedTuitionResult.recordset[0];
+    const tuitionRecord = updatedTuitionResult.recordset[0];
+    await transaction.commit();
 
-  return {
+    return {
     payment: {
       maThanhToan: paymentRecord.MaThanhToan,
       maHocPhi: paymentRecord.MaHocPhi,
@@ -119,7 +123,11 @@ const createPayment = async (maHocPhi, soTien, phuongThuc = 'CHUYEN_KHOAN') => {
       trangThai: tuitionRecord.TrangThai,
       ngayCapNhat: tuitionRecord.NgayCapNhat
     }
-  };
+    };
+  } catch (err) {
+    try { await transaction.rollback(); } catch (_) {}
+    throw err;
+  }
 };
 
 // 2. Xác nhận thanh toán qua SP_XacNhanThanhToan (Dành cho DAO_TAO hoặc QUAN_TRI)

@@ -212,7 +212,12 @@ async function loadSchedule() {
 
   const container = document.getElementById('timetable-container');
   try {
-    const list = await api.get(`/students/${user.maSV}/schedule`, { maHocKy: 7 });
+    const semester = await api.getCurrentSemester();
+    if (!semester) {
+      container.innerHTML = `<div class="empty-state" role="status" style="padding: 1.5rem; color: var(--color-text-muted);">Chưa có học kỳ hiện tại. Thời khóa biểu sẽ hiển thị khi nhà trường mở học kỳ.</div>`;
+      return;
+    }
+    const list = await api.get(`/students/${user.maSV}/schedule`, { maHocKy: semester.maHocKy });
 
     // Xây dựng ma trận 10 tiết x 6 ngày (Thứ 2 đến Thứ 7)
     let gridHtml = `

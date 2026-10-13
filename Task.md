@@ -1416,4 +1416,52 @@
 ### Next Step
 - Chạy lại bài kiểm tra tích hợp chấm điểm và xác nhận dữ liệu sau lưu trong `DIEMSO`/`V_BangDiemChiTiet`.
 
+## Phase 20: Access Control, Academic Rules, Payments & Current Semester
+
+- Status: IN PROGRESS
+- Date: 2026-10-13
+- Files changed:
+  - `backend/src/middlewares/auth.middleware.js`
+  - `backend/src/routes/student.routes.js`
+  - `backend/src/routes/registration.routes.js`
+  - `backend/src/routes/payment.routes.js`
+  - `backend/src/routes/lecturer.routes.js`
+  - `backend/src/routes/admin.routes.js`
+  - `backend/src/controllers/registration.controller.js`
+  - `backend/src/controllers/lecturer.controller.js`
+  - `backend/src/controllers/tuition.controller.js`
+  - `backend/src/services/registration.service.js`
+  - `backend/src/services/lecturer.service.js`
+  - `backend/src/services/tuition.service.js`
+  - `backend/src/repositories/lecturer.repository.js`
+  - `backend/src/repositories/tuition.repository.js`
+  - `backend/src/repositories/semester.repository.js`
+  - `backend/src/validators/registration.validator.js`
+  - `backend/tests/access-control.test.js`
+  - `backend/tests/helpers/tokens.js`
+  - `frontend/js/registration.js`
+  - `Task.md`
+
+### Changes
+- Bắt buộc JWT và role cho hồ sơ sinh viên, đăng ký, thanh toán, lớp giảng viên và API quản trị; sinh viên chỉ đọc hồ sơ của mình, audit log chỉ dành cho `QUAN_TRI`.
+- Đăng ký lấy danh tính từ JWT, bỏ nhận giới hạn tín chỉ do client gửi và cố định mức 25; chặn mã sinh viên giả khi đăng ký/hủy.
+- Giảng viên chỉ xem lịch/lớp của mình và chỉ đọc/ghi điểm lớp được phân công.
+- Sinh viên chỉ tạo giao dịch cho hồ sơ học phí của mình; `DAO_TAO`/`QUAN_TRI` vẫn được thu tại quầy. Việc khóa hồ sơ học phí và kiểm tra giao dịch chờ được thực hiện trong cùng transaction `SERIALIZABLE`.
+- Thời khóa biểu lấy học kỳ từ `/api/semesters/current`; repository trả `null` khi không có học kỳ thay vì tự gán mã 7, UI hiển thị empty state có hướng dẫn.
+- Thêm test HTTP cho các trường hợp chưa đăng nhập, sai chủ hồ sơ và giả mạo `maSV`.
+
+### Tests / Verification
+- `node --check` các file JavaScript đã sửa: PASS.
+- `git diff --check`: PASS.
+- Jest `tests/access-control.test.js`: BLOCKED trước khi khởi chạy bởi sandbox (`EPERM realpath` thư mục Temp Windows).
+- Smoke test Supertest trực tiếp: BLOCKED do sandbox từ chối mở kết nối loopback (`EACCES 127.0.0.1`); chưa xác minh luồng DB hoặc giao diện trên browser.
+- SQL Server `localhost:1433` chưa khả dụng theo lần kiểm tra trước; chưa chạy được các test tích hợp DB/đua request.
+
+### Issues
+- Cần môi trường cho phép Jest và Supertest mở listener loopback, cùng SQL Server đã khởi động, để chạy test tích hợp và kiểm tra lưu/đọc dữ liệu thực tế.
+- Các test API cũ có một số request chưa gắn JWT; cần cập nhật fixtures/token rồi chạy toàn suite để xác nhận tương thích đầy đủ.
+
+### Next Step
+- Sau khi môi trường test khả dụng, cập nhật các test API cũ sang token theo role, chạy test quyền/thanh toán/đăng ký/giảng viên và kiểm tra flow thời khóa biểu trên browser.
+
 

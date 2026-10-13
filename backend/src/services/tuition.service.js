@@ -3,8 +3,8 @@ const tuitionRepo = require('../repositories/tuition.repository');
 /**
  * Service xử lý thanh toán học phí, xác nhận thanh toán và báo cáo tài chính
  */
-const processPayment = async ({ maHocPhi, soTien, phuongThuc }) => {
-  return await tuitionRepo.createPayment(maHocPhi, soTien, phuongThuc);
+const processPayment = async ({ maHocPhi, soTien, phuongThuc, ownerMaSV }) => {
+  return await tuitionRepo.createPayment(maHocPhi, soTien, phuongThuc, ownerMaSV);
 };
 
 const confirmPayment = async (maThanhToan, maTaiKhoanXacNhan) => {

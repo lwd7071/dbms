@@ -3,6 +3,9 @@ const router = express.Router();
 const regController = require('../controllers/registration.controller');
 const { validate } = require('../middlewares/validate.middleware');
 const { createRegistrationSchema, cancelRegistrationSchema } = require('../validators/registration.validator');
+const { verifyToken, authorizeRoles, authorizeMyStudentId } = require('../middlewares/auth.middleware');
+
+router.use(verifyToken, authorizeRoles('SINH_VIEN'), authorizeMyStudentId);
 
 // Đăng ký tín chỉ
 router.post('/', validate(createRegistrationSchema, 'body'), regController.createRegistration);

@@ -164,9 +164,9 @@ async function viewClassStudents(maLHP, tenMonHoc) {
   titleElem.textContent = `Lớp ${maLHP} - ${tenMonHoc}`;
   if (countBadge) countBadge.textContent = 'Đang tải...';
   if (searchInput) searchInput.value = '';
-  if (classFilter) classFilter.innerHTML = '<option value="">Tất cả lớp sinh hoạt</option>';
+  if (classFilter) classFilter.value = 'ALL';
 
-  tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 2.5rem; color: var(--color-text-muted);">Đang tải danh sách sinh viên...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 2.5rem; color: var(--color-text-muted);">Đang tải danh sách sinh viên...</td></tr>`;
   modal.classList.add('show');
 
   try {
@@ -174,16 +174,9 @@ async function viewClassStudents(maLHP, tenMonHoc) {
     currentClassStudents = Array.isArray(students) ? students : [];
     changedGradeIds = new Set();
 
-    // Điền danh sách lớp sinh hoạt vào filter dropdown
-    if (classFilter) {
-      const distinctClasses = [...new Set(currentClassStudents.map(s => s.lopHoc || s.maLop).filter(Boolean))].sort();
-      classFilter.innerHTML = '<option value="">Tất cả lớp sinh hoạt (' + distinctClasses.length + ' lớp)</option>' +
-        distinctClasses.map(cls => `<option value="${cls}">${cls}</option>`).join('');
-    }
-
     renderClassStudentsTable(currentClassStudents);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="9" style="color: var(--color-danger-text); padding: 2rem; text-align: center;">Lỗi tải: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="color: var(--color-danger-text); padding: 2rem; text-align: center;">Lỗi tải: ${err.message}</td></tr>`;
     if (countBadge) countBadge.textContent = 'Lỗi';
   }
 }
@@ -261,7 +254,7 @@ function renderClassStudentsTable(students) {
   if (!students || students.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" style="text-align: center; padding: 3rem; color: var(--color-text-muted);">
+        <td colspan="8" style="text-align: center; padding: 3rem; color: var(--color-text-muted);">
           <div style="font-size: 1.25rem; margin-bottom: 0.5rem;">🔍 Không tìm thấy sinh viên</div>
           <div style="font-size: 0.875rem;">Không có sinh viên nào khớp với bộ lọc tìm kiếm.</div>
         </td>
@@ -275,11 +268,6 @@ function renderClassStudentsTable(students) {
       <td class="cell-nowrap" style="text-align: center; color: var(--color-text-muted);">${idx + 1}</td>
       <td class="cell-nowrap"><strong>${s.maSinhVien}</strong></td>
       <td class="cell-nowrap" style="font-weight: 500;">${s.hoTen}</td>
-      <td class="cell-nowrap">
-        <span class="badge badge-info" style="font-size: 0.75rem;">
-          ${s.lopHoc || s.maLop || '-'}
-        </span>
-      </td>
       <td class="cell-nowrap" style="text-align: center;">
         <input 
           type="number" 
@@ -388,19 +376,30 @@ function filterClassStudents() {
   const searchInput = document.getElementById('classStudentSearchInput');
   const classFilter = document.getElementById('classStudentClassFilter');
   const keyword = searchInput ? searchInput.value.toLowerCase().trim() : '';
-  const selectedClass = classFilter ? classFilter.value.trim() : '';
+  const filterStatus = classFilter ? classFilter.value : 'ALL';
 
   const filtered = currentClassStudents.filter(s => {
-    const matchClass = !selectedClass || (s.lopHoc === selectedClass || s.maLop === selectedClass);
-    if (!matchClass) return false;
+    // 1. Lọc theo trạng thái điểm
+    if (filterStatus === 'UNGRADED') {
+      const hasAny = (s.diemQuaTrinh !== null && s.diemQuaTrinh !== undefined) ||
+                     (s.diemGiuaKy !== null && s.diemGiuaKy !== undefined) ||
+                     (s.diemCuoiKy !== null && s.diemCuoiKy !== undefined);
+      if (hasAny) return false;
+    } else if (filterStatus === 'GRADED') {
+      const hasAny = (s.diemQuaTrinh !== null && s.diemQuaTrinh !== undefined) ||
+                     (s.diemGiuaKy !== null && s.diemGiuaKy !== undefined) ||
+                     (s.diemCuoiKy !== null && s.diemCuoiKy !== undefined);
+      if (!hasAny) return false;
+    } else if (filterStatus === 'MISSING_FINAL') {
+      if (s.diemCuoiKy !== null && s.diemCuoiKy !== undefined) return false;
+    }
 
+    // 2. Lọc theo từ khóa tìm kiếm (MSSV hoặc Họ tên)
     if (!keyword) return true;
     const maSV = (s.maSinhVien || '').toLowerCase();
     const hoTen = (s.hoTen || '').toLowerCase();
-    const lopHoc = (s.lopHoc || '').toLowerCase();
-    const maLop = (s.maLop || '').toLowerCase();
 
-    return maSV.includes(keyword) || hoTen.includes(keyword) || lopHoc.includes(keyword) || maLop.includes(keyword);
+    return maSV.includes(keyword) || hoTen.includes(keyword);
   });
 
   renderClassStudentsTable(filtered);

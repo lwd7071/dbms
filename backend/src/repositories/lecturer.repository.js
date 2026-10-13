@@ -144,6 +144,19 @@ const getClassStudents = async (maLHP) => {
   }));
 };
 
+const isLecturerAssignedToClass = async (maGV, maLHP) => {
+  const pool = await getPool();
+  const result = await pool.request()
+    .input('MaGV', sql.Int, Number(maGV))
+    .input('MaLHP', sql.VarChar(30), maLHP)
+    .query(`
+      SELECT 1 AS Assigned
+      FROM dbo.LOPHOCPHAN
+      WHERE MaLHP = @MaLHP AND MaGiangVien = @MaGV;
+    `);
+  return result.recordset.length > 0;
+};
+
 // Cập nhật điểm cho sinh viên trong lớp học phần (UPSERT vào bảng DIEMSO)
 const updateClassGrades = async (maLHP, grades) => {
   const pool = await getPool();
@@ -201,5 +214,6 @@ module.exports = {
   getLecturerSchedule,
   getLecturerClasses,
   getClassStudents,
+  isLecturerAssignedToClass,
   updateClassGrades
 };
