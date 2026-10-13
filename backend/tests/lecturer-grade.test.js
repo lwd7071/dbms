@@ -1,6 +1,10 @@
 const request = require('supertest');
 const app = require('../src/app');
 const { getPool, closePool, sql } = require('../src/config/db');
+const lecturerToken = require('jsonwebtoken').sign(
+  { vaiTro: 'GIANG_VIEN', maGV: 1 },
+  process.env.JWT_SECRET || 'dbms330284_super_secret_jwt_key_2026'
+);
 
 describe('Lecturer Grade Management APIs (PUT /api/lecturers/classes/:maLHP/grades)', () => {
   let pool;
@@ -31,6 +35,7 @@ describe('Lecturer Grade Management APIs (PUT /api/lecturers/classes/:maLHP/grad
 
     const res = await request(app)
       .put(`/api/lecturers/classes/${maLHP}/grades`)
+      .set('Authorization', `Bearer ${lecturerToken}`)
       .send(payload);
 
     expect(res.status).toBe(200);
@@ -64,6 +69,7 @@ describe('Lecturer Grade Management APIs (PUT /api/lecturers/classes/:maLHP/grad
 
     const res = await request(app)
       .put(`/api/lecturers/classes/${maLHP}/grades`)
+      .set('Authorization', `Bearer ${lecturerToken}`)
       .send(payload);
 
     expect(res.status).toBe(400);
@@ -75,6 +81,7 @@ describe('Lecturer Grade Management APIs (PUT /api/lecturers/classes/:maLHP/grad
     const maLHP = 'LHP_HK1_ANHVAN1_01';
     const res = await request(app)
       .put(`/api/lecturers/classes/${maLHP}/grades`)
+      .set('Authorization', `Bearer ${lecturerToken}`)
       .send({ grades: [] });
 
     expect(res.status).toBe(400);
@@ -93,6 +100,7 @@ describe('Lecturer Grade Management APIs (PUT /api/lecturers/classes/:maLHP/grad
 
     const res = await request(app)
       .put(`/api/lecturers/classes/${maLHP}/grades`)
+      .set('Authorization', `Bearer ${lecturerToken}`)
       .send(payload);
 
     expect(res.status).toBe(200);

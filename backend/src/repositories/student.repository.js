@@ -73,7 +73,7 @@ const getGrades = async (maSV, maHocKy) => {
   const result = await request.query(query);
 
   return result.recordset.map(r => ({
-    maDangKy: r.MaDangKy,
+    maDangKy: Number(r.MaDangKy),
     maSV: r.MaSV,
     maHocKy: r.MaHocKy,
     namHoc: r.NamHoc,

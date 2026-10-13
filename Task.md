@@ -368,6 +368,8 @@
   - `backend/src/controllers/admin.controller.js`
   - `backend/src/repositories/admin.repository.js`
   - `backend/src/routes/lecturer.routes.js`
+  - `backend/src/repositories/lecturer.repository.js`
+  - `backend/src/utils/errorMapper.js`
   - `backend/src/controllers/lecturer.controller.js`
   - `backend/src/services/lecturer.service.js`
   - `backend/src/repositories/lecturer.repository.js`
@@ -1384,5 +1386,34 @@
   - `tests/lecturer.test.js`: 4/4 PASS (100%).
   - `tests/student.test.js`: 8/8 PASS (100%).
   - `tests/admin.test.js`: 12/12 PASS (100%).
+
+## Phase 19: Fix Lecturer Grade Save Payload & Access Control
+
+- Status: IN PROGRESS
+- Date: 2026-10-13
+- Files changed:
+  - `frontend/js/lecturer.js`
+  - `backend/src/routes/lecturer.routes.js`
+  - `backend/tests/lecturer-grade.test.js`
+  - `Task.md`
+
+### Changes
+- Frontend theo dõi `MaDangKy` của các dòng có điểm được chỉnh và chỉ gửi những dòng đó khi lưu, tránh ghi đè điểm của cả lớp hoặc xóa các điểm đang trống thành `NULL`.
+- API cập nhật điểm yêu cầu JWT hợp lệ và role `GIANG_VIEN`.
+- Cập nhật test API chấm điểm để gọi endpoint với JWT giảng viên.
+- Từ chối cập nhật nếu `MaDangKy` gửi lên không nằm trong đúng `MaLHP` hoặc đăng ký không còn `REGISTERED`, tránh API báo lưu thành công nhưng điểm không hiện ở lớp đang mở.
+- Đọc lại `AGENT.md` và `docs/spec.md`; ghi log task theo mẫu bắt buộc.
+
+### Tests / Verification
+- `node --check` cho `frontend/js/lecturer.js`, `backend/src/routes/lecturer.routes.js`, `backend/tests/lecturer-grade.test.js`: PASS.
+- `git diff --check`: PASS.
+- `npm test -- --runTestsByPath tests/lecturer-grade.test.js`: BLOCKED trước khi test chạy; Jest không thể đọc thư mục Temp Windows trong sandbox (`EPERM realpath`). Chưa xác minh ghi dữ liệu vào SQL Server.
+- Truy vấn chỉ đọc lớp `LHP_HK7_DEVOPS_01` để kiểm tra DB: BLOCKED, SQL Server tại `localhost:1433` không nhận kết nối.
+
+### Issues
+- Cần khởi động/khả dụng SQL Server rồi chạy lại `lecturer-grade.test.js` và truy vấn lớp `LHP_HK7_DEVOPS_01`.
+
+### Next Step
+- Chạy lại bài kiểm tra tích hợp chấm điểm và xác nhận dữ liệu sau lưu trong `DIEMSO`/`V_BangDiemChiTiet`.
 
 

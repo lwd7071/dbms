@@ -129,7 +129,7 @@ const getClassStudents = async (maLHP) => {
     `);
 
   return result.recordset.map(r => ({
-    maDangKy: r.MaDangKy,
+    maDangKy: Number(r.MaDangKy),
     maSV: r.MaSV,
     maSinhVien: r.MaSinhVien,
     hoTen: r.HoTenSinhVien,
@@ -155,11 +155,23 @@ const updateClassGrades = async (maLHP, grades) => {
     for (const g of grades) {
       const request = new sql.Request(transaction);
       request.input('MaDangKy', sql.BigInt, g.maDangKy);
+      request.input('MaLHP', sql.VarChar(30), maLHP);
       request.input('DiemQuaTrinh', sql.Decimal(4, 2), g.diemQuaTrinh !== undefined ? g.diemQuaTrinh : null);
       request.input('DiemGiuaKy', sql.Decimal(4, 2), g.diemGiuaKy !== undefined ? g.diemGiuaKy : null);
       request.input('DiemCuoiKy', sql.Decimal(4, 2), g.diemCuoiKy !== undefined ? g.diemCuoiKy : null);
 
       await request.query(`
+        IF NOT EXISTS (
+          SELECT 1
+          FROM dbo.DANGKYTINCHI
+          WHERE MaDangKy = @MaDangKy
+            AND MaLHP = @MaLHP
+            AND TrangThai = 'REGISTERED'
+        )
+        BEGIN
+          THROW 50030, 'Mã đăng ký không thuộc lớp học phần này hoặc không còn hiệu lực.', 1;
+        END
+
         IF EXISTS (SELECT 1 FROM dbo.DIEMSO WHERE MaDangKy = @MaDangKy)
         BEGIN
           UPDATE dbo.DIEMSO

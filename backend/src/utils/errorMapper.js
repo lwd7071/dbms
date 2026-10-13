@@ -16,6 +16,7 @@ const SQL_ERROR_MAP = {
   50009: { status: 409, field: 'lichHoc', message: 'Lịch học của lớp này bị trùng với thời khóa biểu đã đăng ký của bạn.' },
   50010: { status: 409, field: 'tinChi', message: 'Vượt quá số tín chỉ tối đa được phép đăng ký trong học kỳ.' },
   50011: { status: 409, field: 'siSo', message: 'Lớp học phần đã đủ sĩ số tối đa (hết chỗ).' },
+  50030: { status: 400, field: 'maDangKy', message: 'Một sinh viên trong danh sách gửi lên không thuộc lớp học phần này hoặc đăng ký đã bị hủy.' },
 
   // SP_HuyDangKy
   50021: { status: 404, field: 'maDangKy', message: 'Không tìm thấy đăng ký học phần hợp lệ để hủy.' },

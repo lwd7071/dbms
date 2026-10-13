@@ -343,11 +343,11 @@ async function loadGrades() {
                       <td class="cell-nowrap"><strong>${g.maMonHoc}</strong></td>
                       <td>${g.tenMonHoc}</td>
                       <td class="cell-nowrap" style="text-align: center;"><span class="badge badge-info">${g.soTinChi} TC</span></td>
-                      <td class="cell-nowrap" style="text-align: right; font-family: monospace;">${g.diemQuaTrinh !== null ? g.diemQuaTrinh.toFixed(1) : '-'}</td>
-                      <td class="cell-nowrap" style="text-align: right; font-family: monospace;">${g.diemGiuaKy !== null ? g.diemGiuaKy.toFixed(1) : '-'}</td>
-                      <td class="cell-nowrap" style="text-align: right; font-family: monospace;">${g.diemCuoiKy !== null ? g.diemCuoiKy.toFixed(1) : '-'}</td>
+                      <td class="cell-nowrap" style="text-align: right; font-family: monospace;">${g.diemQuaTrinh !== null && g.diemQuaTrinh !== undefined ? Number(g.diemQuaTrinh).toFixed(1) : '-'}</td>
+                      <td class="cell-nowrap" style="text-align: right; font-family: monospace;">${g.diemGiuaKy !== null && g.diemGiuaKy !== undefined ? Number(g.diemGiuaKy).toFixed(1) : '-'}</td>
+                      <td class="cell-nowrap" style="text-align: right; font-family: monospace;">${g.diemCuoiKy !== null && g.diemCuoiKy !== undefined ? Number(g.diemCuoiKy).toFixed(1) : '-'}</td>
                       <td class="cell-nowrap" style="text-align: right; font-family: monospace; font-weight: 700; color: var(--color-primary-dark); font-size: 0.9375rem;">
-                        ${g.diemTongKet !== null ? g.diemTongKet.toFixed(2) : '-'}
+                        ${g.diemTongKet !== null && g.diemTongKet !== undefined ? Number(g.diemTongKet).toFixed(2) : '-'}
                       </td>
                       <td class="cell-nowrap" style="text-align: center;"><strong>${g.diemChu || '-'}</strong></td>
                       <td class="cell-nowrap" style="text-align: center;">

@@ -122,6 +122,7 @@ async function loadLecturerSchedule(maGV) {
 }
 
 let currentClassStudents = [];
+let changedGradeIds = new Set();
 
 // Khởi tạo sự kiện đóng modal (Escape và click ngoài backdrop)
 if (typeof document !== 'undefined') {
@@ -171,6 +172,7 @@ async function viewClassStudents(maLHP, tenMonHoc) {
   try {
     const students = await api.get(`/lecturers/classes/${maLHP}/students`);
     currentClassStudents = Array.isArray(students) ? students : [];
+    changedGradeIds = new Set();
 
     // Điền danh sách lớp sinh hoạt vào filter dropdown
     if (classFilter) {
@@ -217,15 +219,17 @@ function onGradeInputChange(inputElem, maDangKy, field) {
     inputElem.style.backgroundColor = '';
   }
 
-  const student = currentClassStudents.find(s => s.maDangKy === maDangKy);
+  const strId = String(maDangKy);
+  const student = currentClassStudents.find(s => String(s.maDangKy) === strId);
   if (student) {
+    changedGradeIds.add(strId);
     student[field] = val;
     const { diemTongKet, diemChu } = calculateGrade(student.diemQuaTrinh, student.diemGiuaKy, student.diemCuoiKy);
     student.diemTongKet = diemTongKet;
     student.diemChu = diemChu;
 
-    const totalEl = document.getElementById(`total-grade-${maDangKy}`);
-    const letterEl = document.getElementById(`letter-grade-${maDangKy}`);
+    const totalEl = document.getElementById(`total-grade-${strId}`);
+    const letterEl = document.getElementById(`letter-grade-${strId}`);
     if (totalEl) totalEl.textContent = diemTongKet !== null ? diemTongKet.toFixed(2) : '-';
     if (letterEl) {
       letterEl.innerHTML = diemChu !== '-' 
@@ -283,7 +287,7 @@ function renderClassStudentsTable(students) {
           min="0" max="10" step="0.1" 
           style="width: 75px; text-align: right; display: inline-block; font-family: monospace; font-size: 0.8125rem;"
           value="${s.diemQuaTrinh !== null && s.diemQuaTrinh !== undefined ? s.diemQuaTrinh : ''}"
-          oninput="onGradeInputChange(this, ${s.maDangKy}, 'diemQuaTrinh')"
+          oninput="onGradeInputChange(this, '${s.maDangKy}', 'diemQuaTrinh')"
           placeholder="-"
         >
       </td>
@@ -294,7 +298,7 @@ function renderClassStudentsTable(students) {
           min="0" max="10" step="0.1" 
           style="width: 75px; text-align: right; display: inline-block; font-family: monospace; font-size: 0.8125rem;"
           value="${s.diemGiuaKy !== null && s.diemGiuaKy !== undefined ? s.diemGiuaKy : ''}"
-          oninput="onGradeInputChange(this, ${s.maDangKy}, 'diemGiuaKy')"
+          oninput="onGradeInputChange(this, '${s.maDangKy}', 'diemGiuaKy')"
           placeholder="-"
         >
       </td>
@@ -305,15 +309,15 @@ function renderClassStudentsTable(students) {
           min="0" max="10" step="0.1" 
           style="width: 75px; text-align: right; display: inline-block; font-family: monospace; font-size: 0.8125rem;"
           value="${s.diemCuoiKy !== null && s.diemCuoiKy !== undefined ? s.diemCuoiKy : ''}"
-          oninput="onGradeInputChange(this, ${s.maDangKy}, 'diemCuoiKy')"
+          oninput="onGradeInputChange(this, '${s.maDangKy}', 'diemCuoiKy')"
           placeholder="-"
         >
       </td>
       <td class="cell-nowrap" style="text-align: right; font-weight: 700; font-family: monospace; color: var(--color-primary);" id="total-grade-${s.maDangKy}">
-        ${s.diemTongKet !== null && s.diemTongKet !== undefined ? s.diemTongKet.toFixed(2) : '-'}
+        ${s.diemTongKet !== null && s.diemTongKet !== undefined ? Number(s.diemTongKet).toFixed(2) : '-'}
       </td>
       <td class="cell-nowrap" style="text-align: center; font-weight: 600;" id="letter-grade-${s.maDangKy}">
-        ${s.diemChu ? `<span class="badge ${s.diemChu === 'F' ? 'badge-danger' : 'badge-neutral'}">${s.diemChu}</span>` : '-'}
+        ${s.diemChu && s.diemChu !== 'null' ? `<span class="badge ${s.diemChu === 'F' ? 'badge-danger' : 'badge-neutral'}">${s.diemChu}</span>` : '-'}
       </td>
     </tr>
   `).join('');
@@ -325,7 +329,13 @@ async function saveClassGrades() {
   const saveBtn = document.getElementById('btnSaveClassGrades');
   const originalText = saveBtn ? saveBtn.innerHTML : '💾 Lưu bảng điểm';
 
-  const invalidGrades = currentClassStudents.some(s => {
+  const changedStudents = currentClassStudents.filter(s => changedGradeIds.has(String(s.maDangKy)));
+  if (changedStudents.length === 0) {
+    showToast('Chưa có điểm nào thay đổi để lưu', 'info');
+    return;
+  }
+
+  const invalidGrades = changedStudents.some(s => {
     const check = v => v === null || v === undefined || (!isNaN(v) && v >= 0 && v <= 10);
     return !check(s.diemQuaTrinh) || !check(s.diemGiuaKy) || !check(s.diemCuoiKy);
   });
@@ -336,11 +346,11 @@ async function saveClassGrades() {
   }
 
   const payload = {
-    grades: currentClassStudents.map(s => ({
-      maDangKy: s.maDangKy,
-      diemQuaTrinh: s.diemQuaTrinh ?? null,
-      diemGiuaKy: s.diemGiuaKy ?? null,
-      diemCuoiKy: s.diemCuoiKy ?? null
+    grades: changedStudents.map(s => ({
+      maDangKy: Number(s.maDangKy),
+      diemQuaTrinh: s.diemQuaTrinh !== null && s.diemQuaTrinh !== undefined ? Number(s.diemQuaTrinh) : null,
+      diemGiuaKy: s.diemGiuaKy !== null && s.diemGiuaKy !== undefined ? Number(s.diemGiuaKy) : null,
+      diemCuoiKy: s.diemCuoiKy !== null && s.diemCuoiKy !== undefined ? Number(s.diemCuoiKy) : null
     }))
   };
 
@@ -357,6 +367,12 @@ async function saveClassGrades() {
 
     const res = await api.put(`/lecturers/classes/${currentOpenMaLHP}/grades`, payload);
     showToast(`Đã lưu thành công điểm của ${res.updatedCount || payload.grades.length} sinh viên!`, 'success');
+    changedGradeIds.clear();
+
+    // Tải lại danh sách sinh viên từ server để đồng bộ chính xác dữ liệu tính từ CSDL
+    const refreshed = await api.get(`/lecturers/classes/${currentOpenMaLHP}/students`);
+    currentClassStudents = Array.isArray(refreshed) ? refreshed : [];
+    filterClassStudents();
   } catch (err) {
     showToast(`Lỗi khi lưu bảng điểm: ${err.message}`, 'danger');
   } finally {
