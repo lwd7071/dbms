@@ -1668,3 +1668,45 @@
 
 ### Next Step
 - Thử lại ba bộ lọc lớp sinh hoạt sau khi backend nạp code mới.
+
+## Phase 29: Sửa lỗi tải danh sách đăng ký với trạng thái mặc định
+
+- Status: DONE WITH FOLLOW-UP ITEMS
+- Date: 2026-10-21
+- Files changed:
+  - `backend/src/validators/common.validator.js`
+  - `Task.md`
+
+### Changes
+- Làm cho query `trangThai` rỗng ở endpoint danh sách đăng ký được chuẩn hóa thành `undefined`, giống bộ lọc enum danh sách tài khoản; trạng thái không hợp lệ vẫn bị từ chối.
+- Nguyên nhân: giao diện gửi `trangThai=` khi chọn “Tất cả trạng thái”, trong khi schema trước đó chỉ cho phép `REGISTERED` hoặc `CANCELLED`.
+
+### Tests / Verification
+- Đối chiếu tĩnh giá trị mặc định giao diện gửi và schema Zod; chưa chạy test/API.
+
+### Issues
+- Cần tải lại trang hoặc khởi động lại backend nếu tiến trình hiện tại không tự reload.
+
+### Next Step
+- Mở lại trang tra cứu kết quả đăng ký tín chỉ và xác nhận danh sách tải được với trạng thái “Tất cả”.
+
+## Phase 30: Rà soát lỗi enum query rỗng ở các bộ lọc
+
+- Status: DONE
+- Date: 2026-10-21
+- Files changed:
+  - `Task.md`
+
+### Changes
+- Đối chiếu các query enum với cách giao diện tạo request.
+- Không phát hiện bộ lọc enum đang dùng nào khác gửi giá trị rỗng nhưng validator lại yêu cầu enum: báo cáo học phí bỏ tham số khi chọn “Tất cả”; bộ lọc loại môn luôn gửi `PLAN`, `OTHER` hoặc `ALL`.
+- Các enum tùy chọn trong query khác hiện không được giao diện gửi chuỗi rỗng; enum trong body là dữ liệu nhập bắt buộc/tùy chọn và không thuộc trường hợp lỗi này.
+
+### Tests / Verification
+- Rà soát tĩnh các query schema, route, lời gọi `api.get` và giá trị mặc định của bộ lọc trên giao diện; không chạy test vì không có thay đổi code mới trong lượt rà soát.
+
+### Issues
+- None found for this specific empty-enum query issue.
+
+### Next Step
+- Theo dõi nếu gặp bộ lọc khác báo lỗi enum khi đang để “Tất cả”.
