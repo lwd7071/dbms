@@ -1,5 +1,5 @@
 ﻿-- ENCODING: UTF-8 WITH BOM
-USE [DBMS330284];
+USE [$(DatabaseName)];
 GO
 
 SET NOCOUNT ON;
@@ -33,8 +33,7 @@ BEGIN TRY
     BEGIN
         EXEC dbo.SP_DangKyTinChi
             @MaSV = @MaSVTest,
-            @MaLHP = @MaLHPTest,
-            @TinChiToiDa = 25;
+            @MaLHP = @MaLHPTest;
     END;
 
     COMMIT TRANSACTION;

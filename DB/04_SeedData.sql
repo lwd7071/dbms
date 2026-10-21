@@ -1,8 +1,8 @@
--- =========================================================
+﻿-- =========================================================
 -- HE THONG QUAN LY DANG KY TIN CHI DBMS330284 - SEED DATA
 -- ENCODING: UTF-8 WITH BOM
 -- =========================================================
-USE [DBMS330284];
+USE [$(DatabaseName)];
 GO
 
 SET NOCOUNT ON;
@@ -14,40 +14,10 @@ GO
 EXEC sys.sp_set_session_context @key = N'MaTaiKhoan', @value = NULL;
 GO
 
-/* =========================================================
-   0. LAM SACH DU LIEU CU & RESET IDENTITY (Neu co)
-   ========================================================= */
-DELETE FROM dbo.CHITIETTHANHTOAN;
-DELETE FROM dbo.HOCPHI;
-DELETE FROM dbo.MUCHOCPHI;
-DELETE FROM dbo.DIEMSO;
-DELETE FROM dbo.DANGKYTINCHI;
-DELETE FROM dbo.LICHHOC;
-DELETE FROM dbo.LOPHOCPHAN;
-DELETE FROM dbo.HOCKY;
-DELETE FROM dbo.LOGHOATDONG; -- Xoa log dot 1 truoc khi xoa TAIKHOAN
-DELETE FROM dbo.TAIKHOAN;
-DELETE FROM dbo.SINHVIEN;
-DELETE FROM dbo.GIANGVIEN;
-DELETE FROM dbo.MONHOCTIENQUYET;
-DELETE FROM dbo.CTDT_MONHOC;
-DELETE FROM dbo.MONHOC;
-DELETE FROM dbo.CHUONGTRINHDAOTAO;
-DELETE FROM dbo.NGANH;
-DELETE FROM dbo.KHOA;
-DELETE FROM dbo.LOGHOATDONG; -- Xoa log dot 2 do cac trigger audit DELETE sinh ra
-GO
-
-IF (SELECT last_value FROM sys.identity_columns WHERE object_id = OBJECT_ID('dbo.HOCKY')) IS NOT NULL DBCC CHECKIDENT ('dbo.HOCKY', RESEED, 0);
-IF (SELECT last_value FROM sys.identity_columns WHERE object_id = OBJECT_ID('dbo.SINHVIEN')) IS NOT NULL DBCC CHECKIDENT ('dbo.SINHVIEN', RESEED, 0);
-IF (SELECT last_value FROM sys.identity_columns WHERE object_id = OBJECT_ID('dbo.GIANGVIEN')) IS NOT NULL DBCC CHECKIDENT ('dbo.GIANGVIEN', RESEED, 0);
-IF (SELECT last_value FROM sys.identity_columns WHERE object_id = OBJECT_ID('dbo.TAIKHOAN')) IS NOT NULL DBCC CHECKIDENT ('dbo.TAIKHOAN', RESEED, 0);
-IF (SELECT last_value FROM sys.identity_columns WHERE object_id = OBJECT_ID('dbo.LICHHOC')) IS NOT NULL DBCC CHECKIDENT ('dbo.LICHHOC', RESEED, 0);
-IF (SELECT last_value FROM sys.identity_columns WHERE object_id = OBJECT_ID('dbo.DANGKYTINCHI')) IS NOT NULL DBCC CHECKIDENT ('dbo.DANGKYTINCHI', RESEED, 0);
-IF (SELECT last_value FROM sys.identity_columns WHERE object_id = OBJECT_ID('dbo.MUCHOCPHI')) IS NOT NULL DBCC CHECKIDENT ('dbo.MUCHOCPHI', RESEED, 0);
-IF (SELECT last_value FROM sys.identity_columns WHERE object_id = OBJECT_ID('dbo.HOCPHI')) IS NOT NULL DBCC CHECKIDENT ('dbo.HOCPHI', RESEED, 0);
-IF (SELECT last_value FROM sys.identity_columns WHERE object_id = OBJECT_ID('dbo.CHITIETTHANHTOAN')) IS NOT NULL DBCC CHECKIDENT ('dbo.CHITIETTHANHTOAN', RESEED, 0);
-IF (SELECT last_value FROM sys.identity_columns WHERE object_id = OBJECT_ID('dbo.LOGHOATDONG')) IS NOT NULL DBCC CHECKIDENT ('dbo.LOGHOATDONG', RESEED, 0);
+/* Seed chỉ chạy trên database mới, trống. Không xóa hay reseed dữ liệu đang có. */
+IF EXISTS (SELECT 1 FROM sys.tables t WHERE t.is_ms_shipped = 0 AND EXISTS
+    (SELECT 1 FROM sys.partitions p WHERE p.object_id = t.object_id AND p.index_id IN (0, 1) AND p.rows > 0))
+    THROW 52001, N'Seed bị từ chối: database không trống.', 1;
 GO
 
 /* =========================================================
@@ -80,17 +50,26 @@ GO
 /* =========================================================
    2. CHUONG TRINH DAO TAO (8 CTDT)
    ========================================================= */
-INSERT INTO dbo.CHUONGTRINHDAOTAO (MaCTDT, MaNganh, TenCTDT, KhoaHoc, TongTinChiYeuCau, ThoiGianDaoTao, TrangThai)
+INSERT INTO dbo.CHUONGTRINHDAOTAO (MaCTDT, MaNganh, TenCTDT, KhoaHoc, NamTuyenSinh, TongTinChiYeuCau, ThoiGianDaoTao, TrangThai)
 VALUES
-('CTDT_CNTT_CQ',  'N01', N'Công nghệ Thông tin Chuẩn', '2023-2027', 135, 4, 1),
-('CTDT_CNTT_CLC', 'N01', N'Công nghệ Thông tin Chất lượng cao', '2023-2027', 140, 4, 1),
-('CTDT_KTPM_CQ',  'N02', N'Kỹ thuật Phần mềm Chuẩn', '2023-2027', 135, 4, 1),
-('CTDT_HTTT_CQ',  'N03', N'Hệ thống Thông tin Chuẩn', '2023-2027', 132, 4, 1),
-('CTDT_KHMT_CQ',  'N04', N'Khoa học Máy tính Chuẩn', '2023-2027', 135, 4, 1),
-('CTDT_MMT_CQ',   'N05', N'Mạng Máy tính Chuẩn', '2023-2027', 132, 4, 1),
-('CTDT_ATTT_CQ',  'N06', N'An toàn Thông tin Chuẩn', '2023-2027', 135, 4, 1),
-('CTDT_TMDT_CQ',  'N07', N'Thương mại Điện tử Chuẩn', '2023-2027', 130, 4, 1);
+('CTDT_CNTT_CQ',  'N01', N'Công nghệ Thông tin Chuẩn', '2023-2027',  2023, 135, 4, 1),
+('CTDT_CNTT_CLC', 'N01', N'Công nghệ Thông tin Chất lượng cao', '2023-2027',  2023, 140, 4, 1),
+('CTDT_KTPM_CQ',  'N02', N'Kỹ thuật Phần mềm Chuẩn', '2023-2027',  2023, 135, 4, 1),
+('CTDT_HTTT_CQ',  'N03', N'Hệ thống Thông tin Chuẩn', '2023-2027',  2023, 132, 4, 1),
+('CTDT_KHMT_CQ',  'N04', N'Khoa học Máy tính Chuẩn', '2023-2027',  2023, 135, 4, 1),
+('CTDT_MMT_CQ',   'N05', N'Mạng Máy tính Chuẩn', '2023-2027',  2023, 132, 4, 1),
+('CTDT_ATTT_CQ',  'N06', N'An toàn Thông tin Chuẩn', '2023-2027',  2023, 135, 4, 1),
+('CTDT_TMDT_CQ',  'N07', N'Thương mại Điện tử Chuẩn', '2023-2027',  2023, 130, 4, 1);
 GO
+
+INSERT INTO dbo.CHUONGTRINHDAOTAO (MaCTDT, MaNganh, TenCTDT, KhoaHoc, NamTuyenSinh, TongTinChiYeuCau, ThoiGianDaoTao, TrangThai)
+SELECT CONCAT(src.MaCTDT, '_', RIGHT(CONVERT(VARCHAR(4), cohort.NamTuyenSinh), 2)),
+       src.MaNganh, src.TenCTDT, CONCAT(cohort.NamTuyenSinh, '-', cohort.NamTuyenSinh + 4),
+       cohort.NamTuyenSinh, src.TongTinChiYeuCau, src.ThoiGianDaoTao, src.TrangThai
+FROM dbo.CHUONGTRINHDAOTAO src
+CROSS JOIN (VALUES (2024), (2025)) cohort(NamTuyenSinh);
+GO
+
 
 /* =========================================================
    3. DANH MUC MON HOC (50 Môn học)
@@ -316,6 +295,13 @@ VALUES
 ('CTDT_TMDT_CQ', 'TTNT', 7, 'TU_CHON', 20);
 GO
 
+INSERT INTO dbo.CTDT_MONHOC (MaCTDT, MaMonHoc, HocKyDuKien, LoaiMon, ThuTu)
+SELECT CONCAT(ctm.MaCTDT, '_', RIGHT(CONVERT(VARCHAR(4), cohort.NamTuyenSinh), 2)),
+       ctm.MaMonHoc, ctm.HocKyDuKien, ctm.LoaiMon, ctm.ThuTu
+FROM dbo.CTDT_MONHOC ctm
+CROSS JOIN (VALUES (2024), (2025)) cohort(NamTuyenSinh);
+GO
+
 /* =========================================================
    5. MONHOCTIENQUYET (36 quan hệ chuẩn, không chu trình)
    ========================================================= */
@@ -538,8 +524,14 @@ RawSV AS (
             WHEN n IN (488, 489, 988) THEN 'THOI_HOC'
             ELSE 'DANG_HOC'
         END AS TrangThai,
-        k.MaKhoa + CASE WHEN n <= 500 THEN '23' WHEN n <= 1000 THEN '24' ELSE '25' END + '_' + 
-        CASE WHEN NTILE(2) OVER (PARTITION BY k.MaKhoa, CASE WHEN n <= 500 THEN '23' WHEN n <= 1000 THEN '24' ELSE '25' END ORDER BY n) = 1 THEN '01' ELSE '02' END AS MaLop
+        CASE WHEN NTILE(2) OVER (PARTITION BY k.MaKhoa, CASE WHEN n <= 500 THEN '23' WHEN n <= 1000 THEN '24' ELSE '25' END ORDER BY n) = 1 THEN '01' ELSE '02' END AS LopNhom,
+        CASE WHEN k.MaKhoa = 'CNTT' AND NTILE(2) OVER (PARTITION BY k.MaKhoa, CASE WHEN n <= 500 THEN '23' WHEN n <= 1000 THEN '24' ELSE '25' END ORDER BY n) = 2 THEN 'CTDT_CNTT_CLC'
+             WHEN k.MaKhoa = 'CNTT' THEN 'CTDT_CNTT_CQ'
+             WHEN k.MaKhoa = 'KTPM' THEN 'CTDT_KTPM_CQ'
+             WHEN k.MaKhoa = 'HTTT' AND NTILE(2) OVER (PARTITION BY k.MaKhoa, CASE WHEN n <= 500 THEN '23' WHEN n <= 1000 THEN '24' ELSE '25' END ORDER BY n) = 2 THEN 'CTDT_TMDT_CQ'
+             WHEN k.MaKhoa = 'HTTT' THEN 'CTDT_HTTT_CQ'
+             WHEN k.MaKhoa = 'KHMT' THEN 'CTDT_KHMT_CQ'
+             WHEN k.MaKhoa = 'MMT' THEN 'CTDT_MMT_CQ' ELSE 'CTDT_ATTT_CQ' END AS MaCTDTGoc
     FROM Nums
     CROSS APPLY (SELECT (n * 7) % 15 AS hid) h1
     INNER JOIN HoList h ON h.id = h1.hid
@@ -550,7 +542,7 @@ RawSV AS (
     CROSS APPLY (SELECT (n % 6) AS kid) k1
     INNER JOIN KhoaSeq k ON k.id = k1.kid
 )
-INSERT INTO dbo.SINHVIEN (MaSinhVien, HoTen, NgaySinh, Email, SoDienThoai, MaKhoa, MaLop, TrangThai, NgayTao)
+INSERT INTO dbo.SINHVIEN (MaSinhVien, HoTen, NgaySinh, Email, SoDienThoai, MaKhoa, MaLop, MaCTDT, TrangThai, NgayTao)
 SELECT
     KhoaTuyen + SttStr AS MaSinhVien,
     HoTen,
@@ -558,7 +550,8 @@ SELECT
     'sv' + KhoaTuyen + SttStr + '@student.edu.vn' AS Email,
     '098' + RIGHT('0000000' + CAST(n AS VARCHAR), 7) AS SoDienThoai,
     MaKhoa,
-    MaLop,
+    MaKhoa + KhoaTuyen + '_' + LopNhom,
+    CASE WHEN KhoaTuyen = '23' THEN MaCTDTGoc ELSE MaCTDTGoc + '_' + KhoaTuyen END,
     TrangThai,
     NgayTao
 FROM RawSV;
@@ -607,8 +600,8 @@ SELECT
 FROM dbo.SINHVIEN;
 GO
 
-/* Sau khi da co TAIKHOAN admin (MaTaiKhoan = 1), thiet lap session context de audit log */
-EXEC sys.sp_set_session_context @key = N'MaTaiKhoan', @value = 1;
+/* Seed/bảo trì không giả lập người dùng đã xác thực trong audit log. */
+EXEC sys.sp_set_session_context @key = N'MaTaiKhoan', @value = NULL;
 GO
 
 /* =========================================================
@@ -619,7 +612,7 @@ GO
 SemesterOrdered AS (
     SELECT MaHocKy,
            ROW_NUMBER() OVER(ORDER BY NgayBatDau) AS SemesterSeq,
-           CASE WHEN TrangThai = 'DANG_MO' THEN 'MO_DANG_KY' ELSE 'DA_KHOA' END AS TrangThaiLHP
+           CAST('DA_KHOA' AS VARCHAR(20)) AS TrangThaiLHP
     FROM dbo.HOCKY
 ),
 SelectedCourses AS (
@@ -716,6 +709,13 @@ SELECT
     SoTiet,
     PhongHoc
 FROM ScheduleSlots;
+GO
+
+UPDATE lhp
+SET TrangThai = 'MO_DANG_KY'
+FROM dbo.LOPHOCPHAN lhp
+INNER JOIN dbo.HOCKY hk ON hk.MaHocKy = lhp.MaHocKy
+WHERE hk.TrangThai = 'DANG_MO';
 GO
 
 /* =========================================================

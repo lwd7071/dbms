@@ -1,5 +1,5 @@
-    -- ENCODING: UTF-8 WITH BOM
-    USE [DBMS330284];
+﻿    -- ENCODING: UTF-8 WITH BOM
+    USE [$(DatabaseName)];
     GO
 
     SET NOCOUNT ON;
@@ -368,6 +368,24 @@
     IF OBJECT_ID(N'dbo.TR_SINHVIEN_KiemTraKhoaLop', N'TR') IS NULL
         THROW 51314, N'Thiếu trigger TR_SINHVIEN_KiemTraKhoaLop.', 1;
 
+    IF OBJECT_ID(N'dbo.TR_LOPHOCPHAN_KiemTraSucChua', N'TR') IS NULL
+        THROW 51315, N'Thiếu trigger TR_LOPHOCPHAN_KiemTraSucChua.', 1;
+
+    IF OBJECT_ID(N'dbo.TR_LOPHOCPHAN_MoCanLich', N'TR') IS NULL
+        THROW 51316, N'Thiếu trigger TR_LOPHOCPHAN_MoCanLich.', 1;
+
+    IF OBJECT_ID(N'dbo.TR_LICHHOC_LopMoCanLich', N'TR') IS NULL
+        THROW 51317, N'Thiếu trigger TR_LICHHOC_LopMoCanLich.', 1;
+
+    IF OBJECT_ID(N'dbo.TR_LOP_KiemTraSinhVien', N'TR') IS NULL
+        THROW 51318, N'Thiếu trigger TR_LOP_KiemTraSinhVien.', 1;
+
+    IF OBJECT_ID(N'dbo.TR_CHUONGTRINHDAOTAO_KiemTraSinhVien', N'TR') IS NULL
+        THROW 51319, N'Thiếu trigger TR_CHUONGTRINHDAOTAO_KiemTraSinhVien.', 1;
+
+    IF OBJECT_ID(N'dbo.TR_NGANH_KiemTraSinhVien', N'TR') IS NULL
+        THROW 51320, N'Thiếu trigger TR_NGANH_KiemTraSinhVien.', 1;
+
     IF EXISTS
     (
         SELECT 1
@@ -377,7 +395,7 @@
     )
         THROW 51315, N'Có TRIGGER đang bị disable.', 1;
 
-    PRINT N'PASS: Đủ 14 trigger bắt buộc đều tồn tại và đang hoạt động.';
+    PRINT N'PASS: Đủ trigger nghiệp vụ/audit đều tồn tại và đang hoạt động.';
     GO
 
 

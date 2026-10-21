@@ -1,5 +1,5 @@
--- ENCODING: UTF-8 WITH BOM
-USE [DBMS330284];
+﻿-- ENCODING: UTF-8 WITH BOM
+USE [$(DatabaseName)];
 GO
 
 CREATE OR ALTER TRIGGER [dbo].[TR_MONHOCTIENQUYET_KiemTraChuTrinh]
@@ -83,7 +83,7 @@ BEGIN
             ON l1.MaLHP = i.MaLHP
         INNER JOIN dbo.LICHHOC l2
             ON l2.Thu = i.Thu
-            AND l2.MaLHP <> i.MaLHP
+          AND (l2.MaLHP <> i.MaLHP OR l2.MaLichHoc <> i.MaLichHoc)
         INNER JOIN dbo.LOPHOCPHAN l2_lhp
             ON l2_lhp.MaLHP = l2.MaLHP
         WHERE l1.MaHocKy = l2_lhp.MaHocKy
@@ -676,23 +676,145 @@ BEGIN
 END;
 GO
 
--- 14. Trigger kiểm tra tính nhất quán Khoa của Sinh viên và Khoa của Lớp sinh hoạt
-CREATE OR ALTER TRIGGER [dbo].[TR_SINHVIEN_KiemTraKhoaLop]
-ON [dbo].[SINHVIEN]
+CREATE OR ALTER TRIGGER dbo.TR_LOPHOCPHAN_KiemTraSucChua
+ON dbo.LOPHOCPHAN
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF UPDATE(SoLuongToiDa) AND EXISTS
+    (
+        SELECT 1
+        FROM inserted i
+        CROSS APPLY
+        (
+            SELECT COUNT_BIG(*) AS SiSo
+            FROM dbo.DANGKYTINCHI dk
+            WHERE dk.MaLHP = i.MaLHP AND dk.TrangThai = 'REGISTERED'
+        ) d
+        WHERE d.SiSo > i.SoLuongToiDa
+    )
+        THROW 51002, N'Không thể giảm sức chứa thấp hơn số sinh viên đã đăng ký.', 1;
+END;
+GO
+
+CREATE OR ALTER TRIGGER dbo.TR_LOPHOCPHAN_MoCanLich
+ON dbo.LOPHOCPHAN
 AFTER INSERT, UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
+    IF EXISTS
+    (
+        SELECT 1 FROM inserted i
+        WHERE i.TrangThai IN ('MO_DANG_KY', 'DANG_MO')
+          AND NOT EXISTS (SELECT 1 FROM dbo.LICHHOC lh WHERE lh.MaLHP = i.MaLHP)
+    )
+        THROW 51311, N'Lớp học phần chỉ được mở khi có ít nhất một lịch học hợp lệ.', 1;
+END;
+GO
 
-    IF EXISTS (
+CREATE OR ALTER TRIGGER dbo.TR_LICHHOC_LopMoCanLich
+ON dbo.LICHHOC
+AFTER DELETE, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS
+    (
+        SELECT 1
+        FROM deleted d
+        INNER JOIN dbo.LOPHOCPHAN lhp ON lhp.MaLHP = d.MaLHP
+        WHERE lhp.TrangThai IN ('MO_DANG_KY', 'DANG_MO')
+          AND NOT EXISTS (SELECT 1 FROM dbo.LICHHOC lh WHERE lh.MaLHP = d.MaLHP)
+    )
+        THROW 51311, N'Không thể xóa lịch cuối cùng của lớp học phần đang mở.', 1;
+END;
+GO
+
+CREATE OR ALTER TRIGGER dbo.TR_SINHVIEN_KiemTraKhoaLop
+ON dbo.SINHVIEN
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS
+    (
         SELECT 1
         FROM inserted i
-        INNER JOIN dbo.LOP l ON i.MaLop = l.MaLop
-        WHERE i.MaLop IS NOT NULL
-          AND i.MaKhoa <> l.MaKhoa
+        INNER JOIN dbo.LOP l ON l.MaLop = i.MaLop
+        INNER JOIN dbo.CHUONGTRINHDAOTAO c ON c.MaCTDT = i.MaCTDT
+        INNER JOIN dbo.NGANH n ON n.MaNganh = c.MaNganh
+        WHERE i.MaKhoa <> l.MaKhoa
+           OR i.MaKhoa <> n.MaKhoa
+           OR c.NamTuyenSinh <> l.NamNhapHoc
     )
-    BEGIN
-        THROW 51008, N'Khoa của sinh viên phải trùng khớp với Khoa của lớp sinh hoạt.', 1;
-    END
+        THROW 51008, N'Khoa, lớp và khóa tuyển sinh của sinh viên phải khớp với CTĐT.', 1;
+    IF EXISTS
+    (
+        SELECT 1 FROM inserted i
+        INNER JOIN dbo.CHUONGTRINHDAOTAO c ON c.MaCTDT = i.MaCTDT
+        INNER JOIN dbo.NGANH n ON n.MaNganh = c.MaNganh
+        WHERE i.MaKhoa <> n.MaKhoa
+    )
+        THROW 51008, N'Khoa của sinh viên phải khớp với khoa ngành của CTĐT.', 1;
+END;
+GO
+
+CREATE OR ALTER TRIGGER dbo.TR_LOP_KiemTraSinhVien
+ON dbo.LOP
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF (UPDATE(MaKhoa) OR UPDATE(NamNhapHoc)) AND EXISTS
+    (
+        SELECT 1
+        FROM inserted i
+        INNER JOIN dbo.SINHVIEN sv ON sv.MaLop = i.MaLop
+        INNER JOIN dbo.CHUONGTRINHDAOTAO c ON c.MaCTDT = sv.MaCTDT
+        INNER JOIN dbo.NGANH n ON n.MaNganh = c.MaNganh
+        WHERE sv.MaKhoa <> i.MaKhoa OR n.MaKhoa <> i.MaKhoa
+           OR c.NamTuyenSinh <> i.NamNhapHoc
+    )
+        THROW 51008, N'Không thể đổi khoa hoặc khóa lớp khi sinh viên hiện tại không còn khớp CTĐT.', 1;
+END;
+GO
+
+CREATE OR ALTER TRIGGER dbo.TR_CHUONGTRINHDAOTAO_KiemTraSinhVien
+ON dbo.CHUONGTRINHDAOTAO
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF (UPDATE(MaNganh) OR UPDATE(NamTuyenSinh)) AND EXISTS
+    (
+        SELECT 1
+        FROM inserted i
+        INNER JOIN dbo.SINHVIEN sv ON sv.MaCTDT = i.MaCTDT
+        INNER JOIN dbo.NGANH n ON n.MaNganh = i.MaNganh
+        LEFT JOIN dbo.LOP l ON l.MaLop = sv.MaLop
+        WHERE sv.MaKhoa <> n.MaKhoa
+           OR (l.MaLop IS NOT NULL AND l.NamNhapHoc <> i.NamTuyenSinh)
+    )
+        THROW 51008, N'Không thể đổi ngành hoặc khóa CTĐT khi sinh viên hiện tại không còn khớp.', 1;
+END;
+GO
+
+CREATE OR ALTER TRIGGER dbo.TR_NGANH_KiemTraSinhVien
+ON dbo.NGANH
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF UPDATE(MaKhoa) AND EXISTS
+    (
+        SELECT 1
+        FROM inserted i
+        INNER JOIN dbo.CHUONGTRINHDAOTAO c ON c.MaNganh = i.MaNganh
+        INNER JOIN dbo.SINHVIEN sv ON sv.MaCTDT = c.MaCTDT
+        WHERE sv.MaKhoa <> i.MaKhoa
+    )
+        THROW 51008, N'Không thể chuyển ngành sang khoa khác khi CTĐT đang có sinh viên.', 1;
 END;
 GO

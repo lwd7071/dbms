@@ -1,5 +1,5 @@
--- ENCODING: UTF-8 WITH BOM
-USE [DBMS330284];
+﻿-- ENCODING: UTF-8 WITH BOM
+USE [$(DatabaseName)];
 GO
 
 SET ANSI_NULLS ON;
@@ -156,7 +156,8 @@ END CATCH;
 END;
 GO
 CREATE OR ALTER PROCEDURE [dbo].[SP_KhoaTaiKhoan]
-    @MaTaiKhoan INT
+    @MaTaiKhoan INT,
+    @MaTaiKhoanNguoiThaoTac INT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -164,6 +165,8 @@ DECLARE @TuMoTran BIT = 0;
 DECLARE @DaTaoSavepoint BIT = 0;
 DECLARE @TrangThaiHienTai VARCHAR(20);
 DECLARE @VaiTroHienTai VARCHAR(30);
+DECLARE @VaiTroNguoiThaoTac VARCHAR(30);
+DECLARE @TrangThaiNguoiThaoTac VARCHAR(20);
 DECLARE @LaDaoTao BIT = ISNULL(IS_MEMBER(N'DAO_TAO'), 0);
 DECLARE @LaQuanTri BIT = ISNULL(IS_MEMBER(N'QUAN_TRI'), 0);
 
@@ -191,13 +194,36 @@ BEGIN TRY
     IF @TrangThaiHienTai IS NULL
         THROW 51010, N'Khong tim thay tai khoan.', 1;
 
-    IF @LaDaoTao = 0 AND @LaQuanTri = 0 AND USER_NAME() <> N'dbo'
-        THROW 51012, N'Chi DAO_TAO hoac QUAN_TRI duoc khoa tai khoan.', 1;
+    IF @MaTaiKhoanNguoiThaoTac IS NOT NULL
+    BEGIN
+        SELECT
+            @VaiTroNguoiThaoTac = VaiTro,
+            @TrangThaiNguoiThaoTac = TrangThai
+        FROM dbo.TAIKHOAN WITH (UPDLOCK, HOLDLOCK)
+        WHERE MaTaiKhoan = @MaTaiKhoanNguoiThaoTac;
 
-    IF @LaDaoTao = 1
-       AND @LaQuanTri = 0
-       AND @VaiTroHienTai IN ('DAO_TAO', 'QUAN_TRI')
-        THROW 51014, N'Role DAO_TAO khong duoc khoa tai khoan quan tri.', 1;
+        IF @VaiTroNguoiThaoTac IS NULL
+           OR @TrangThaiNguoiThaoTac <> 'ACTIVE'
+           OR @VaiTroNguoiThaoTac NOT IN ('DAO_TAO', 'QUAN_TRI')
+            THROW 51012, N'Chi DAO_TAO hoac QUAN_TRI dang hoat dong duoc khoa tai khoan.', 1;
+
+        IF @MaTaiKhoanNguoiThaoTac = @MaTaiKhoan
+            THROW 51015, N'Khong the tu khoa tai khoan dang dang nhap.', 1;
+
+        IF @VaiTroNguoiThaoTac = 'DAO_TAO'
+           AND @VaiTroHienTai IN ('DAO_TAO', 'QUAN_TRI')
+            THROW 51014, N'Role DAO_TAO khong duoc khoa tai khoan DAO_TAO hoac QUAN_TRI.', 1;
+    END
+    ELSE
+    BEGIN
+        IF @LaDaoTao = 0 AND @LaQuanTri = 0 AND USER_NAME() <> N'dbo'
+            THROW 51012, N'Chi DAO_TAO hoac QUAN_TRI duoc khoa tai khoan.', 1;
+
+        IF @LaDaoTao = 1
+           AND @LaQuanTri = 0
+           AND @VaiTroHienTai IN ('DAO_TAO', 'QUAN_TRI')
+            THROW 51014, N'Role DAO_TAO khong duoc khoa tai khoan quan tri.', 1;
+    END;
 
     IF @TrangThaiHienTai = 'DISABLED'
         THROW 51011, N'Tai khoan DISABLED khong the chuyen sang LOCKED.', 1;
@@ -230,8 +256,7 @@ END;
 GO
 CREATE OR ALTER PROCEDURE [dbo].[SP_DangKyTinChi]
     @MaSV INT,
-    @MaLHP VARCHAR(20),
-    @TinChiToiDa INT = 25
+    @MaLHP VARCHAR(20)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -335,7 +360,7 @@ BEGIN TRY
     SET @TongTinChiHienTai =
         dbo.FN_TongTinChiDangKy(@MaSV, @MaHocKy);
 
-    IF (@TongTinChiHienTai + @SoTinChiMon) > @TinChiToiDa
+    IF (@TongTinChiHienTai + @SoTinChiMon) > 25
         THROW 50010, N'Vuot qua so tin chi toi da cho phep trong hoc ky.', 1;
 
     SELECT
