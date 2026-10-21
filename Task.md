@@ -15,9 +15,9 @@
 - **Số lượng Indexes**: Chỉnh sửa không hard-code 31 indexes, thay bằng "18 bảng, 5 views, 6 functions, 6 stored procedures, 11 triggers, 4 security roles và hệ thống indexes theo DB specification".
 
 ### Tests / Verification
-- Kiểm tra mã `THROW` trong `DB/05_Triggers.md` và `DB/08_StoredProcedures.md` qua PowerShell grep: Đã xác thực thực tế DB dùng 51006 cho cả hai.
-- Kiểm tra danh sách tài khoản trong `DANH_SACH_TAI_KHOAN_TEST.md` và `DB/04_SeedData.md`: Khớp đúng `sv_23000495` là `LOCKED`.
-- Kiểm tra số lượng index trong `DB/09_Indexes.md`: 17 Nonclustered Indexes.
+- Kiểm tra mã `THROW` trong `DB/05_Triggers.sql` và `DB/08_StoredProcedures.sql` qua PowerShell grep: Đã xác thực thực tế DB dùng 51006 cho cả hai.
+- Kiểm tra danh sách tài khoản trong `DANH_SACH_TAI_KHOAN_TEST.md` và `DB/04_SeedData.sql`: Khớp đúng `sv_23000495` là `LOCKED`.
+- Kiểm tra số lượng index trong `DB/09_Indexes.sql`: 17 Nonclustered Indexes.
 
 ### Issues
 - None
@@ -644,7 +644,7 @@
 - Status: DONE
 - Date: 2026-10-09
 - Files changed:
-  - `DB/06_Views.md`
+  - `DB/06_Views.sql`
   - `backend/src/services/student.service.js`
   - `backend/tests/student.test.js`
   - `backend/tests/grades-layout.test.js`
@@ -655,7 +655,7 @@
    - Thay thế `FROM dbo.DIEMSO ds INNER JOIN dbo.DANGKYTINCHI dk` thành:
      `FROM dbo.DANGKYTINCHI dk INNER JOIN dbo.SINHVIEN sv ON ... LEFT JOIN dbo.DIEMSO ds ON ds.MaDangKy = dk.MaDangKy WHERE dk.TrangThai = 'REGISTERED'`.
    - Với môn đang học trong kỳ (chưa có điểm thi `DiemCuoiKy IS NULL`): cột `KetQua` trả về `N'ĐANG HỌC'`, các cột điểm thành phần và tổng kết trả về `NULL`.
-   - Đồng bộ script view vào CSDL SQL Server `DBMS330284` và file tài liệu `DB/06_Views.md`.
+   - Đồng bộ script view vào CSDL SQL Server `DBMS330284` và file tài liệu `DB/06_Views.sql`.
 2. **Backend Service (`student.service.js`):**
    - Môn đang học vẫn tính vào `soTinChiDangKy`, nhưng chưa tính vào `soTinChiDat`.
    - Kỳ đang học: `diemTrungBinhHocKy` trả về `null`, `xepLoaiHocKy = 'Đang học'`.
@@ -762,12 +762,12 @@
 - Status: DONE
 - Date: 2026-10-09
 - Files changed:
-  - `DB/02_CreateTables.md`
-  - `DB/03_Constraints.md`
+  - `DB/02_CreateTables.sql`
+  - `DB/03_Constraints.sql`
   - `DB/04_SeedData.sql`
-  - `DB/04_SeedData.md`
-  - `DB/06_Views.md`
-  - `DB/database_v1.md`
+  - `DB/04_SeedData.sql`
+  - `DB/06_Views.sql`
+  - `docs/database-design.md`
   - `backend/src/routes/index.js`
   - `backend/src/routes/class.routes.js`
   - `backend/src/controllers/class.controller.js`
@@ -908,12 +908,12 @@
 - Status: DONE
 - Date: 2026-10-09
 - Files changed:
-  - `DB/05_Triggers.md`
-  - `DB/06_Views.md`
-  - `DB/07_Functions.md`
-  - `DB/08_StoredProcedures.md`
-  - `DB/09_Indexes.md`
-  - `DB/database_v1.md`
+  - `DB/05_Triggers.sql`
+  - `DB/06_Views.sql`
+  - `DB/07_Functions.sql`
+  - `DB/08_StoredProcedures.sql`
+  - `DB/09_Indexes.sql`
+  - `docs/database-design.md`
   - `backend/src/utils/errorMapper.js`
   - `backend/src/repositories/class.repository.js`
   - `backend/src/services/class.service.js`
@@ -936,12 +936,12 @@
    - Bổ sung API `GET /api/classes/:id/tuition-report` vào `class.routes.js`, `class.controller.js`, `class.service.js`.
 
 3. **Đồng bộ toàn bộ tài liệu CSDL trong thư mục `DB/`:**
-   - `DB/05_Triggers.md`: Bổ sung `TR_LOP_Audit` (#12) và `TR_LOP_KiemTraXoa` (#13).
-   - `DB/06_Views.md`: Bổ sung `V_DanhSachLopSinhHoat` (#6).
-   - `DB/07_Functions.md`: Bổ sung `FN_DemSiSoLopSinhHoat` (#7).
-   - `DB/08_StoredProcedures.md`: Bổ sung `SP_ThongKeHocPhiTheoLop` (#7).
-   - `DB/09_Indexes.md`: Bổ sung `IX_SINHVIEN_MaLop` (#18) và `IX_LOP_MaKhoa_NamNhapHoc` (#19).
-   - `DB/database_v1.md`: Cập nhật thống kê toàn bộ hệ thống gồm 19 bảng, 6 Views, 7 Functions, 7 Stored Procedures, 13 Triggers, 19 Indexes.
+   - `DB/05_Triggers.sql`: Bổ sung `TR_LOP_Audit` (#12) và `TR_LOP_KiemTraXoa` (#13).
+   - `DB/06_Views.sql`: Bổ sung `V_DanhSachLopSinhHoat` (#6).
+   - `DB/07_Functions.sql`: Bổ sung `FN_DemSiSoLopSinhHoat` (#7).
+   - `DB/08_StoredProcedures.sql`: Bổ sung `SP_ThongKeHocPhiTheoLop` (#7).
+   - `DB/09_Indexes.sql`: Bổ sung `IX_SINHVIEN_MaLop` (#18) và `IX_LOP_MaKhoa_NamNhapHoc` (#19).
+   - `docs/database-design.md`: Cập nhật thống kê toàn bộ hệ thống gồm 19 bảng, 6 Views, 7 Functions, 7 Stored Procedures, 13 Triggers, 19 Indexes.
 
 4. **Kiểm thử theo quy trình TDD (`/tdd`):**
    - Viết mới test suite `backend/tests/class-programmability.test.js` kiểm thử chuyên sâu 8 test cases:
@@ -1464,4 +1464,207 @@
 ### Next Step
 - Sau khi môi trường test khả dụng, cập nhật các test API cũ sang token theo role, chạy test quyền/thanh toán/đăng ký/giảng viên và kiểm tra flow thời khóa biểu trên browser.
 
+## Phase 21: Rerun Tests, Isolate Fixtures & Complete Core CRUD
 
+- Status: IN PROGRESS
+- Date: 2026-10-14
+- Files changed:
+  - `backend/src/middlewares/auth.middleware.js`
+  - `backend/src/routes/course.routes.js`, `class.routes.js`, `faculty.routes.js`, `semester.routes.js`, `lecturer.routes.js`, `admin.routes.js`
+  - `backend/src/controllers/course.controller.js`, `admin.controller.js`
+  - `backend/src/repositories/admin.repository.js`
+  - `backend/src/services/lecturer.service.js`
+  - `backend/src/validators/catalog.validator.js`
+  - `backend/tests/access-control.test.js`, `helpers/tokens.js`, `helpers/tuition-fixture.js`
+  - `backend/tests/admin-catalog-crud.test.js`, `admin-student-crud.test.js`, `class-programmability.test.js`, `lecturer-grade.test.js`, `pending-payment.test.js`, `registration.test.js`, `tuition.test.js` và các test API được cập nhật bearer token
+  - `docs/verification-2026-10-14.md`
+  - `docs/spec.md`
+  - `Task.md`
+
+### Changes
+- Bắt buộc xác thực/vai trò ở các API danh mục còn thiếu; giới hạn giảng viên vào lớp/lịch được phân công và sinh viên vào dữ liệu của mình.
+- Thay test dùng ID seed cố định bằng fixture riêng và dọn đúng bản ghi test; sửa cú pháp `OUTPUT` cho các bảng có trigger.
+- Thêm API CRUD quản trị môn học và lớp học phần kèm kiểm tra đầu vào; xác nhận qua test tích hợp có tạo/sửa/đọc/xóa dữ liệu tạm.
+- Đồng bộ đặc tả với route CRUD mới, số liệu test/database vừa đọc và đánh dấu phần hiệu năng, concurrency, giao diện cùng quyền SQL còn chưa xác minh.
+
+### Tests / Verification
+- Kết nối SQL Server `DBMS330284`: PASS.
+- Toàn suite Jest: **26/26 suites, 173/173 tests PASS**.
+- CRUD catalog: 2/2 tests PASS.
+- Đối tượng DB thực tế: 19 tables, 6 views, 7 functions, 9 stored procedures, 14 triggers, 31 nonclustered indexes.
+
+### Issues
+- Chưa chạy lại phép đo hiệu năng index, concurrency hai session và kiểm tra frontend end-to-end.
+- Giao diện admin chưa có form CRUD catalog; mới có API.
+- Chưa xác minh quyền least-privilege của SQL login runtime.
+
+### Next Step
+- Bổ sung giao diện CRUD catalog; chạy phép đo index/concurrency và kiểm thử demo trên trình duyệt, đồng thời xác minh quyền SQL runtime.
+
+## Phase 22: Update Project Report with Verified Results
+
+- Status: DONE
+- Date: 2026-10-14
+- Files changed:
+  - `Nhom16_QuanLyHocVuDangKyTinChi_CAP_NHAT_2026-10-14.docx`
+
+### Changes
+- Cập nhật kết quả chạy lại Jest (26 suite, 173/173 test đạt), số liệu đối tượng SQL, ma trận CRUD/API và đánh giá phần còn thiếu.
+- Ghi rõ benchmark index và concurrency trong báo cáo là kết quả lịch sử, chưa chạy lại lần này; cập nhật trạng thái bảo mật API, ghi điểm và quyền SQL.
+- Làm mới mục lục/danh mục bảng và khôi phục đánh số caption liên tục.
+- File Word gốc đang được mở nên Windows không cho ghi đè; lưu bản cập nhật riêng cạnh file gốc để tránh làm hỏng phiên đang mở.
+
+### Tests / Verification
+- Mở lại DOCX thành công; xuất PDF bằng Word và rasterize 91 trang bằng Poppler bundled.
+- Quét contact sheet toàn bộ trang và xem trực tiếp các trang API, kết quả test, danh mục bảng và kết luận; không thấy clipping hoặc bảng vỡ.
+- Kiểm tra số bảng 44–47 và số trang trong danh mục sau khi Word cập nhật fields.
+
+### Issues
+- Chưa thay thế file Word gốc vì file đang mở/khóa bởi Word.
+
+### Next Step
+- Khi file gốc được đóng, thay bản cập nhật vào đúng tên file gốc nếu nhóm cần giữ nguyên tên.
+
+## Phase 23: Hoàn thiện rubric Tiêu chí 5 — SQL Server, validation và phản hồi lỗi
+
+- Status: DONE
+- Date: 2026-10-21
+
+### Changes
+- Middleware xác thực đối chiếu mỗi JWT với tài khoản đang hoạt động trong SQL Server; trạng thái/vai trò/mã hồ sơ cũ trong token không còn được tin cậy.
+- Bảo vệ khóa/mở khóa tài khoản theo vai trò, ngăn tự khóa, khóa tài khoản quản trị từ DAO_TAO và mở tài khoản DISABLED; bổ sung migration cho `SP_KhoaTaiKhoan`.
+- Điểm thành phần hỗ trợ cập nhật từng phần, `null` xóa thành phần, batch được validate và ghi trong transaction.
+- Bổ sung Zod cho trạng thái tài khoản, query quản trị (kể cả lọc lớp giao dịch chờ duyệt), ID ghi, mã lớp điểm và ngày sinh theo lịch; kiểm tra bản ghi ảnh hưởng để trả 404 khi cập nhật/xóa sinh viên không tồn tại.
+- Lỗi SQL không nhận diện trả thông báo trung tính; thiếu biến môi trường bắt buộc dừng server với thông báo cấu hình rõ; bỏ bí mật mặc định, cập nhật `.env.example` và xoay JWT secret local.
+- Toast dùng text node và ARIA live region; escape dữ liệu ở audit log/bảng quản trị/điểm số, bỏ inline handlers dựa trên tên tài khoản và hồ sơ sinh viên.
+- Form sinh viên giữ nguyên dữ liệu, hiển thị lỗi theo trường, summary có thể focus và liên kết đến trường lỗi.
+- Cập nhật `docs/spec.md` cho trạng thái phiên, quy tắc khóa tài khoản, điểm từng phần và lỗi máy chủ.
+
+### Tests / Verification
+- `npm test`: 29 suites, 192 tests PASS trên SQL Server thật.
+- `frontend-dom.test.js`: 2 tests PASS cho text toast/ARIA và lỗi form/giữ dữ liệu/focus; `configuration-safety.test.js`: 2 tests PASS.
+- TDD đã xác nhận test xóa sinh viên không tồn tại đỏ trước sửa (API trả 200), xanh sau sửa (API trả 404).
+- TDD test duplicate MSSV đỏ khi field trả `server`, xanh sau khi trả `maSinhVien`; test fixture có thể chạy độc lập và tự dọn.
+- TDD test lọc `maLop` giao dịch chờ duyệt quá dài đỏ với SQL 500, xanh trả 400 sau khi thêm query validator.
+- Đăng nhập demo admin trong trình duyệt local; kiểm tra danh sách sinh viên, gửi MSSV trùng và xác nhận focus summary, lỗi dưới input, giá trị form còn nguyên.
+- `node --check` cho các script backend/frontend và `git diff --check` đều đạt.
+
+### Issues
+- Cài `jsdom` thất bại do npm offline cache (`ENOTCACHED`); Jest kiểm tra tương tác qua DOM harness nhỏ, đồng thời lỗi form đã được xác nhận trong trình duyệt local.
+- Chưa hoàn tất viewport 375px và thao tác sửa điểm trong trình duyệt; cập nhật điểm, khóa phiên và rollback batch đã được kiểm tra qua tích hợp API/SQL fixture.
+
+### Next Step
+- Trước buổi demo, kiểm tra thêm responsive ở 375px và nhập điểm trên giao diện giảng viên bằng dữ liệu demo.
+
+
+
+## Phase 24: Nâng cấp DB đào tạo và đồng bộ BE (2026-10-21)
+
+- Status: DONE WITH FOLLOW-UP ITEMS
+
+### Changes
+- Chuẩn hóa bộ SQL trong `DB/`, chuyển tài liệu thiết kế sang `docs/database-design.md`, thêm `DB/README.md` và runner theo action; không có thao tác drop/reset.
+- Bổ sung `SINHVIEN.MaCTDT`, `NamTuyenSinh`, seed 24 CTĐT cho khóa 2023–2025, liên kết 480 môn CTĐT; cập nhật query PLAN, API và form quản trị sinh viên.
+- Bổ sung trigger nhất quán khoa/lớp/ngành/CTĐT, kiểm tra sức chứa và lịch khi mở lớp; thêm FK học phí-mức phí cùng học kỳ; cap đăng ký 25 do DB kiểm soát.
+- Cập nhật `docs/spec.md` và tài liệu thiết kế theo schema chạy thực tế; đánh dấu giới hạn runtime login, audit session context, execution plan/IO và concurrency hai phiên.
+
+### Tests / Verification
+- Dựng mới `DBMS330284_CodexDemo_Final`, seed, verify, security, integration và invariant SQL tests đều PASS.
+- `npm test`: 34 suites, 215 tests PASS trên SQL Server với `DB_NAME=DBMS330284_CodexDemo_Final`.
+- Backup checksum + `RESTORE VERIFYONLY` PASS; restore sang `DBMS330284_CodexDemo_RestoreCheck`; `DBCC CHECKDB` PASS, 1.500 sinh viên sau restore.
+- Tại thời điểm ghi Phase 24, DB `DBMS330284` chưa được sửa; trạng thái này được cập nhật trong Phase 26 sau khi có backup và migration có kiểm chứng.
+
+### Issues
+- Backend chưa chạy dưới SQL login runtime quyền thấp: role/permission tests SQL pass, nhưng cần chuyển các đường đọc/ghi trực tiếp sang view/procedure trước khi cấp login runtime.
+- Audit trigger chưa nhận actor từ `SESSION_CONTEXT` trên mọi request và chưa dọn context tại mọi đường trả connection về pool.
+- Chưa chạy concurrency hai phiên cho chỗ cuối và xác nhận thanh toán; chưa đo execution plan/STATISTICS IO để quyết định index.
+- Follow-up migration DB cũ đã hoàn tất trong Phase 26.
+
+### Next Step
+- Hoàn thiện migration có kiểm tra dữ liệu cho `DBMS330284`, rồi refactor backend sang least-privilege procedures/views trước khi provision runtime login.
+
+## Phase 25: Sửa lỗi tải danh sách quản lý tài khoản theo bộ lọc mặc định
+
+- Status: DONE WITH FOLLOW-UP ITEMS
+- Date: 2026-10-21
+
+### Findings
+- Ảnh lỗi xảy ra khi trang quản lý tài khoản gửi các bộ lọc mặc định dưới dạng chuỗi rỗng (`vaiTro=`, `trangThai=`). Zod chỉ chấp nhận enum hợp lệ hoặc trường không có, nên từ chối request với 400 trước khi truy vấn SQL; đây không phải lỗi quyền truy cập.
+- API quản trị cho phép cả `QUAN_TRI` và `DAO_TAO` truy cập danh sách tài khoản. Cả hai vai trò cũng dùng endpoint khóa/mở khóa; `DAO_TAO` bị giới hạn không thể đổi trạng thái tài khoản `DAO_TAO`/`QUAN_TRI` và không thể tự khóa tài khoản đang đăng nhập.
+- API nhật ký hoạt động chỉ dành cho `QUAN_TRI`. Trang hiện vẫn hiển thị mục nhật ký hoạt động cho `DAO_TAO`; cần cân nhắc ẩn mục này trên giao diện để quyền thể hiện nhất quán.
+
+### Changes
+- Chuẩn hóa bộ lọc enum rỗng trong query danh sách tài khoản thành `undefined` (nghĩa là không áp dụng bộ lọc). Các giá trị enum không hợp lệ vẫn trả 400 tiếng Việt.
+- Thêm test HTTP gửi đúng bộ lọc mặc định rỗng cho cả `admin` và `training`, xác nhận nhận danh sách thành công.
+
+### Tests / Verification
+- TDD: test hai vai trò với bộ lọc rỗng đỏ trước sửa (cả hai trả 400), xanh sau sửa (cả hai trả 200 với danh sách tài khoản).
+- Nhóm test `GET /api/admin/users`: 7 tests PASS, gồm hai vai trò, query không hợp lệ, phân trang và truy vấn danh sách.
+- Chạy toàn bộ `tests/admin.test.js`: 19 PASS, 3 FAIL do SQL Server `DBMS330284` hiện tại thiếu cột `MaCTDT` trong các truy vấn danh sách sinh viên; các lỗi này độc lập với quản lý tài khoản.
+- `git diff --check` cho file thay đổi trong task: PASS.
+
+### Issues
+- Để kiểm tra đầy đủ các API sinh viên trên database cũ `DBMS330284`, cần áp dụng migration bổ sung `SINHVIEN.MaCTDT` hoặc chạy ứng dụng với database mới `DBMS330284_CodexDemo_Final` đã được dựng và kiểm tra ở Phase 24.
+- Mục nhật ký hoạt động vẫn hiện trong menu `DAO_TAO` dù backend đã chặn vai trò này bằng 403.
+
+### Next Step
+- Tải lại trang quản lý tài khoản và xác nhận danh sách hiện lên với tài khoản admin/đào tạo. Nếu cần hoàn thiện giao diện phân quyền, ẩn mục nhật ký hoạt động với `DAO_TAO` và giữ thông báo 403 cho truy cập trực tiếp.
+
+## Phase 26: Migration DB cũ có bảo toàn dữ liệu (2026-10-21)
+
+- Status: DONE WITH FOLLOW-UP ITEMS
+
+### Changes
+- Tạo backup `DBMS330284_before_curriculum_migration_20261021092939.bak`, kiểm tra checksum và `RESTORE VERIFYONLY`; diễn tập migration trên bản restore trước khi áp dụng DB thật.
+- Áp dụng `DB/Migrations/20261021_CurriculumAndInvariants.sql` và đồng bộ lại trigger, view, function, procedure, index, security trên `DBMS330284`; không drop/reset DB.
+- Giữ 1.501 sinh viên, 44.545 đăng ký, 34.535 điểm, 7.424 hồ sơ học phí và 8.167 chi tiết thanh toán. Cập nhật một cache `SoTienDaThanhToan` bị lệch 145.000 đồng theo tổng giao dịch đã xác nhận.
+- Cập nhật `docs/spec.md`, `docs/database-design.md` và `DB/README.md`; DB cũ hiện đã migration.
+
+### Tests / Verification
+- `--action verify`: PASS trên `DBMS330284`.
+- `--action test`: integration, SQL role permission và invariant rejection PASS trên `DBMS330284`.
+- `npm test` với `DB_NAME=DBMS330284`: 34 suites, 217 tests PASS.
+
+### Follow-up
+- Chưa đo execution plan/STATISTICS IO, chưa kiểm thử tranh chấp concurrency hai phiên và chưa restore backup trước migration sang DB mới kèm `DBCC CHECKDB` sau migration.
+
+## Phase 27: Phân trang danh sách lớp giảng viên
+
+- Status: DONE WITH FOLLOW-UP ITEMS
+- Date: 2026-10-21
+- Files changed:
+  - `frontend/portal-lecturer.html`
+  - `frontend/js/lecturer.js`
+
+### Changes
+- Thêm phân trang phía giao diện cho danh sách lớp giảng viên, mặc định 10 lớp/trang; cho phép chọn 20 hoặc 50 lớp/trang.
+- Dùng component phân trang dùng chung và giữ nguyên số lượng lớp tổng cộng.
+
+### Tests / Verification
+- Chưa chạy test hoặc kiểm tra lại trên trình duyệt sau thay đổi.
+
+### Issues
+- Chưa xác nhận hiển thị trên trình duyệt; cần tải lại portal giảng viên.
+
+### Next Step
+- Kiểm tra nhanh phân trang sau khi tải lại giao diện.
+
+## Phase 28: Sửa các bộ lọc lớp sinh hoạt bị bỏ qua
+
+- Status: DONE WITH FOLLOW-UP ITEMS
+- Date: 2026-10-21
+- Files changed:
+  - `backend/src/controllers/admin.controller.js`
+
+### Changes
+- Chuyển tiếp `maLop` từ query đến repository trong danh sách tài khoản, danh sách sinh viên và danh sách đăng ký tín chỉ.
+- Nguyên nhân: giao diện gửi `maLop`, validator và repository đều hỗ trợ, nhưng controller không đưa tham số vào lời gọi repository.
+
+### Tests / Verification
+- Đối chiếu tĩnh giao diện, query schema, controller và repository; chưa chạy test/API sau sửa.
+
+### Issues
+- Nếu backend không tự reload, cần khởi động lại để nhận thay đổi.
+
+### Next Step
+- Thử lại ba bộ lọc lớp sinh hoạt sau khi backend nạp code mới.

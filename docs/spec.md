@@ -1,19 +1,19 @@
 # TÀI LIỆU ĐẶC TẢ KỸ THUẬT WEB DEMO HỆ THỐNG DBMS330284
 > **Hệ thống Quản lý Đăng ký Tín chỉ & Học vụ Đại học**  
-> **Phiên bản:** 1.3.0 | **Ngày cập nhật:** 12/10/2026  
+> **Phiên bản:** 1.5.0 | **Ngày cập nhật:** 21/10/2026
 > **Kiến trúc:** Node.js (Express) + Vanilla HTML/CSS/JS + Microsoft SQL Server 2022
 
 ---
 
 ## 1. TỔNG QUAN HỆ THỐNG & NGUYÊN TẮC CỐT LÕI
 
-Hệ thống Web App phục vụ mục tiêu demo toàn diện các tính năng của CSDL **`DBMS330284`** (19 bảng, 6 views, 7 functions, 9 stored procedures, 14 triggers, 4 security roles và hệ thống 19 indexes theo DB specification, >210.000 dòng dữ liệu).
+Ứng dụng Express + SQL Server phục vụ demo đăng ký tín chỉ. Ngày 21/10/2026, schema được dựng và xác minh trên DB cô lập `DBMS330284_CodexDemo_Final`, sau đó migration có backup được áp dụng lên DB đang dùng `DBMS330284` mà không reset dữ liệu. DB cũ giữ 1.501 sinh viên, 44.545 đăng ký tín chỉ, 34.535 điểm, 7.424 hồ sơ học phí, 8.167 chi tiết thanh toán và 116.171 log hoạt động; có 24 CTĐT cho các khóa 2023–2025. Trong migration, cache `SoTienDaThanhToan` lệch 145.000 đồng ở một hồ sơ được đối chiếu từ giao dịch đã xác nhận và đồng bộ lại. Verify, SQL integration/permission/invariant tests và Jest (34 suites, 217 tests) đều pass trên DB này. `DB/09_Indexes.sql` mô tả workload indexes; số index trong catalog bao gồm cả index do PK/UNIQUE sinh ra và không chứng minh hiệu năng.
 
 ### 5 Nguyên tắc phát triển bắt buộc:
 1. **Validate API Input trước khi chạm DB:** Toàn bộ request payload phải được validate chặt chẽ ở tầng middleware; không cho phép request sai định dạng chạy xuống SQL Server.
 2. **Response Format chuẩn hóa 100%:** Mọi API (thành công hoặc thất bại) đều dùng một cấu trúc JSON thống nhất kèm HTTP status code ngữ nghĩa.
 3. **Phân tầng MVC + Service + Repository:** Controller chỉ điều hướng HTTP; Service xử lý business flow & ánh xạ lỗi; Repository chuyên trách giao tiếp SQL Server (gọi SP/View/Query).
-4. **RESTful thực dụng & Tối ưu hiệu năng:** API giữ chuẩn REST ở bề mặt (POST/GET/PATCH/DELETE); bên dưới gọi trực tiếp các Stored Procedure, View, Function có sẵn; tận dụng Connection Pool và Index; tính toán sĩ số động từ `DANGKYTINCHI`.
+4. **RESTful thực dụng & Tối ưu hiệu năng:** API dùng các phương thức HTTP phù hợp, Connection Pool và Index. Tùy nghiệp vụ, repository gọi Stored Procedure/View/Function hoặc truy vấn SQL tham số hóa trực tiếp; sĩ số được tính động từ `DANGKYTINCHI`.
 5. **Đặc tả & API trước, Giao diện sau:** Xây dựng nền tảng API vững chắc, có kiểm thử TDD (Red-Green-Refactor) trước khi ghép UI. Giao diện thực dụng, tinh gọn, chuẩn Cổng học vụ Đại học, không rườm rà (Anti AI-slop).
 
 ---
@@ -22,9 +22,10 @@ Hệ thống Web App phục vụ mục tiêu demo toàn diện các tính năng 
 
 ```text
 ProjectDBMS/
-├── DB/                          # 14 file SQL/MD chuẩn nguồn sự thật CSDL
+├── DB/                          # SQL schema, seed và scripts kiểm thử riêng
 ├── docs/
-│   └── spec.md                  # Bản đặc tả kỹ thuật này
+│   ├── spec.md                  # Đặc tả kỹ thuật đã đối chiếu schema demo
+│   └── database-design.md       # ERD, data dictionary và quyết định thiết kế
 ├── backend/                     # Backend Node.js / Express
 │   ├── src/
 │   │   ├── config/
@@ -88,7 +89,7 @@ ProjectDBMS/
 │   │   │   ├── student.routes.js
 │   │   │   └── index.js
 │   │   └── app.js               # Khởi tạo Express app & gắn route
-│   ├── tests/                   # 24 Test Suites Jest tự động hóa 100%
+│   ├── tests/                   # Jest cho API, SQL fixture và DOM harness
 │   ├── scripts/
 │   │   └── migrate_payment_confirmation.js # Script migrate xác nhận 2 bước
 │   ├── package.json
@@ -108,6 +109,26 @@ ProjectDBMS/
 ```
 
 ---
+
+## 2.1. Mô hình CTĐT theo khóa tuyển sinh
+
+- `CHUONGTRINHDAOTAO.NamTuyenSinh` là năm tuyển sinh dạng `SMALLINT`; `KhoaHoc` là nhãn hiển thị. Mỗi ngành/chương trình có một CTĐT riêng cho các khóa 2023, 2024 và 2025.
+- `SINHVIEN.MaCTDT` là FK bắt buộc. Khi có `MaLop`, trigger kiểm tra đồng thời khoa sinh viên, khoa ngành của CTĐT và `NamTuyenSinh = LOP.NamNhapHoc`; các trigger phía `LOP`, `NGANH` và CTĐT ngăn thay đổi làm dữ liệu hiện hữu mất nhất quán.
+- Danh sách CTĐT không phụ thuộc việc chương trình đã có môn hay chưa. API `GET /api/admin/curriculum-options` trả lựa chọn theo `maKhoa` và `namTuyenSinh`; API danh sách khung môn học vẫn có thể không trả CTĐT chưa gắn môn do view chi tiết dùng quan hệ với `CTDT_MONHOC`.
+- Đăng ký có thể chưa có hàng `DIEMSO`; CTĐT có thể chưa có hàng `CTDT_MONHOC`; lớp học phần ở `DA_KHOA` có thể chưa có `LICHHOC`. Chỉ cho phép lớp chuyển sang `MO_DANG_KY`/`DANG_MO` khi có ít nhất một lịch; xóa lịch cuối của lớp đang mở bị từ chối.
+- `HocKyDuKien` là kỳ thứ mấy trong lộ trình CTĐT, không phải `MaHocKy`. Truy vấn PLAN tính số kỳ từ năm bắt đầu học kỳ 1/2 và `NamTuyenSinh`.
+- `HOCPHI(MaMucHocPhi, MaHocKy)` tham chiếu khóa ghép cùng học kỳ của `MUCHOCPHI`; đơn giá và tổng tiền trên hồ sơ vẫn là snapshot.
+
+SQL được chạy qua `backend/scripts/run_all_db_files.js`, ví dụ:
+
+```powershell
+node backend/scripts/run_all_db_files.js --action build --database DBMS330284_CodexDemo
+node backend/scripts/run_all_db_files.js --action seed --database DBMS330284_CodexDemo
+node backend/scripts/run_all_db_files.js --action verify --database DBMS330284_CodexDemo
+node backend/scripts/run_all_db_files.js --action test --database DBMS330284_CodexDemo
+```
+
+Runner chỉ cho `build/seed` trên DB có tiền tố `DBMS330284_CodexDemo`; `build` chỉ chạy khi DB chưa có bảng và không có lệnh drop. `seed` từ chối DB không trống. Migration, verify và test chấp nhận `DBMS330284` cùng các DB rehearsal được liệt kê trong runner. Transaction demo và concurrency script ở `DB/tests/` không tự chạy trong action test.
 
 ## 3. QUY CHUẨN API & FORMAT DỮ LIỆU
 
@@ -161,18 +182,18 @@ Hệ thống chuẩn hóa 100% quy ước mã phản hồi HTTP trên toàn bộ
 | **`200 OK`** | Thành công | Truy vấn dữ liệu hoặc cập nhật trạng thái thành công (`GET`, `PATCH`). | Không có |
 | **`201 Created`** | Khởi tạo thành công | Tạo mới bản ghi thành công (`POST /api/registrations`, `POST /api/payments`, `POST /api/admin/users`). | Không có |
 | **`400 Bad Request`** | Yêu cầu không hợp lệ | Payload sai cú pháp JSON, thiếu trường bắt buộc, hoặc sai định dạng dữ liệu kiểm tra bởi Zod Middleware. | Tên trường bị thiếu/sai |
-| **`401 Unauthorized`** | Lỗi xác thực tài khoản (Authentication Failure) | 1. Sai tên đăng nhập hoặc mật khẩu khi gọi `POST /api/auth/login`.<br>2. **Tài khoản bị khóa (`LOCKED` hoặc `DISABLED`):** Trả về `401 Unauthorized` (`field: 'username'`, thông báo: *"Tài khoản đã bị khóa hoặc vô hiệu hóa. Vui lòng liên hệ quản trị viên."*).<br>3. Không đính kèm Bearer JWT Token hoặc Token hết hạn/không hợp lệ khi truy cập các endpoint yêu cầu xác thực.<br>4. Tài khoản bị vô hiệu hóa trong lúc đang có phiên làm việc (thu hồi phiên ngay lập tức). | `username`, `password`, `auth` |
+| **`401 Unauthorized`** | Lỗi xác thực tài khoản (Authentication Failure) | 1. Sai tên đăng nhập hoặc mật khẩu khi gọi `POST /api/auth/login`.<br>2. Tài khoản `LOCKED`/`DISABLED`, không tồn tại hoặc token thiếu mã tài khoản hiện hành.<br>3. Không đính kèm Bearer JWT Token hoặc Token hết hạn/không hợp lệ.<br>4. Mỗi request đọc lại trạng thái, vai trò và mã hồ sơ từ CSDL; khóa tài khoản thu hồi token ở request kế tiếp. | `username`, `password`, `auth` |
 | **`403 Forbidden`** | Lỗi phân quyền truy cập (Authorization Failure) | Người dùng đã xác thực thành công nhưng không đủ thẩm quyền thực hiện thao tác:<br>1. Sinh viên cố gắng gọi API của Quản trị viên / Đào tạo.<br>2. Giảng viên truy cập hoặc sửa điểm của lớp học phần do Giảng viên khác phụ trách (`field: 'permission'`).<br>3. Tài khoản không có quyền xác nhận/từ chối giao dịch tài chính (`51404`). | `permission`, `taiKhoan` |
 | **`404 Not Found`** | Tài nguyên không tồn tại | Mã sinh viên, lớp học phần, học kỳ hoặc phiếu thanh toán không tồn tại trong hệ thống. | `maSV`, `maLHP`, `maThanhToan` |
 | **`409 Conflict`** | Xung đột trạng thái nghiệp vụ | Xung đột dữ liệu hoặc vi phạm trạng thái nghiệp vụ CSDL:<br>1. Sinh viên đã đăng ký môn học này trong học kỳ (`50007`).<br>2. Lớp học phần đã đủ sĩ số tối đa (`50011`, `51002`).<br>3. Hồ sơ học phí đang có giao dịch `CHO_XAC_NHAN` chưa xử lý.<br>4. Tổng số tiền thanh toán vượt quá số dư học phí còn lại (`51006`).<br>5. Lịch học bị trùng giảng viên hoặc phòng học (`51310`). | `maMonHoc`, `siSo`, `maHocPhi`, `soTien`, `phongHoc` |
-| **`422 Unprocessable Content`** | Vi phạm quy tắc logic học vụ | Dữ liệu gửi lên đúng cú pháp nhưng vi phạm điều kiện logic học vụ:<br>1. Chưa hoàn thành môn học tiên quyết bắt buộc (`50008`).<br>2. Lịch học bị trùng với thời khóa biểu cá nhân hiện tại (`50009`).<br>3. Đăng ký vượt quá số tín chỉ tối đa cho phép trong học kỳ (`50010`).<br>4. Khoa của sinh viên không trùng khớp với Khoa của lớp sinh hoạt (`51008`). | `tienQuyet`, `lichHoc`, `tinChi`, `maKhoa` |
-| **`500 Internal Server Error`** | Lỗi nội bộ hệ thống | Lỗi ngắt kết nối SQL Server, sự cố driver mssql hoặc lỗi logic không được bắt tại backend. | `server` |
+| **`422 Unprocessable Content`** | Vi phạm quy tắc logic học vụ | Dữ liệu gửi lên đúng cú pháp nhưng vi phạm điều kiện logic học vụ:<br>1. Chưa hoàn thành môn học tiên quyết bắt buộc (`50008`).<br>2. Lịch học bị trùng với thời khóa biểu cá nhân hiện tại (`50009`).<br>3. Đăng ký vượt quá số tín chỉ tối đa cho phép trong học kỳ (`50010`).<br>4. Khoa, CTĐT hoặc khóa tuyển sinh của sinh viên không khớp (`51008`, ngữ cảnh `STUDENT_CLASS`). | `tienQuyet`, `lichHoc`, `tinChi`, `maCTDT` |
+| **`500 Internal Server Error`** | Lỗi nội bộ hệ thống | Lỗi SQL không nhận diện hoặc lỗi logic không được bắt tại backend; API trả thông báo trung tính và chi tiết nằm trong log server. | `server` |
 
 ---
 
 ## 4. BẢNG TRANSLATION LAYER: ÁNH XẠ MÃ LỖI SQL THỰC TẾ SANG API
 
-Hệ thống bắt chính xác mã lỗi `THROW` từ `05_Triggers.md` và `08_StoredProcedures.md` để chuyển thành thông báo nghiệp vụ tiếng Việt dễ hiểu, gán đúng `field` và HTTP code tương ứng:
+Hệ thống bắt chính xác mã lỗi `THROW` từ `DB/05_Triggers.sql` và `DB/08_StoredProcedures.sql` để chuyển thành thông báo nghiệp vụ tiếng Việt dễ hiểu, gán đúng `field` và HTTP code tương ứng:
 
 | Mã lỗi SQL | Nguồn phát sinh | HTTP Status | Field | Thông báo người dùng (User Message) |
 | :---: | :--- | :---: | :--- | :--- |
@@ -199,7 +220,8 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `05_Triggers.md` và `08_S
 | **51006** | `TR_CHITIETTHANHTOAN_CapNhatHocPhi`| `409` | `soTien` | Tổng số tiền thanh toán không được vượt quá số dư học phí còn lại. *(Ngữ cảnh: PAYMENT)* |
 | **51006** | `SP_TaoTaiKhoan` | `409` | `username` | Tên đăng nhập đã tồn tại trong hệ thống. *(Ngữ cảnh: CREATE_USER)* |
 | **51007** | `TR_LOP_KiemTraXoa` / `SP_TaoTaiKhoan` | `409` | `maLop` / `maSV` | Không thể xóa lớp sinh hoạt đang có sinh viên trực thuộc / Sinh viên đã được liên kết tài khoản khác. |
-| **51008** | `TR_SINHVIEN_KiemTraKhoaLop` | `422` | `maKhoa` | Khoa của sinh viên phải trùng khớp với Khoa của lớp sinh hoạt. *(Ngữ cảnh: STUDENT_CLASS)* |
+| **51008** | `TR_SINHVIEN_KiemTraKhoaLop` | `422` | `maCTDT` | Khoa sinh viên, khoa ngành CTĐT và khóa tuyển sinh phải khớp lớp. *(Ngữ cảnh: STUDENT_CLASS)* |
+| **51311** | `TR_LOPHOCPHAN_MoCanLich` / `TR_LICHHOC_LopMoCanLich` | `409` | `lichHoc` | Lớp chỉ được mở khi có lịch; không thể xóa lịch cuối của lớp đang mở. |
 | **51008** | `SP_TaoTaiKhoan` / `SP_ThongKeHocPhiTheoLop` | `409` / `404` | `maGV` / `maLop` | Giảng viên đã được liên kết với tài khoản khác / Không tìm thấy lớp sinh hoạt được yêu cầu. |
 | **51009** | `SP_KhoaTaiKhoan` | `400` | `maTaiKhoan` | Mã tài khoản không được để trống khi thực hiện khóa tài khoản. |
 | **51010** | `SP_KhoaTaiKhoan` | `404` | `maTaiKhoan` | Không tìm thấy tài khoản người dùng cần thao tác. |
@@ -233,7 +255,7 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `05_Triggers.md` và `08_S
     2. Băm `password` bằng đúng chuẩn SHA-256 chữ thường (`crypto.createHash('sha256').update(password).digest('hex')`) để khớp 100% với giá trị `PasswordHash` trong `DB/04_SeedData.sql` (VD: `123456` -> `8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92`); không tự ý đổi thuật toán hoặc format hash.
     3. Truy vấn bảng `TAIKHOAN` theo `Username` + `PasswordHash` + `TrangThai = 'ACTIVE'`.
     4. Trả thông tin phiên đăng nhập kèm thông tin `SINHVIEN` hoặc `GIANGVIEN` tương ứng. **Tuyệt đối không trả `PasswordHash` về client.**
-  - **Status:** `200 OK` (Thành công) | `401 Unauthorized` (Sai tài khoản/mật khẩu hoặc tài khoản bị khóa).
+  - **Status:** `200 OK` (Thành công) | `401 Unauthorized` (Sai tài khoản/mật khẩu hoặc token không còn tài khoản hiện hành ở trạng thái ACTIVE).
 - **`GET /api/auth/me`**
   - **Mô tả:** Lấy thông tin tài khoản hiện tại từ phiên đăng nhập.
 
@@ -325,19 +347,23 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `05_Triggers.md` và `08_S
 - **`GET /api/admin/dashboard`**: Thống kê số lượng sinh viên, giảng viên, lớp học phần mở, tỷ lệ thu học phí và số giao dịch chờ duyệt.
 - **`GET /api/admin/reports/tuition`**: Báo cáo thống kê tài chính học phí theo học kỳ (gọi Stored Procedure `SP_ThongKeHocPhi`).
 - **`GET /api/admin/users`**: Quản lý danh sách tài khoản người dùng từ View `V_TaiKhoanNguoiDung`.
-- **`PATCH /api/admin/users/:username/status`**: Khóa / kích hoạt tài khoản người dùng (gọi Stored Procedure `SP_KhoaTaiKhoan`).
+- **`PATCH /api/admin/users/:username/status`**: Chỉ nhận `ACTIVE` hoặc `LOCKED`; khóa gọi Stored Procedure `SP_KhoaTaiKhoan`, mở khóa cập nhật có điều kiện. Không tìm thấy username trả `404`; DAO_TAO không đổi trạng thái DAO_TAO/QUAN_TRI; tài khoản `DISABLED` không được mở khóa; không thể tự khóa tài khoản đang dùng.
 - **`GET /api/admin/students`**: Danh sách sinh viên toàn trường kèm thông tin Lớp sinh hoạt và Khoa (hỗ trợ phân trang, tìm kiếm MSSV/họ tên/email, lọc khoa, lớp).
-- **`POST /api/admin/students`**: Thêm mới hồ sơ sinh viên (validate schema Zod, kiểm tra trùng `MaSinhVien` 409, tuân thủ trigger `TR_SINHVIEN_KiemTraKhoaLop` 400). Trả về `201 Created`.
-- **`PUT /api/admin/students/:id`**: Cập nhật thông tin sinh viên (họ tên, ngày sinh, email, SĐT, lớp sinh hoạt, trạng thái). Trả về `200 OK`.
+- **`POST /api/admin/students`**: Thêm hồ sơ sinh viên (validate Zod, bắt buộc `maCTDT`, kiểm tra CTĐT thuộc khoa và năm tuyển sinh khớp lớp; trùng `MaSinhVien` trả `409`, vi phạm nhất quán CTĐT trả `422`). Trả về `201 Created`.
+- **`PUT /api/admin/students/:id`**: Cập nhật hồ sơ (họ tên, ngày sinh, email, SĐT, lớp, CTĐT, trạng thái); `maCTDT` không gửi thì giữ giá trị cũ. Trả `404` nếu không tồn tại, `422` nếu CTĐT không khớp.
 - **`DELETE /api/admin/students/:id`**: Xóa an toàn / soft delete chuyển trạng thái `THOI_HOC` nếu sinh viên đã có lịch sử học tập/công nợ (tránh lỗi khóa ngoại FK). Trả về `200 OK`.
 - **`GET /api/admin/classes`**: Danh sách tất cả lớp học phần đang mở và sĩ số động.
+- **`POST /api/admin/classes`**, **`PUT /api/admin/classes/:id`**, **`DELETE /api/admin/classes/:id`**: CRUD lớp học phần, dành cho `DAO_TAO` và `QUAN_TRI`; dữ liệu được validate bằng Zod và các FK/CHECK của SQL Server vẫn là lớp bảo vệ cuối.
+- **`GET /api/admin/courses`**, **`POST /api/admin/courses`**, **`PUT /api/admin/courses/:id`**, **`DELETE /api/admin/courses/:id`**: Đọc và CRUD môn học, dành cho `DAO_TAO` và `QUAN_TRI`; thao tác xóa bị SQL Server từ chối nếu còn dữ liệu tham chiếu.
 - **`GET /api/admin/registrations`**: Tra cứu toàn bộ giao dịch đăng ký tín chỉ của sinh viên.
 - **`GET /api/admin/audit-logs`**: Nhật ký kiểm toán bảo mật từ bảng `LOGHOATDONG` (chỉ role `QUAN_TRI`).
-- **`GET /api/admin/curriculums`**: Khung chương trình đào tạo từ View `V_CauTrucChuongTrinhDaoTao`.
+- **`GET /api/admin/curriculums`**: Khung môn học từ View `V_CauTrucChuongTrinhDaoTao`.
+- **`GET /api/admin/curriculum-options?maKhoa=&namTuyenSinh=`**: lựa chọn CTĐT đang hoạt động, lọc theo khoa và năm tuyển sinh.
+- `POST /api/admin/students` bắt buộc có `maCTDT`; `PUT` nhận `maCTDT` tùy chọn. Backend kiểm tra CTĐT thuộc khoa đã chọn và khóa CTĐT khớp lớp nếu sinh viên đã được phân lớp.
 - **`GET /api/lecturers/:id/schedule`**: Lịch giảng dạy theo tuần của Giảng viên.
 - **`GET /api/lecturers/:id/classes`**: Danh sách các lớp học phần Giảng viên đang phụ trách.
 - **`GET /api/lecturers/classes/:maLHP/students`**: Danh sách sinh viên và bảng điểm thành phần của lớp học phần.
-- **`PUT /api/lecturers/classes/:maLHP/grades`**: Giảng viên cập nhật điểm số (Quá trình, Giữa kỳ, Cuối kỳ) cho sinh viên lớp học phần phụ trách (upsert bảng `DIEMSO`, tự động trigger audit `TR_DIEMSO_Audit`, validate điểm 0.0 - 10.0). Trả về `200 OK`.
+- **`PUT /api/lecturers/classes/:maLHP/grades`**: Giảng viên cập nhật một hoặc nhiều thành phần điểm cho sinh viên lớp học phần phụ trách (upsert bảng `DIEMSO`, tự động trigger audit `TR_DIEMSO_Audit`, validate điểm 0.0 - 10.0). Thành phần không gửi giữ nguyên; gửi `null` để xóa riêng thành phần đó. Một batch có lỗi không ghi dở các dòng khác. Trả về `200 OK`.
 - **`GET /api/classes`**: Danh sách 36 lớp sinh hoạt niên chế kèm sĩ số từ View `V_DanhSachLopSinhHoat`.
 - **`GET /api/classes/:id`**: Chi tiết lớp sinh hoạt và danh sách sinh viên trực thuộc.
 - **`GET /api/classes/:id/tuition-report`**: Thống kê học phí theo lớp sinh hoạt (gọi `SP_ThongKeHocPhiTheoLop`).
@@ -364,7 +390,7 @@ Lặp lại với hành vi/nghiệp vụ tiếp theo
 ### Chi tiết các Vertical Slices:
 1. **Slice 1 (App Health):** Test `GET /api/health` trả về `{ isSuccess: true, data: { status: "UP" } }` mà không cần gọi DB.
 2. **Slice 2 (DB Health):** Test `GET /api/health/db` kiểm tra mssql pool kết nối thành công đến `DBMS330284`.
-3. **Slice 3 (Authentication):** Test `POST /api/auth/login` với tài khoản thật (`admin`, `123456`) -> 200 OK; tài khoản sai mật khẩu -> 401 Unauthorized; tài khoản bị khóa (`sv_23000495` trạng thái `LOCKED`) -> 403 Forbidden (theo test `auth.test.js` thực tế) / 401 Unauthorized (theo chuẩn từ chối đăng nhập).
+3. **Slice 3 (Authentication):** Test `POST /api/auth/login` với tài khoản thật (`admin`, `123456`) -> 200 OK; tài khoản sai mật khẩu hoặc bị khóa (`sv_23000495`, trạng thái `LOCKED`) -> 401 Unauthorized.
 4. **Slice 4 (Available Courses with Sĩ số):** Test `GET /api/courses/available` trả về cấu trúc phân trang chuẩn, có tính `SiSoHienTai` động từ bảng `DANGKYTINCHI`.
 5. **Slice 5 (Registration Validation):** Test `POST /api/registrations` thiếu trường bắt buộc `maLHP` (hoặc thiếu `maSV` khi gọi trực tiếp không kèm token) trả về `400 Bad Request` kèm `{ field: "maLHP" / "maSV", message: "..." }`.
 6. **Slice 6 (Registration Core & Errors):**
@@ -597,7 +623,7 @@ Bao gồm 9 phân hệ màn hình chức năng chính:
   - Backend TDD: Bộ test suite Jest `tests/admin-student-crud.test.js` và `tests/lecturer-grade.test.js` đạt 100% PASS.
   - Hoàn thiện trọn vẹn CRUD Quản trị Sinh viên (`POST`, `PUT`, `DELETE /api/admin/students`), xử lý `OUTPUT INTO @tableVar` tương thích Trigger SQL Server và Soft Delete chuyển trạng thái `THOI_HOC`.
   - Hoàn thiện nghiệp vụ Giảng viên nhập/sửa điểm hàng loạt (`PUT /api/lecturers/classes/:maLHP/grades`) cập nhật bảng `DIEMSO`, tự động tính điểm trung bình và kích hoạt audit trigger `TR_DIEMSO_Audit`.
-  - Giao diện Admin Portal & Lecturer Portal tích hợp modal CRUD, dynamic dropdown Khoa/Lớp và bảng điểm trực quan.
+  - Giao diện có modal CRUD sinh viên và bảng nhập điểm giảng viên. CRUD môn học/lớp học phần hiện mới có API, chưa có form quản trị trên web.
 
 ---
 
@@ -624,12 +650,12 @@ Bao gồm 9 phân hệ màn hình chức năng chính:
 
 | Mã Test | Kịch bản kiểm thử | Dữ liệu đầu vào | Kết quả mong đợi | Trạng thái thực thi |
 |---|---|---|---|---|
-| **TC-01** | Đăng ký thành công | LHP còn chỗ, SV đủ điều kiện tiên quyết và không trùng lịch | HTTP `201 Created`, bản ghi `DANGKYTINCHI` được tạo với `TrangThai='REGISTERED'`. | **Đã kiểm thử (PASS)** |
-| **TC-02** | Lớp học phần đã đầy | LHP đã đủ 40/40 sinh viên | HTTP `409 Conflict`, mã lỗi `50011` ("Lop hoc phan da du si so toi da."). Không ghi nhận bản ghi mới. | **Đã kiểm thử (PASS)** |
-| **TC-03** | Hai SV tranh chấp 1 chỗ trống cuối cùng | LHP có 39/40 chỗ, 2 SV gửi yêu cầu đồng thời | Đúng 1 SV nhận `201 Created`, 1 SV nhận `409 Conflict`. Sĩ số cuối cùng = 40. | **Đã kiểm thử (PASS)** |
-| **TC-04** | Đăng ký trùng lặp | Cùng 1 SV gửi 2 request đăng ký cùng 1 LHP | Lần 1: `201 Created`. Lần 2: `409 Conflict` (mã `50007` hoặc chặn bởi Unique Index). Chỉ có 1 bản ghi `REGISTERED`. | **Đã kiểm thử (PASS)** |
-| **TC-05** | Chưa học môn tiên quyết | SV chưa học hoặc điểm tổng kết < 5.0 | HTTP `422 Unprocessable Content`, mã `50008` ("Sinh vien chua hoan thanh mon tien quyet bat buoc."). Transaction rollback. | **Đã kiểm thử (PASS)** |
-| **TC-06** | Lỗi giữa giao dịch (Rollback toàn vẹn) | SV đủ điều kiện nhưng cố ý ngắt kết nối hoặc lỗi chèn | Transaction rollback 100%, không phát sinh dữ liệu mồ côi. | **Đã kiểm thử (PASS)** |
+| **TC-01** | Đăng ký thành công | LHP còn chỗ, SV đủ điều kiện tiên quyết và không trùng lịch | HTTP `201 Created`, bản ghi `DANGKYTINCHI` được tạo với `TrangThai='REGISTERED'`. | **Chưa có kết quả chạy được lưu tại tài liệu xác minh** |
+| **TC-02** | Lớp học phần đã đầy | LHP đạt sĩ số tối đa | HTTP `409 Conflict`, mã lỗi `50011`; không tạo lượt đăng ký. | **Kịch bản cần chạy/ghi kết quả** |
+| **TC-03** | Hai SV tranh chấp chỗ cuối | Hai request đồng thời trên LHP còn một chỗ | Kỳ vọng một `201`, một `409`, sĩ số không vượt giới hạn. | **Đã demo riêng hai phiên SQL trên fixture 1/1 chỗ; chưa xác minh kịch bản 39/40 và phản hồi HTTP nêu ở đây** |
+| **TC-04** | Đăng ký trùng lặp | Cùng SV gửi hai request cho một LHP | Kỳ vọng request thứ hai bị từ chối và chỉ còn một lượt `REGISTERED`. | **Kịch bản cần chạy/ghi kết quả** |
+| **TC-05** | Chưa học môn tiên quyết | SV chưa đạt môn tiên quyết | Kỳ vọng lỗi `50008` và transaction rollback. | **Kịch bản cần chạy/ghi kết quả** |
+| **TC-06** | Lỗi giữa giao dịch | Gây lỗi có kiểm soát trước `COMMIT` | Xác nhận rollback, không còn dữ liệu phát sinh. | **Kịch bản cần chạy/ghi kết quả** |
 | **TC-07** | Xung đột Deadlock (Victim Retry) | 2 giao dịch khóa chéo tài nguyên | SQL Server chọn 1 victim (Error 1205), tự động Rollback; Backend bắt lỗi trả về 409/503 gợi ý người dùng thử lại. | **Đã thiết kế & cơ chế sẵn sàng** |
 
 ### 9.4. Hướng dẫn Demo đồng thời trên 2 phiên SQL Server
@@ -669,22 +695,26 @@ Bao gồm 9 phân hệ màn hình chức năng chính:
 
 | Mã Test | Kịch bản kiểm thử | Thao tác thực hiện | Kết quả mong đợi | Kết quả kiểm chứng thực tế | Trạng thái |
 |---|---|---|---|---|---|
-| **TC-BR-01** | Full Backup Database | Thực thi `BACKUP DATABASE [DBMS330284]` có `CHECKSUM` | File `.bak` sinh ra đầy đủ, `RESTORE VERIFYONLY` hợp lệ | Lệnh hoàn thành trong 1.2s; `RESTORE VERIFYONLY` đạt kết quả hợp lệ. | **Đã kiểm thử (PASS)** |
-| **TC-BR-02** | Restore vào CSDL kiểm thử | Thực thi `RESTORE DATABASE [DBMS330284_Test]` với `MOVE` | CSDL mới online độc lập, không làm gián đoạn CSDL chính | Database `DBMS330284_Test` online thành công (`state_desc = 'ONLINE'`). | **Đã kiểm thử (PASS)** |
-| **TC-BR-03** | Xác minh toàn vẹn dữ liệu | Chạy `DBCC CHECKDB` và đối chiếu đếm bản ghi | 0 lỗi cấu trúc; số lượng bản ghi khớp 100% bản gốc | 0 lỗi; đếm `SINHVIEN` đạt đúng 1500 sinh viên, toàn vẹn 100%. | **Đã kiểm thử (PASS)** |
+| **TC-BR-01** | Full Backup Database | Thực thi `BACKUP DATABASE` có `CHECKSUM`, sau đó `RESTORE VERIFYONLY` | File sao lưu được tạo và xác minh | PASS trên DBMS330284_CodexDemo_Final |
+| **TC-BR-02** | Restore vào CSDL kiểm thử | Restore sang database riêng với `MOVE` | Database mới ở trạng thái `ONLINE` | PASS restore sang DBMS330284_CodexDemo_RestoreCheck |
+| **TC-BR-03** | Xác minh toàn vẹn dữ liệu | Chạy `DBCC CHECKDB`, đối chiếu số dòng | Không có lỗi cấu trúc, số dòng khớp | PASS DBCC CHECKDB, 1.500 sinh viên |
 
 ---
 
 ## 11. BẢNG ĐỐI CHIẾU ĐỒNG BỘ GIỮA DATABASE_V1.MD VÀ SPEC.MD
 
-| Hạng mục | Quy chuẩn trong `database_v1.md` | Hiện thực trong `spec.md` & Backend | Kết quả đánh giá |
+| Hạng mục | Quy chuẩn trong `docs/database-design.md` | Hiện thực trong `spec.md` & Backend | Kết quả đánh giá |
 |---|---|---|:---:|
-| **1. Tên bảng và cột** | 19 bảng, 6 Views, 7 Functions, 9 SPs, 14 Triggers, 19 Indexes. Chuẩn hóa tên khóa PK/FK. | Đồng bộ 100% tên bảng, tên cột, khóa ngoại và 19 đối tượng trong toàn bộ API model. | **Đạt** |
-| **2. Quan hệ sinh viên/lớp/khoa/ngành** | `SINHVIEN` lưu `MaKhoa` và `MaLop`. Khi `MaLop IS NOT NULL`, Trigger `TR_SINHVIEN_KiemTraKhoaLop` bắt buộc `sv.MaKhoa = lop.MaKhoa` (mã 51008). | API và Controller tuân thủ ràng buộc nhất quán Khoa - Lớp. Phân định rõ liên kết gián tiếp Ngành qua Khoa ở V1.2. | **Đạt** |
+| **1. Tên bảng và cột** | 19 bảng, 6 views, 7 functions, 9 SPs; 20 trigger bật và 19 index thường được khai báo. | Đã xác minh trên DB demo cô lập và DB cũ `DBMS330284` sau migration. Hiệu năng index chưa kết luận khi chưa đo execution plan/IO. | **Số lượng xác minh; hiệu năng index còn đo** |
+| **2. Quan hệ sinh viên/lớp/khoa/ngành/CTĐT** | `SINHVIEN.MaCTDT` bắt buộc; khoa, ngành CTĐT và năm tuyển sinh phải khớp lớp. Trigger theo tập hợp kiểm tra cả thay đổi phía sinh viên và dữ liệu cha (51008). | API/form quản trị nhận `maCTDT`, lọc lựa chọn theo khoa/năm; repository và trigger kiểm tra chéo. Test API CTĐT sai khoa/khóa đã chạy. | **Đạt trên DB demo** |
 | **3. Đăng ký đồng thời** | `SP_DangKyTinChi` dùng transaction, `UPDLOCK, HOLDLOCK` trên LHP và DANGKYTINCHI; Unique Index chống trùng. | API `POST /api/registrations` gọi SP trong transaction, xử lý lỗi 50011 (lớp đầy) và 50007 (trùng môn) an toàn. | **Đạt** |
 | **4. Điều kiện tiên quyết** | Môn bắt buộc đạt khi điểm tổng kết $\ge 5.0$ trong `V_BangDiemChiTiet`. Kiểm tra trong `SP_DangKyTinChi`. | Validation đồng bộ; trả về `422 Unprocessable Content` khi chưa học môn tiên quyết (mã 50008). | **Đạt** |
 | **5. Mã lỗi đăng nhập & phân quyền** | Phân quyền 4 vai trò. Stored procedure khóa/mở tài khoản (`SP_KhoaTaiKhoan`). | Thống nhất `401 Unauthorized` cho sai thông tin hoặc tài khoản `LOCKED`/`DISABLED`; `403 Forbidden` cho lỗi quyền hạn. | **Đạt** |
-| **6. Backup & Restore** | Cung cấp script Full Backup, Restore Verify, Restore sang `DBMS330284_Test` kèm `MOVE`, `DBCC CHECKDB`. | Cung cấp quy trình vận hành 4 bước cho Quản trị viên (`QUAN_TRI`), hướng dẫn và cảnh báo an toàn `WITH REPLACE`. | **Đạt** |
-| **7. Test case** | Cung cấp bộ test SQL Concurrency (TC-01 -> TC-07) và Backup/Restore (TC-BR-01 -> TC-BR-03). | Đồng bộ 24 test suites Jest tự động hóa (171 tests) và bộ test cases nghiệp vụ tương ứng. | **Đạt** |
-| **8. Trạng thái hoàn thành** | Phân biệt minh bạch giữa `Đã thiết kế`, `Đã triển khai`, và `Đã kiểm thử` (PASS). Không khai báo quá mức. | Khớp hoàn toàn trạng thái thực tế; không tuyên bố tính năng chưa làm; ghi nhận đúng kết quả kiểm thử thực tế. | **Đạt** |
+| **6. Backup & Restore** | Backup có checksum, verify, restore sang DB riêng và `DBCC CHECKDB`. | Đã chạy trên `DBMS330284_CodexDemo_Final`, restore sang `DBMS330284_CodexDemo_RestoreCheck`; CHECKDB pass và 1.500 sinh viên khớp. | **Đạt trên DB demo** |
+| **7. Test case** | SQL integration/invariant, role permission, Jest API/DOM, concurrency hai phiên và backup/restore. | Jest: 34 suites, 215 tests PASS trên SQL Server/DB demo. SQL integration, role permission và invariant pass; backup/restore pass. Hai-session tranh chấp chỗ cuối/thanh toán và đo execution plan/IO chưa chạy. | **Đạt phần đã chạy; concurrency/IO còn thiếu** |
+| **8. Trạng thái hoàn thành** | Phân biệt `Đã thiết kế`, `Đã triển khai`, và `Đã kiểm thử`; chỉ đánh dấu PASS khi có kết quả tương ứng. | CRUD API catalog có test; UI catalog chưa có form. Runtime login chưa được provision và BE còn truy cập trực tiếp một số bảng; audit session context chưa được gắn cho mọi request. Backup/restore, execution plan và concurrency hai phiên chưa xác minh. | **Còn việc** |
+
+### 11.1. Trạng thái giao diện catalog
+
+CRUD môn học và lớp học phần đã có API và test tích hợp. Giao diện quản trị hiện chưa có form tạo/sửa/xóa hai loại dữ liệu này; không trình bày đây là CRUD UI hoàn chỉnh.
 
