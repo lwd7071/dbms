@@ -1710,3 +1710,63 @@
 
 ### Next Step
 - Theo dõi nếu gặp bộ lọc khác báo lỗi enum khi đang để “Tất cả”.
+
+## Phase 31: Nâng cấp minh chứng Tiêu chí 5 và điều hướng theo quyền
+
+- Status: PARTIAL — các kiểm chứng an toàn và UI đã hoàn tất; runtime cutover và một số kịch bản concurrency vẫn còn.
+- Date: 2026-10-21
+
+### Changes
+- Ghi nhận backup có checksum `DBMS330284_pre_runtime_20261021170400.bak`; `RESTORE VERIFYONLY` đạt. Restore rehearsal sang `DBMS330284_RuntimeRehearsal_20261021` và `DBCC CHECKDB` đều đạt trước khi migration được áp dụng.
+- Cổng quản trị chỉ hiện mục và panel nhật ký hoạt động cho vai trò `QUAN_TRI`; API vẫn kiểm tra quyền phía máy chủ. `DAO_TAO` còn được phép vào quản lý tài khoản.
+- Dropdown điều hướng có `aria-expanded`, `aria-controls`, focus nhìn thấy; phím Escape đóng menu và trả focus về nút mở.
+- Bổ sung test DOM cho quyền điều hướng và thao tác dropdown bàn phím; thêm test HTTP xác nhận `DAO_TAO` gọi trực tiếp API audit nhận 403.
+- Bổ sung HTTP concurrency test cho hai yêu cầu thanh toán đồng thời cùng hồ sơ: một yêu cầu được nhận, một yêu cầu nhận xung đột, và chỉ một giao dịch chờ được lưu.
+- Bổ sung phản chứng SQL: runtime test principal không đọc trực tiếp `TAIKHOAN`; giữ kiểm tra từ chối cập nhật trực tiếp `HOCPHI`.
+- Đo truy vấn trang đầu danh sách tài khoản trên `DBMS330284`: 25 dòng, 15 logical reads, SQL CPU 0 ms, elapsed 2 ms; execution plan được lấy. Đây là phép đo riêng của workload này.
+- Cập nhật `docs/spec.md`, `docs/database-design.md`, `DB/README.md` và thêm báo cáo xác minh ngày 21/10/2026.
+
+### Tests / Verification
+- TDD UI dropdown: test mới đỏ vì `aria-expanded` không được đổi; sau khi sửa, test xanh.
+- `npm test -- --runTestsByPath tests/frontend-dom.test.js tests/admin-nav.test.js`: 21 tests PASS.
+- Test HTTP concurrency thanh toán: PASS trên SQL Server thật.
+- Test HTTP quyền audit của `DAO_TAO`: PASS (403).
+- `npm test`: 34 suites, 221 tests PASS trên `DBMS330284`.
+- `node scripts/run_all_db_files.js --action verify --database DBMS330284`: PASS.
+- `node scripts/run_all_db_files.js --action test --database DBMS330284`: integration, verify, role permission và invariant PASS.
+- Backup checksum, `RESTORE VERIFYONLY`, rehearsal restore và `DBCC CHECKDB`: PASS.
+
+### Issues / còn lại
+- Backend hiện vẫn chạy bằng `sa`/`dbo`; login `dbms_app` chưa được provision và API chưa chạy bằng APP_RUNTIME.
+- Các repository còn DML trực tiếp cho một số luồng nghiệp vụ (đặc biệt điểm, thanh toán, tài khoản và CRUD sinh viên). Chuyển sang runtime trước khi đóng các luồng này sẽ làm API hỏng; cần viết test theo từng luồng rồi chuyển thao tác ghi sang procedure và chạy toàn bộ Jest bằng runtime.
+- Chưa có test HTTP tranh chấp chỗ cuối đăng ký tín chỉ, hai cán bộ xác nhận cùng giao dịch, cũng chưa chạy trình duyệt bàn phím/responsive 375px.
+- Chưa có phép đo rộng cho truy vấn hot path khác; không suy rộng 15 logical reads của danh sách tài khoản thành hiệu năng toàn hệ thống.
+
+### Next Step
+- Chuyển DML trực tiếp từng repository sang stored procedure và tách test fixture pool có quyền chuẩn bị/dọn dữ liệu; chỉ sau khi toàn bộ test xanh mới provision `dbms_app` và chuyển backend sang `APP_RUNTIME`.
+
+## Phase 32: Rà soát giao diện các cổng theo vai trò
+
+- Status: IN PROGRESS — đã rà các màn hình chính, còn một số trang quản trị cần đối chiếu thêm.
+- Date: 2026-10-21
+- Files changed:
+  - `Task.md`
+
+### Changes
+- Kiểm tra trực tiếp giao diện đăng nhập, dashboard, đăng ký tín chỉ, thời khóa biểu, điểm, học phí, lịch sử thanh toán và hồ sơ của sinh viên.
+- Kiểm tra dashboard, danh sách lớp, thời khóa biểu và sổ điểm của giảng viên.
+- Kiểm tra dashboard quản trị; dưới tài khoản Cán bộ Đào tạo, danh sách sinh viên và 36 lớp sinh hoạt hiển thị dữ liệu cùng bộ lọc.
+- Các trang đã mở nhìn chung có bố cục nhất quán, bảng/card dễ đọc ở màn hình desktop.
+
+### Tests / Verification
+- Rà soát trực tiếp trên Chrome với tài khoản sinh viên, giảng viên, quản trị viên và Cán bộ Đào tạo; không chạy automated tests vì đây là kiểm tra giao diện.
+- Sinh viên: trang học phần đã đăng ký báo lỗi máy chủ; các màn hình còn lại trong lượt rà soát hiển thị dữ liệu.
+- Quản trị viên: các danh sách sinh viên, lớp, đăng ký, tài khoản, báo cáo học phí, giao dịch chờ và nhật ký hiển thị lỗi không có quyền (403). Cán bộ Đào tạo mở được danh sách sinh viên và lớp; lỗi cần được xác định theo từng quyền/trang trước khi kết luận nguyên nhân.
+
+### Issues
+- Lỗi API khi tải học phần đã đăng ký của sinh viên.
+- Các màn hình quản trị bị 403 khi vào bằng tài khoản quản trị viên, dù các mục điều hướng xuất hiện.
+- Chưa rà trực quan các biến thể màn hình nhỏ và chưa đối chiếu hết các tab quản trị dưới tài khoản Cán bộ Đào tạo.
+
+### Next Step
+- Điều tra lỗi tải học phần đã đăng ký và ma trận quyền các màn hình quản trị; sau đó rà các tab còn lại theo vai trò và kích thước màn hình.
