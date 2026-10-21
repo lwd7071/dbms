@@ -17,8 +17,8 @@ const getTuitionReport = async (req, res, next) => {
 
 const getUsers = async (req, res, next) => {
   try {
-    const { vaiTro, trangThai, search, page, pageSize } = req.query;
-    const result = await adminRepo.getUsersList({ vaiTro, trangThai, search, page, pageSize });
+    const { vaiTro, trangThai, maLop, search, page, pageSize } = req.query;
+    const result = await adminRepo.getUsersList({ vaiTro, trangThai, maLop, search, page, pageSize });
     return res.status(200).json(
       successResponse(result.items, {
         page: result.page,
@@ -64,8 +64,8 @@ const getDashboardStats = async (req, res, next) => {
 
 const getStudents = async (req, res, next) => {
   try {
-    const { search, maKhoa, trangThai, page, pageSize } = req.query;
-    const result = await adminRepo.getStudentsList({ search, maKhoa, trangThai, page, pageSize });
+    const { search, maKhoa, maLop, trangThai, page, pageSize } = req.query;
+    const result = await adminRepo.getStudentsList({ search, maKhoa, maLop, trangThai, page, pageSize });
     return res.status(200).json(
       successResponse(result.items, {
         page: result.page,
@@ -98,8 +98,8 @@ const getAllClasses = async (req, res, next) => {
 
 const getRegistrations = async (req, res, next) => {
   try {
-    const { maSV, maLHP, trangThai, search, page, pageSize } = req.query;
-    const result = await adminRepo.getRegistrationsList({ maSV, maLHP, trangThai, search, page, pageSize });
+    const { maSV, maLHP, maLop, trangThai, search, page, pageSize } = req.query;
+    const result = await adminRepo.getRegistrationsList({ maSV, maLHP, maLop, trangThai, search, page, pageSize });
     return res.status(200).json(
       successResponse(result.items, {
         page: result.page,
