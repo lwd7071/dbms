@@ -2,6 +2,8 @@
 // Quản lý nghiệp vụ cho Giảng viên (Lịch dạy, Danh sách lớp, Bảng điểm sinh viên lớp)
 
 let currentLecturerClasses = [];
+let currentLecturerClassesPage = 1;
+let currentLecturerClassesPageSize = 10;
 
 // Khởi tạo Cổng Giảng viên
 async function initLecturerPortal() {
@@ -19,10 +21,12 @@ async function loadLecturerClasses(maGV) {
   if (!tbody) return;
 
   tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 2rem;">Đang tải danh sách lớp học phần...</td></tr>`;
+  renderPagination({ containerId: 'lecturer-classes-pagination', totalItems: 0 });
 
   try {
     const list = await api.get(`/lecturers/${maGV}/classes`);
     currentLecturerClasses = list || [];
+    currentLecturerClassesPage = 1;
 
     if (countElem) {
       countElem.textContent = `${currentLecturerClasses.length} lớp học phần`;
@@ -30,6 +34,7 @@ async function loadLecturerClasses(maGV) {
 
     if (currentLecturerClasses.length === 0) {
       tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--color-text-muted);">Giảng viên chưa được phân công lớp học phần nào.</td></tr>`;
+      renderPagination({ containerId: 'lecturer-classes-pagination', totalItems: 0 });
       return;
     }
 
@@ -66,6 +71,26 @@ async function loadLecturerClasses(maGV) {
         </tr>
       `;
     }).join('');
+    const renderCurrentPage = () => {
+      const startIndex = (currentLecturerClassesPage - 1) * currentLecturerClassesPageSize;
+      Array.from(tbody.rows).forEach((row, index) => {
+        row.hidden = index < startIndex || index >= startIndex + currentLecturerClassesPageSize;
+      });
+      renderPagination({
+        containerId: 'lecturer-classes-pagination',
+        page: currentLecturerClassesPage,
+        pageSize: currentLecturerClassesPageSize,
+        totalItems: currentLecturerClasses.length,
+        totalPages: Math.ceil(currentLecturerClasses.length / currentLecturerClassesPageSize),
+        pageSizeOptions: [10, 20, 50],
+        onPageChange: (page, pageSize) => {
+          currentLecturerClassesPage = page;
+          currentLecturerClassesPageSize = pageSize;
+          renderCurrentPage();
+        }
+      });
+    };
+    renderCurrentPage();
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="7" style="color: var(--color-danger-text); padding: 1.5rem; text-align: center;">Lỗi tải dữ liệu: ${err.message}</td></tr>`;
   }
