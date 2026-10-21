@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../config/db');
+﻿const { getPool, sql } = require('../config/db');
 
 /**
  * Repository xử lý các tác vụ quản trị hệ thống
@@ -96,19 +96,67 @@ const getUsersList = async (filters = {}) => {
 };
 
 // Cập nhật trạng thái tài khoản (ACTIVE / LOCKED)
-const updateUserStatus = async (username, status) => {
+const updateUserStatus = async (username, status, actor) => {
   const pool = await getPool();
-  await pool
-    .request()
-    .input('Username', sql.VarChar(50), username)
-    .input('TrangThai', sql.VarChar(20), status)
-    .query(`
-      UPDATE dbo.TAIKHOAN
-      SET TrangThai = @TrangThai
-      WHERE Username = @Username;
-    `);
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin(sql.ISOLATION_LEVEL.READ_COMMITTED);
 
-  return { username, trangThai: status };
+  try {
+    const targetResult = await new sql.Request(transaction)
+      .input('Username', sql.VarChar(50), username)
+      .query(`
+        SELECT MaTaiKhoan, VaiTro, TrangThai
+        FROM dbo.TAIKHOAN WITH (UPDLOCK, HOLDLOCK)
+        WHERE Username = @Username;
+      `);
+    const target = targetResult.recordset[0];
+    if (!target) {
+      throw Object.assign(new Error('Không tìm thấy tài khoản người dùng cần thao tác.'), {
+        status: 404,
+        field: 'username'
+      });
+    }
+
+    if (Number(target.MaTaiKhoan) === Number(actor.maTaiKhoan) && status === 'LOCKED') {
+      throw Object.assign(new Error('Không thể tự khóa tài khoản đang đăng nhập.'), {
+        status: 409,
+        field: 'username'
+      });
+    }
+    if (actor.vaiTro === 'DAO_TAO' && ['DAO_TAO', 'QUAN_TRI'].includes(target.VaiTro)) {
+      throw Object.assign(new Error('Phòng Đào tạo không được thay đổi trạng thái tài khoản quản trị.'), {
+        status: 403,
+        field: 'permission'
+      });
+    }
+    if (target.TrangThai === 'DISABLED' && status === 'ACTIVE') {
+      throw Object.assign(new Error('Tài khoản đã vô hiệu hóa không thể mở khóa.'), {
+        status: 409,
+        field: 'trangThai'
+      });
+    }
+
+    if (status === 'LOCKED') {
+      await new sql.Request(transaction)
+        .input('MaTaiKhoan', sql.Int, target.MaTaiKhoan)
+        .input('MaTaiKhoanNguoiThaoTac', sql.Int, actor.maTaiKhoan)
+        .execute('dbo.SP_KhoaTaiKhoan');
+    } else if (target.TrangThai !== 'ACTIVE') {
+      await new sql.Request(transaction)
+        .input('MaTaiKhoan', sql.Int, target.MaTaiKhoan)
+        .query(`
+          UPDATE dbo.TAIKHOAN
+          SET TrangThai = 'ACTIVE'
+          WHERE MaTaiKhoan = @MaTaiKhoan AND TrangThai = 'LOCKED';
+        `);
+    }
+
+    await transaction.commit();
+    return { username, trangThai: status };
+  } catch (err) {
+    try { await transaction.rollback(); } catch (_) {}
+    throw err;
+  }
 };
 
 // Lấy cấu trúc khung Chương trình Đào tạo từ View V_CauTrucChuongTrinhDaoTao
@@ -156,6 +204,22 @@ const getCurriculums = async (maKhoa = null) => {
     loaiMon: r.LoaiMon,
     thuTu: r.ThuTu
   }));
+};
+
+const getCurriculumOptions = async ({ maKhoa, namTuyenSinh } = {}) => {
+  const pool = await getPool();
+  const request = pool.request();
+  let where = 'WHERE c.TrangThai = 1';
+  if (maKhoa) { request.input('MaKhoa', sql.VarChar(10), maKhoa); where += ' AND n.MaKhoa = @MaKhoa'; }
+  if (namTuyenSinh) { request.input('NamTuyenSinh', sql.SmallInt, Number(namTuyenSinh)); where += ' AND c.NamTuyenSinh = @NamTuyenSinh'; }
+  const result = await request.query(`
+    SELECT c.MaCTDT, c.TenCTDT, c.KhoaHoc, c.NamTuyenSinh, n.MaKhoa
+    FROM dbo.CHUONGTRINHDAOTAO c
+    INNER JOIN dbo.NGANH n ON n.MaNganh = c.MaNganh
+    ${where}
+    ORDER BY c.NamTuyenSinh DESC, c.MaCTDT;
+  `);
+  return result.recordset.map(r => ({ maCTDT: r.MaCTDT, tenCTDT: r.TenCTDT, khoaHoc: r.KhoaHoc, namTuyenSinh: r.NamTuyenSinh, maKhoa: r.MaKhoa }));
 };
 
 // 1. Lấy chỉ số tổng quan cho Dashboard
@@ -241,6 +305,7 @@ const getStudentsList = async (filters = {}) => {
       k.TenKhoa,
       sv.MaLop,
       l.TenLop,
+      sv.MaCTDT,
       sv.TrangThai,
       sv.NgayTao
     FROM dbo.SINHVIEN sv
@@ -264,6 +329,7 @@ const getStudentsList = async (filters = {}) => {
     tenKhoa: r.TenKhoa,
     maLop: r.MaLop || null,
     tenLop: r.TenLop || null,
+    maCTDT: r.MaCTDT,
     trangThai: r.TrangThai,
     ngayTao: r.NgayTao
   }));
@@ -528,7 +594,7 @@ const getAuditLogs = async (filters = {}) => {
 // Thêm mới sinh viên
 const createStudent = async (data) => {
   const pool = await getPool();
-  const { maSinhVien, hoTen, ngaySinh, email, soDienThoai, maKhoa, maLop, trangThai } = data;
+  const { maSinhVien, hoTen, ngaySinh, email, soDienThoai, maKhoa, maLop, maCTDT, trangThai } = data;
 
   // Kiểm tra trùng mã sinh viên
   const dupCheck = await pool.request()
@@ -538,19 +604,31 @@ const createStudent = async (data) => {
   if (dupCheck.recordset.length > 0) {
     const error = new Error(`Mã sinh viên ${maSinhVien} đã tồn tại trong hệ thống.`);
     error.status = 409;
+    error.field = 'maSinhVien';
     throw error;
   }
 
-  // Nếu có mã lớp, kiểm tra khoa của lớp phải khớp với khoa của sinh viên
+  const curriculumCheck = await pool.request()
+    .input('MaCTDT', sql.VarChar(24), maCTDT)
+    .input('MaKhoa', sql.VarChar(10), maKhoa)
+    .query(`
+      SELECT c.MaCTDT, c.NamTuyenSinh, n.MaKhoa
+      FROM dbo.CHUONGTRINHDAOTAO c
+      INNER JOIN dbo.NGANH n ON n.MaNganh = c.MaNganh
+      WHERE c.MaCTDT = @MaCTDT AND n.MaKhoa = @MaKhoa;
+    `);
+  if (!curriculumCheck.recordset[0]) {
+    throw Object.assign(new Error('Chương trình đào tạo không thuộc khoa đã chọn.'), { status: 400, field: 'maCTDT' });
+  }
   if (maLop) {
-    const lopCheck = await pool.request()
+    const classCheck = await pool.request()
       .input('MaLop', sql.VarChar(20), maLop)
-      .query('SELECT MaKhoa FROM dbo.LOP WHERE MaLop = @MaLop');
-
-    if (lopCheck.recordset.length > 0 && lopCheck.recordset[0].MaKhoa !== maKhoa) {
-      const error = new Error(`Khoa của lớp sinh hoạt (${lopCheck.recordset[0].MaKhoa}) không khớp với khoa đã chọn (${maKhoa}).`);
-      error.status = 400;
-      throw error;
+      .query('SELECT MaKhoa, NamNhapHoc FROM dbo.LOP WHERE MaLop = @MaLop');
+    const lop = classCheck.recordset[0];
+    if (!lop) throw Object.assign(new Error('Lớp sinh hoạt không tồn tại.'), { status: 400, field: 'maLop' });
+    if (lop.MaKhoa !== maKhoa) throw Object.assign(new Error('Khoa của lớp sinh hoạt không khớp khoa đã chọn.'), { status: 400, field: 'maLop' });
+    if (Number(lop.NamNhapHoc) !== Number(curriculumCheck.recordset[0].NamTuyenSinh)) {
+      throw Object.assign(new Error('Khóa tuyển sinh của CTĐT không khớp khóa của lớp.'), { status: 400, field: 'maCTDT' });
     }
   }
 
@@ -562,6 +640,7 @@ const createStudent = async (data) => {
     .input('SoDienThoai', sql.VarChar(20), soDienThoai || null)
     .input('MaKhoa', sql.VarChar(10), maKhoa)
     .input('MaLop', sql.VarChar(20), maLop || null)
+    .input('MaCTDT', sql.VarChar(24), maCTDT)
     .input('TrangThai', sql.VarChar(20), trangThai || 'DANG_HOC')
     .query(`
       DECLARE @OutputTable TABLE (
@@ -573,14 +652,15 @@ const createStudent = async (data) => {
         SoDienThoai VARCHAR(20),
         MaKhoa VARCHAR(10),
         MaLop VARCHAR(20),
+        MaCTDT VARCHAR(24),
         TrangThai VARCHAR(20),
         NgayTao DATETIME2(0)
       );
 
-      INSERT INTO dbo.SINHVIEN (MaSinhVien, HoTen, NgaySinh, Email, SoDienThoai, MaKhoa, MaLop, TrangThai)
-      OUTPUT inserted.MaSV, inserted.MaSinhVien, inserted.HoTen, inserted.NgaySinh, inserted.Email, inserted.SoDienThoai, inserted.MaKhoa, inserted.MaLop, inserted.TrangThai, inserted.NgayTao
+      INSERT INTO dbo.SINHVIEN (MaSinhVien, HoTen, NgaySinh, Email, SoDienThoai, MaKhoa, MaLop, MaCTDT, TrangThai)
+      OUTPUT inserted.MaSV, inserted.MaSinhVien, inserted.HoTen, inserted.NgaySinh, inserted.Email, inserted.SoDienThoai, inserted.MaKhoa, inserted.MaLop, inserted.MaCTDT, inserted.TrangThai, inserted.NgayTao
       INTO @OutputTable
-      VALUES (@MaSinhVien, @HoTen, @NgaySinh, @Email, @SoDienThoai, @MaKhoa, @MaLop, @TrangThai);
+      VALUES (@MaSinhVien, @HoTen, @NgaySinh, @Email, @SoDienThoai, @MaKhoa, @MaLop, @MaCTDT, @TrangThai);
 
       SELECT * FROM @OutputTable;
     `);
@@ -595,6 +675,7 @@ const createStudent = async (data) => {
     soDienThoai: created.SoDienThoai,
     maKhoa: created.MaKhoa,
     maLop: created.MaLop,
+    maCTDT: created.MaCTDT,
     trangThai: created.TrangThai,
     ngayTao: created.NgayTao
   };
@@ -603,7 +684,7 @@ const createStudent = async (data) => {
 // Cập nhật thông tin sinh viên
 const updateStudent = async (maSV, data) => {
   const pool = await getPool();
-  const { hoTen, ngaySinh, email, soDienThoai, maKhoa, maLop, trangThai } = data;
+  const { hoTen, ngaySinh, email, soDienThoai, maKhoa, maLop, maCTDT, trangThai } = data;
 
   const curCheck = await pool.request()
     .input('MaSV', sql.Int, maSV)
@@ -618,16 +699,26 @@ const updateStudent = async (maSV, data) => {
   const cur = curCheck.recordset[0];
   const finalKhoa = maKhoa || cur.MaKhoa;
   const finalLop = maLop !== undefined ? maLop : cur.MaLop;
+  const finalCTDT = maCTDT || cur.MaCTDT;
 
+  const curriculumCheck = await pool.request()
+    .input('MaCTDT', sql.VarChar(24), finalCTDT)
+    .input('MaKhoa', sql.VarChar(10), finalKhoa)
+    .query(`SELECT c.NamTuyenSinh FROM dbo.CHUONGTRINHDAOTAO c
+            INNER JOIN dbo.NGANH n ON n.MaNganh = c.MaNganh
+            WHERE c.MaCTDT = @MaCTDT AND n.MaKhoa = @MaKhoa`);
+  if (!curriculumCheck.recordset[0]) {
+    throw Object.assign(new Error('Chương trình đào tạo không thuộc khoa đã chọn.'), { status: 400, field: 'maCTDT' });
+  }
   if (finalLop) {
-    const lopCheck = await pool.request()
+    const classCheck = await pool.request()
       .input('MaLop', sql.VarChar(20), finalLop)
-      .query('SELECT MaKhoa FROM dbo.LOP WHERE MaLop = @MaLop');
-
-    if (lopCheck.recordset.length > 0 && lopCheck.recordset[0].MaKhoa !== finalKhoa) {
-      const error = new Error(`Khoa của lớp sinh hoạt (${lopCheck.recordset[0].MaKhoa}) không khớp với khoa (${finalKhoa}).`);
-      error.status = 400;
-      throw error;
+      .query('SELECT MaKhoa, NamNhapHoc FROM dbo.LOP WHERE MaLop = @MaLop');
+    const lop = classCheck.recordset[0];
+    if (!lop) throw Object.assign(new Error('Lớp sinh hoạt không tồn tại.'), { status: 400, field: 'maLop' });
+    if (lop.MaKhoa !== finalKhoa) throw Object.assign(new Error('Khoa của lớp sinh hoạt không khớp khoa đã chọn.'), { status: 400, field: 'maLop' });
+    if (Number(lop.NamNhapHoc) !== Number(curriculumCheck.recordset[0].NamTuyenSinh)) {
+      throw Object.assign(new Error('Khóa tuyển sinh của CTĐT không khớp khóa của lớp.'), { status: 400, field: 'maCTDT' });
     }
   }
 
@@ -639,6 +730,7 @@ const updateStudent = async (maSV, data) => {
     .input('SoDienThoai', sql.VarChar(20), soDienThoai !== undefined ? (soDienThoai || null) : cur.SoDienThoai)
     .input('MaKhoa', sql.VarChar(10), finalKhoa)
     .input('MaLop', sql.VarChar(20), finalLop || null)
+    .input('MaCTDT', sql.VarChar(24), finalCTDT)
     .input('TrangThai', sql.VarChar(20), trangThai || cur.TrangThai)
     .query(`
       DECLARE @OutputTable TABLE (
@@ -650,6 +742,7 @@ const updateStudent = async (maSV, data) => {
         SoDienThoai VARCHAR(20),
         MaKhoa VARCHAR(10),
         MaLop VARCHAR(20),
+        MaCTDT VARCHAR(24),
         TrangThai VARCHAR(20),
         NgayTao DATETIME2(0)
       );
@@ -661,8 +754,9 @@ const updateStudent = async (maSV, data) => {
           SoDienThoai = @SoDienThoai,
           MaKhoa = @MaKhoa,
           MaLop = @MaLop,
+          MaCTDT = @MaCTDT,
           TrangThai = @TrangThai
-      OUTPUT inserted.MaSV, inserted.MaSinhVien, inserted.HoTen, inserted.NgaySinh, inserted.Email, inserted.SoDienThoai, inserted.MaKhoa, inserted.MaLop, inserted.TrangThai, inserted.NgayTao
+      OUTPUT inserted.MaSV, inserted.MaSinhVien, inserted.HoTen, inserted.NgaySinh, inserted.Email, inserted.SoDienThoai, inserted.MaKhoa, inserted.MaLop, inserted.MaCTDT, inserted.TrangThai, inserted.NgayTao
       INTO @OutputTable
       WHERE MaSV = @MaSV;
 
@@ -670,6 +764,11 @@ const updateStudent = async (maSV, data) => {
     `);
 
   const updated = result.recordset[0];
+  if (!updated) {
+    const error = new Error(`Không tìm thấy sinh viên có ID ${maSV}.`);
+    error.status = 404;
+    throw error;
+  }
   return {
     maSV: updated.MaSV,
     maSinhVien: updated.MaSinhVien,
@@ -679,6 +778,7 @@ const updateStudent = async (maSV, data) => {
     soDienThoai: updated.SoDienThoai,
     maKhoa: updated.MaKhoa,
     maLop: updated.MaLop,
+    maCTDT: updated.MaCTDT,
     trangThai: updated.TrangThai,
     ngayTao: updated.NgayTao
   };
@@ -693,29 +793,45 @@ const deleteStudent = async (maSV) => {
     .query(`
       SELECT 
         (SELECT COUNT(*) FROM dbo.DANGKYTINCHI WHERE MaSV = @MaSV) AS SoDangKy,
-        (SELECT COUNT(*) FROM dbo.HOCPHI WHERE MaSV = @MaSV) AS SoHocPhi
+        (SELECT COUNT(*) FROM dbo.HOCPHI WHERE MaSV = @MaSV) AS SoHocPhi,
+        (SELECT COUNT(*) FROM dbo.SINHVIEN WHERE MaSV = @MaSV) AS SoSinhVien
     `);
 
-  const { SoDangKy, SoHocPhi } = regCheck.recordset[0] || { SoDangKy: 0, SoHocPhi: 0 };
+  const { SoDangKy, SoHocPhi, SoSinhVien } = regCheck.recordset[0] || { SoDangKy: 0, SoHocPhi: 0, SoSinhVien: 0 };
+  if (!SoSinhVien) {
+    const error = new Error(`Không tìm thấy sinh viên có ID ${maSV}.`);
+    error.status = 404;
+    throw error;
+  }
 
   if (SoDangKy > 0 || SoHocPhi > 0) {
-    await pool.request()
+    const updated = await pool.request()
       .input('MaSV', sql.Int, maSV)
       .query(`UPDATE dbo.SINHVIEN SET TrangThai = 'THOI_HOC' WHERE MaSV = @MaSV`);
+    if (updated.rowsAffected[0] === 0) {
+      const error = new Error(`Không tìm thấy sinh viên có ID ${maSV}.`);
+      error.status = 404;
+      throw error;
+    }
 
     return {
       success: true,
       action: 'SOFT_DELETE',
-      message: 'Sinh viên đã có lịch sử học tập/học phí, đã chuyển trạng thái sang THÔI HỌC.'
+      message: 'Sinh viên đã có lịch sử học tập hoặc học phí nên được chuyển sang trạng thái thôi học.'
     };
   } else {
     await pool.request()
       .input('MaSV', sql.Int, maSV)
       .query(`DELETE FROM dbo.TAIKHOAN WHERE MaSV = @MaSV`);
 
-    await pool.request()
+    const deleted = await pool.request()
       .input('MaSV', sql.Int, maSV)
       .query(`DELETE FROM dbo.SINHVIEN WHERE MaSV = @MaSV`);
+    if (deleted.rowsAffected[0] === 0) {
+      const error = new Error(`Không tìm thấy sinh viên có ID ${maSV}.`);
+      error.status = 404;
+      throw error;
+    }
 
     return {
       success: true,
@@ -725,13 +841,79 @@ const deleteStudent = async (maSV) => {
   }
 };
 
+const getCourses = async () => {
+  const pool = await getPool();
+  const result = await pool.request().query(`SELECT MaMonHoc AS maMonHoc, MaKhoa AS maKhoa, TenMonHoc AS tenMonHoc, SoTinChi AS soTinChi, SoTietLyThuyet AS soTietLyThuyet, SoTietThucHanh AS soTietThucHanh, MoTa AS moTa, TrangThai AS trangThai FROM dbo.MONHOC ORDER BY MaMonHoc`);
+  return result.recordset;
+};
+
+const createCourse = async (d) => {
+  const pool = await getPool();
+  const r = await pool.request()
+    .input('id', sql.VarChar(15), d.maMonHoc).input('faculty', sql.VarChar(10), d.maKhoa)
+    .input('name', sql.NVarChar(150), d.tenMonHoc).input('credits', sql.TinyInt, d.soTinChi)
+    .input('lecture', sql.SmallInt, d.soTietLyThuyet).input('practice', sql.SmallInt, d.soTietThucHanh)
+    .input('description', sql.NVarChar(500), d.moTa || null).input('active', sql.Bit, d.trangThai ?? true)
+    .query(`INSERT dbo.MONHOC (MaMonHoc, MaKhoa, TenMonHoc, SoTinChi, SoTietLyThuyet, SoTietThucHanh, MoTa, TrangThai) VALUES (@id,@faculty,@name,@credits,@lecture,@practice,@description,@active); SELECT @@ROWCOUNT AS changed;`);
+  return { maMonHoc: d.maMonHoc, ...d };
+};
+
+const updateCourse = async (id, d) => {
+  const pool = await getPool();
+  const r = await pool.request().input('id', sql.VarChar(15), id).input('faculty', sql.VarChar(10), d.maKhoa)
+    .input('name', sql.NVarChar(150), d.tenMonHoc).input('credits', sql.TinyInt, d.soTinChi)
+    .input('lecture', sql.SmallInt, d.soTietLyThuyet).input('practice', sql.SmallInt, d.soTietThucHanh)
+    .input('description', sql.NVarChar(500), d.moTa || null).input('active', sql.Bit, d.trangThai ?? true)
+    .query(`UPDATE dbo.MONHOC SET MaKhoa=@faculty, TenMonHoc=@name, SoTinChi=@credits, SoTietLyThuyet=@lecture, SoTietThucHanh=@practice, MoTa=@description, TrangThai=@active WHERE MaMonHoc=@id; SELECT @@ROWCOUNT AS changed;`);
+  if (!r.recordset[0].changed) throw Object.assign(new Error('Không tìm thấy môn học.'), { status: 404 });
+  return { maMonHoc: id, ...d };
+};
+
+const deleteCourse = async (id) => {
+  const pool = await getPool();
+  const r = await pool.request().input('id', sql.VarChar(15), id).query('DELETE dbo.MONHOC WHERE MaMonHoc=@id; SELECT @@ROWCOUNT AS changed;');
+  if (!r.recordset[0].changed) throw Object.assign(new Error('Không tìm thấy môn học.'), { status: 404 });
+  return { maMonHoc: id, deleted: true };
+};
+
+const createClass = async (d) => {
+  const pool = await getPool();
+  await pool.request().input('id', sql.VarChar(20), d.maLHP).input('course', sql.VarChar(15), d.maMonHoc)
+    .input('semester', sql.Int, d.maHocKy).input('lecturer', sql.Int, d.maGiangVien ?? null)
+    .input('name', sql.NVarChar(100), d.tenLHP).input('capacity', sql.Int, d.soLuongToiDa)
+    .input('status', sql.VarChar(20), d.trangThai || 'DA_KHOA')
+    .query('INSERT dbo.LOPHOCPHAN (MaLHP,MaMonHoc,MaHocKy,MaGiangVien,TenLHP,SoLuongToiDa,TrangThai) VALUES (@id,@course,@semester,@lecturer,@name,@capacity,@status)');
+  return { ...d };
+};
+
+const updateClass = async (id, d) => {
+  const pool = await getPool();
+  const r = await pool.request().input('id', sql.VarChar(20), id).input('course', sql.VarChar(15), d.maMonHoc)
+    .input('semester', sql.Int, d.maHocKy).input('lecturer', sql.Int, d.maGiangVien ?? null)
+    .input('name', sql.NVarChar(100), d.tenLHP).input('capacity', sql.Int, d.soLuongToiDa)
+    .input('status', sql.VarChar(20), d.trangThai || null)
+    .query(`UPDATE dbo.LOPHOCPHAN SET MaMonHoc=@course, MaHocKy=@semester, MaGiangVien=@lecturer, TenLHP=@name, SoLuongToiDa=@capacity, TrangThai=COALESCE(@status, TrangThai) WHERE MaLHP=@id; SELECT @@ROWCOUNT AS changed;`);
+  if (!r.recordset[0].changed) throw Object.assign(new Error('Không tìm thấy lớp học phần.'), { status: 404 });
+  return { maLHP: id, ...d };
+};
+
+const deleteClass = async (id) => {
+  const pool = await getPool();
+  const r = await pool.request().input('id', sql.VarChar(20), id).query('DELETE dbo.LOPHOCPHAN WHERE MaLHP=@id; SELECT @@ROWCOUNT AS changed;');
+  if (!r.recordset[0].changed) throw Object.assign(new Error('Không tìm thấy lớp học phần.'), { status: 404 });
+  return { maLHP: id, deleted: true };
+};
+
 module.exports = {
   getUsersList,
   updateUserStatus,
   getCurriculums,
+  getCurriculumOptions,
   getDashboardStats,
   getStudentsList,
   getAllClasses,
+  getCourses, createCourse, updateCourse, deleteCourse,
+  createClass, updateClass, deleteClass,
   getRegistrationsList,
   getAuditLogs,
   createStudent,

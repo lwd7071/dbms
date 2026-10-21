@@ -56,7 +56,7 @@
 
       <!-- 2. Quản lý Đào tạo (Dropdown) -->
       <div class="tab-group" data-group="academic">
-        <button class="tab-dropdown-btn" id="btnGroupAcademic" onclick="toggleTabDropdown('academic')">
+        <button class="tab-dropdown-btn" id="btnGroupAcademic" aria-expanded="false" aria-controls="admin-academic-menu" onclick="toggleTabDropdown('academic')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
             <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
@@ -66,7 +66,7 @@
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </button>
-        <div class="tab-dropdown-menu">
+        <div class="tab-dropdown-menu" id="admin-academic-menu">
           <button class="tab-dropdown-item" onclick="switchAdminTab('students', this)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -105,7 +105,7 @@
 
       <!-- 3. Tài chính & Học phí (Dropdown) -->
       <div class="tab-group" data-group="finance">
-        <button class="tab-dropdown-btn" id="btnGroupFinance" onclick="toggleTabDropdown('finance')">
+        <button class="tab-dropdown-btn" id="btnGroupFinance" aria-expanded="false" aria-controls="admin-finance-menu" onclick="toggleTabDropdown('finance')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
             <line x1="1" y1="10" x2="23" y2="10"></line>
@@ -115,7 +115,7 @@
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </button>
-        <div class="tab-dropdown-menu">
+        <div class="tab-dropdown-menu" id="admin-finance-menu">
           <button class="tab-dropdown-item" onclick="switchAdminTab('pending', this)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
@@ -143,7 +143,7 @@
 
       <!-- 4. Quản trị Hệ thống (Dropdown) -->
       <div class="tab-group" data-group="system">
-        <button class="tab-dropdown-btn" id="btnGroupSystem" onclick="toggleTabDropdown('system')">
+        <button class="tab-dropdown-btn" id="btnGroupSystem" aria-expanded="false" aria-controls="admin-system-menu" onclick="toggleTabDropdown('system')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -153,7 +153,7 @@
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </button>
-        <div class="tab-dropdown-menu">
+        <div class="tab-dropdown-menu" id="admin-system-menu">
           <button class="tab-dropdown-item" onclick="switchAdminTab('users', this)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -161,7 +161,7 @@
             </svg>
             <span>Quản lý tài khoản</span>
           </button>
-          <button class="tab-dropdown-item" onclick="switchAdminTab('audit', this)">
+          <button class="tab-dropdown-item" data-tab-name="audit" data-required-role="QUAN_TRI" onclick="switchAdminTab('audit', this)" hidden>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 20h9"></path>
               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
@@ -462,7 +462,7 @@
     </div>
 
     <!-- MÀN HÌNH 9: AUDIT LOG -->
-    <div id="tab-audit" class="tab-pane">
+    <div id="tab-audit" class="tab-pane" data-required-role="QUAN_TRI" hidden>
       <section class="card">
         <div class="card-header">
           <h2 class="card-title">
@@ -561,15 +561,21 @@
       <form id="adminStudentForm" onsubmit="handleSaveStudent(event)">
         <div class="modal-body" style="padding: 1.5rem;">
           <input type="hidden" id="studentFormMaSV">
+          <div id="studentFormErrors" class="form-error-summary" role="alert" tabindex="-1" aria-labelledby="studentFormErrorsTitle" hidden>
+            <strong id="studentFormErrorsTitle">Không thể lưu hồ sơ. Hãy kiểm tra các mục sau:</strong>
+            <ul id="studentFormErrorsList"></ul>
+          </div>
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
             <div class="form-group">
               <label class="form-label" for="studentFormMSSV">Mã sinh viên (MSSV) <span style="color: var(--color-danger);">*</span></label>
               <input type="text" id="studentFormMSSV" class="form-control" required placeholder="Ví dụ: 24110201">
+              <small class="field-error" id="studentFormMSSV-error"></small>
             </div>
             <div class="form-group">
               <label class="form-label" for="studentFormHoTen">Họ và tên <span style="color: var(--color-danger);">*</span></label>
               <input type="text" id="studentFormHoTen" class="form-control" required placeholder="Ví dụ: Nguyễn Văn A">
+              <small class="field-error" id="studentFormHoTen-error"></small>
             </div>
           </div>
 
@@ -577,10 +583,12 @@
             <div class="form-group">
               <label class="form-label" for="studentFormNgaySinh">Ngày sinh</label>
               <input type="date" id="studentFormNgaySinh" class="form-control">
+              <small class="field-error" id="studentFormNgaySinh-error"></small>
             </div>
             <div class="form-group">
               <label class="form-label" for="studentFormEmail">Email</label>
               <input type="email" id="studentFormEmail" class="form-control" placeholder="sv_mssv@student.edu.vn">
+              <small class="field-error" id="studentFormEmail-error"></small>
             </div>
           </div>
 
@@ -588,6 +596,7 @@
             <div class="form-group">
               <label class="form-label" for="studentFormSDT">Số điện thoại</label>
               <input type="tel" id="studentFormSDT" class="form-control" placeholder="0987654321">
+              <small class="field-error" id="studentFormSDT-error"></small>
             </div>
             <div class="form-group">
               <label class="form-label" for="studentFormTrangThai">Trạng thái học vụ</label>
@@ -606,12 +615,21 @@
               <select id="studentFormKhoa" class="form-control" required onchange="onStudentFormKhoaChange()">
                 <option value="">-- Chọn khoa --</option>
               </select>
+              <small class="field-error" id="studentFormKhoa-error"></small>
             </div>
             <div class="form-group">
               <label class="form-label" for="studentFormLop">Lớp sinh hoạt</label>
-              <select id="studentFormLop" class="form-control">
+              <select id="studentFormLop" class="form-control" onchange="onStudentFormClassChange()">
                 <option value="">-- Chưa phân lớp --</option>
               </select>
+              <small class="field-error" id="studentFormLop-error"></small>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="studentFormMaCTDT">Chương trình đào tạo <span style="color: var(--color-danger);">*</span></label>
+              <select id="studentFormMaCTDT" class="form-control" required>
+                <option value="">-- Chọn khoa trước --</option>
+              </select>
+              <small class="field-error" id="studentFormMaCTDT-error"></small>
             </div>
           </div>
 
@@ -629,9 +647,18 @@
   <script src="js/auth.js"></script>
   <script src="js/admin.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       const user = requireAuth(['QUAN_TRI', 'DAO_TAO']);
       if (!user) return;
+
+      setAdminNavigationRole(null);
+      try {
+        const session = await api.get('/auth/me');
+        setAdminNavigationRole(session.user.vaiTro);
+      } catch (error) {
+        showToast('Không thể xác nhận phiên đăng nhập. Vui lòng tải lại trang.', 'danger');
+        return;
+      }
 
       // Nạp danh mục khoa, lớp sinh hoạt và học kỳ động
       populateFaculties('filterStudentKhoa', '-- Tất cả khoa --');

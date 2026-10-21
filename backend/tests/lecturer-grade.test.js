@@ -1,110 +1,129 @@
-const request = require('supertest');
+﻿const requestAs = require('./helpers/tokens').requestAs;
 const app = require('../src/app');
 const { getPool, closePool, sql } = require('../src/config/db');
-const lecturerToken = require('jsonwebtoken').sign(
-  { vaiTro: 'GIANG_VIEN', maGV: 1 },
-  process.env.JWT_SECRET || 'dbms330284_super_secret_jwt_key_2026'
-);
 
-describe('Lecturer Grade Management APIs (PUT /api/lecturers/classes/:maLHP/grades)', () => {
+describe('Lecturer Grade Management APIs', () => {
   let pool;
+  const maLHP = 'LHP_HK1_ANHVAN1_01';
+  const maSinhVienPrefix = `G${Date.now()}`;
+  const maSVs = [];
+  const maDangKys = [];
 
   beforeAll(async () => {
     pool = await getPool();
+    for (let index = 0; index < 2; index++) {
+      const created = await requestAs(app, 'admin').post('/api/admin/students').send({
+        maSinhVien: `${maSinhVienPrefix}${index}`,
+        hoTen: `Sinh viên kiểm thử điểm ${index + 1}`,
+        maKhoa: 'CNTT',
+        maCTDT: 'CTDT_CNTT_CQ',
+        trangThai: 'DANG_HOC'
+      });
+      expect(created.status).toBe(201);
+      maSVs.push(created.body.data.maSV);
+      const registration = await pool.request()
+        .input('MaSV', sql.Int, created.body.data.maSV)
+        .input('MaLHP', sql.VarChar(20), maLHP)
+        .query("DECLARE @Created TABLE (MaDangKy BIGINT); INSERT INTO dbo.DANGKYTINCHI (MaSV, MaLHP, TrangThai) OUTPUT INSERTED.MaDangKy INTO @Created VALUES (@MaSV, @MaLHP, 'REGISTERED'); SELECT MaDangKy FROM @Created;");
+      maDangKys.push(registration.recordset[0].MaDangKy);
+    }
   });
 
   afterAll(async () => {
-    await closePool();
+    try {
+      if (maDangKys.length) {
+        await pool.request()
+          .input('MaDangKy1', sql.BigInt, maDangKys[0])
+          .input('MaDangKy2', sql.BigInt, maDangKys[1])
+          .query('DELETE FROM dbo.DIEMSO WHERE MaDangKy IN (@MaDangKy1, @MaDangKy2)');
+      }
+      for (const maSV of maSVs) {
+        await pool.request().input('MaSV', sql.Int, maSV).query('DELETE FROM dbo.DANGKYTINCHI WHERE MaSV = @MaSV');
+        await pool.request().input('MaSV', sql.Int, maSV).query('DELETE FROM dbo.SINHVIEN WHERE MaSV = @MaSV');
+      }
+    } finally {
+      await closePool();
+    }
   });
 
-  // TEST 1 (Tracer Bullet): Giảng viên cập nhật điểm thành công (200 OK)
-  it('giảng viên cập nhật điểm của sinh viên trong lớp thành công (200 OK)', async () => {
-    const maLHP = 'LHP_HK1_ANHVAN1_01';
-    const maDangKy = 10837;
-
-    const payload = {
-      grades: [
-        {
-          maDangKy: maDangKy,
-          diemQuaTrinh: 8.5,
-          diemGiuaKy: 7.5,
-          diemCuoiKy: 9.0
-        }
-      ]
-    };
-
-    const res = await request(app)
+  it('updates a grade for a class assigned to this lecturer', async () => {
+    const response = await requestAs(app, 'lecturer', 2)
       .put(`/api/lecturers/classes/${maLHP}/grades`)
-      .set('Authorization', `Bearer ${lecturerToken}`)
-      .send(payload);
+      .send({ grades: [{ maDangKy: maDangKys[0], diemQuaTrinh: 8.5, diemGiuaKy: 7.5, diemCuoiKy: 9 }] });
 
-    expect(res.status).toBe(200);
-    expect(res.body.isSuccess).toBe(true);
-    expect(res.body.data).toHaveProperty('updatedCount', 1);
-
-    // Kiểm tra dữ liệu thực tế trong DB qua view V_BangDiemChiTiet
-    const dbCheck = await pool.request()
-      .input('MaDangKy', sql.BigInt, maDangKy)
+    expect(response.status).toBe(200);
+    expect(response.body.data.updatedCount).toBe(1);
+    const check = await pool.request().input('MaDangKy', sql.BigInt, maDangKys[0])
       .query('SELECT DiemQuaTrinh, DiemGiuaKy, DiemCuoiKy, DiemTongKet FROM dbo.V_BangDiemChiTiet WHERE MaDangKy = @MaDangKy');
-
-    expect(dbCheck.recordset.length).toBe(1);
-    const row = dbCheck.recordset[0];
-    expect(Number(row.DiemQuaTrinh)).toBe(8.5);
-    expect(Number(row.DiemGiuaKy)).toBe(7.5);
-    expect(Number(row.DiemCuoiKy)).toBe(9.0);
-    expect(Number(row.DiemTongKet)).toBe(8.45);
+    expect(check.recordset).toHaveLength(1);
+    expect(Number(check.recordset[0].DiemTongKet)).toBe(8.45);
   });
 
-  // TEST 2: Từ chối khi điểm số vượt quá 10 hoặc nhỏ hơn 0 (400 Bad Request)
-  it('từ chối khi điểm số không nằm trong khoảng 0.0 đến 10.0 (400 Bad Request)', async () => {
-    const maLHP = 'LHP_HK1_ANHVAN1_01';
-    const payload = {
-      grades: [
-        {
-          maDangKy: 10837,
-          diemQuaTrinh: 12.0 // Sai quy định
-        }
-      ]
-    };
-
-    const res = await request(app)
+  it('rejects grades outside the 0–10 range and an empty batch', async () => {
+    const invalid = await requestAs(app, 'lecturer', 2)
       .put(`/api/lecturers/classes/${maLHP}/grades`)
-      .set('Authorization', `Bearer ${lecturerToken}`)
-      .send(payload);
+      .send({ grades: [{ maDangKy: maDangKys[0], diemQuaTrinh: 12 }] });
+    expect(invalid.status).toBe(400);
 
-    expect(res.status).toBe(400);
-    expect(res.body.isSuccess).toBe(false);
-  });
-
-  // TEST 3: Từ chối khi danh sách điểm rỗng (400 Bad Request)
-  it('từ chối khi danh sách điểm rỗng (400 Bad Request)', async () => {
-    const maLHP = 'LHP_HK1_ANHVAN1_01';
-    const res = await request(app)
+    const empty = await requestAs(app, 'lecturer', 2)
       .put(`/api/lecturers/classes/${maLHP}/grades`)
-      .set('Authorization', `Bearer ${lecturerToken}`)
       .send({ grades: [] });
-
-    expect(res.status).toBe(400);
-    expect(res.body.isSuccess).toBe(false);
+    expect(empty.status).toBe(400);
   });
 
-  // TEST 4: Cập nhật nhiều sinh viên trong một batch thành công (200 OK)
-  it('cập nhật nhiều sinh viên cùng lúc thành công (200 OK)', async () => {
-    const maLHP = 'LHP_HK1_ANHVAN1_01';
-    const payload = {
-      grades: [
-        { maDangKy: 10837, diemQuaTrinh: 9.0, diemGiuaKy: 8.0, diemCuoiKy: 8.5 },
-        { maDangKy: 13891, diemQuaTrinh: 7.0, diemGiuaKy: 6.5, diemCuoiKy: 8.0 }
-      ]
-    };
+  it('rejects malformed class identifiers before querying SQL Server', async () => {
+    const response = await requestAs(app, 'lecturer', 2)
+      .put('/api/lecturers/classes/bad%20id/grades')
+      .send({ grades: [{ maDangKy: maDangKys[0], diemQuaTrinh: 8 }] });
+    expect(response.status).toBe(400);
+    expect(response.body.errors[0].field).toBe('maLHP');
+  });
 
-    const res = await request(app)
+  it('preserves grade components omitted from a partial update', async () => {
+    const lecturer = requestAs(app, 'lecturer', 2);
+    await lecturer.put(`/api/lecturers/classes/${maLHP}/grades`)
+      .send({ grades: [{ maDangKy: maDangKys[0], diemQuaTrinh: 7, diemGiuaKy: 8, diemCuoiKy: 9 }] });
+
+    const response = await lecturer.put(`/api/lecturers/classes/${maLHP}/grades`)
+      .send({ grades: [{ maDangKy: maDangKys[0], diemQuaTrinh: 8.5 }] });
+
+    expect(response.status).toBe(200);
+    const check = await pool.request().input('MaDangKy', sql.BigInt, maDangKys[0])
+      .query('SELECT DiemQuaTrinh, DiemGiuaKy, DiemCuoiKy FROM dbo.DIEMSO WHERE MaDangKy = @MaDangKy');
+    expect(check.recordset[0]).toMatchObject({
+      DiemQuaTrinh: 8.5,
+      DiemGiuaKy: 8,
+      DiemCuoiKy: 9
+    });
+  });
+
+  it('allows clearing one grade and rejects duplicate registration ids before writing', async () => {
+    const lecturer = requestAs(app, 'lecturer', 2);
+    const cleared = await lecturer.put(`/api/lecturers/classes/${maLHP}/grades`)
+      .send({ grades: [{ maDangKy: maDangKys[0], diemGiuaKy: null }] });
+    expect(cleared.status).toBe(200);
+
+    const duplicate = await lecturer.put(`/api/lecturers/classes/${maLHP}/grades`)
+      .send({ grades: [
+        { maDangKy: maDangKys[0], diemQuaTrinh: 7 },
+        { maDangKy: maDangKys[0], diemCuoiKy: 8 }
+      ] });
+    expect(duplicate.status).toBe(400);
+    expect(duplicate.body.errors[0].field).toBe('grades.1.maDangKy');
+
+    const check = await pool.request().input('MaDangKy', sql.BigInt, maDangKys[0])
+      .query('SELECT DiemQuaTrinh, DiemGiuaKy, DiemCuoiKy FROM dbo.DIEMSO WHERE MaDangKy = @MaDangKy');
+    expect(check.recordset[0].DiemGiuaKy).toBeNull();
+  });
+
+  it('updates multiple test-owned registrations in one batch', async () => {
+    const response = await requestAs(app, 'lecturer', 2)
       .put(`/api/lecturers/classes/${maLHP}/grades`)
-      .set('Authorization', `Bearer ${lecturerToken}`)
-      .send(payload);
-
-    expect(res.status).toBe(200);
-    expect(res.body.isSuccess).toBe(true);
-    expect(res.body.data.updatedCount).toBe(2);
+      .send({ grades: [
+        { maDangKy: maDangKys[0], diemQuaTrinh: 9, diemGiuaKy: 8, diemCuoiKy: 8.5 },
+        { maDangKy: maDangKys[1], diemQuaTrinh: 7, diemGiuaKy: 6.5, diemCuoiKy: 8 }
+      ] });
+    expect(response.status).toBe(200);
+    expect(response.body.data.updatedCount).toBe(2);
   });
 });

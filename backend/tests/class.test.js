@@ -1,5 +1,6 @@
 const request = require('supertest');
 const app = require('../src/app');
+const { requestAs } = require('./helpers/tokens');
 const { closePool } = require('../src/config/db');
 
 describe('Administrative Classes Management APIs (GET /api/classes)', () => {
@@ -8,7 +9,7 @@ describe('Administrative Classes Management APIs (GET /api/classes)', () => {
   });
 
   it('lấy danh sách toàn bộ 36 lớp sinh hoạt có sĩ số động (200 OK)', async () => {
-    const res = await request(app).get('/api/classes');
+    const res = await requestAs(app, "training", 1).get('/api/classes');
 
     expect(res.status).toBe(200);
     expect(res.body.isSuccess).toBe(true);
@@ -26,7 +27,7 @@ describe('Administrative Classes Management APIs (GET /api/classes)', () => {
   });
 
   it('lọc lớp sinh hoạt theo khoa maKhoa=CNTT (200 OK)', async () => {
-    const res = await request(app).get('/api/classes?maKhoa=CNTT');
+    const res = await requestAs(app, "training", 1).get('/api/classes?maKhoa=CNTT');
 
     expect(res.status).toBe(200);
     expect(res.body.isSuccess).toBe(true);
@@ -35,7 +36,7 @@ describe('Administrative Classes Management APIs (GET /api/classes)', () => {
   });
 
   it('lọc lớp sinh hoạt theo năm nhập học namNhapHoc=2023 (200 OK)', async () => {
-    const res = await request(app).get('/api/classes?namNhapHoc=2023');
+    const res = await requestAs(app, "training", 1).get('/api/classes?namNhapHoc=2023');
 
     expect(res.status).toBe(200);
     expect(res.body.isSuccess).toBe(true);
@@ -44,7 +45,7 @@ describe('Administrative Classes Management APIs (GET /api/classes)', () => {
   });
 
   it('lấy thông tin chi tiết một lớp và danh sách sinh viên (200 OK)', async () => {
-    const res = await request(app).get('/api/classes/CNTT23_01');
+    const res = await requestAs(app, "training", 1).get('/api/classes/CNTT23_01');
 
     expect(res.status).toBe(200);
     expect(res.body.isSuccess).toBe(true);
@@ -57,7 +58,7 @@ describe('Administrative Classes Management APIs (GET /api/classes)', () => {
   });
 
   it('báo lỗi 404 khi không tìm thấy lớp sinh hoạt', async () => {
-    const res = await request(app).get('/api/classes/KHONG_TON_TAI');
+    const res = await requestAs(app, "training", 1).get('/api/classes/KHONG_TON_TAI');
 
     expect(res.status).toBe(404);
     expect(res.body.isSuccess).toBe(false);

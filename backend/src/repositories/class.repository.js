@@ -1,4 +1,4 @@
-const { getPool } = require('../config/db');
+﻿const { getPool } = require('../config/db');
 
 /**
  * Repository thao tác bảng LOP và sinh viên trực thuộc
@@ -76,6 +76,7 @@ const classRepository = {
       .query(`
         SELECT 
           sv.MaSV AS maSV,
+          sv.MaCTDT AS maCTDT,
           sv.MaSinhVien AS maSinhVien,
           sv.HoTen AS hoTen,
           sv.NgaySinh AS ngaySinh,

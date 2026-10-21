@@ -1,5 +1,6 @@
 const request = require('supertest');
 const app = require('../src/app');
+const { requestAs } = require('./helpers/tokens');
 const { getPool, closePool, sql } = require('../src/config/db');
 
 describe('Administrative Class Programmability TDD (Views, Functions, Triggers, SP)', () => {
@@ -10,7 +11,7 @@ describe('Administrative Class Programmability TDD (Views, Functions, Triggers, 
     pool = await getPool();
 
     // Lấy token vai trò DAO_TAO
-    const resLogin = await request(app)
+    const resLogin = await requestAs(app, "training", 1)
       .post('/api/auth/login')
       .send({ username: 'daotao01', password: '123' + '456' });
     tokenDaoTao = resLogin.body.data.token;
@@ -39,7 +40,7 @@ describe('Administrative Class Programmability TDD (Views, Functions, Triggers, 
   });
 
   describe('Vertical Slice 2: Trigger TR_LOP_Audit ghi nhận lịch sử vào LOGHOATDONG', () => {
-    const testMaLop = 'TEST_LOP_AUDIT';
+    const testMaLop = `T${Date.now()}`;
 
     afterEach(async () => {
       try {
@@ -136,7 +137,7 @@ describe('Administrative Class Programmability TDD (Views, Functions, Triggers, 
 
   describe('Vertical Slice 5: API Endpoint GET /api/classes/:maLop/tuition-report', () => {
     it('DAO_TAO có thể lấy báo cáo học phí của lớp qua API', async () => {
-      const res = await request(app)
+      const res = await requestAs(app, "training", 1)
         .get('/api/classes/CNTT23_01/tuition-report?maHocKy=7')
         .set('Authorization', `Bearer ${tokenDaoTao}`);
 
@@ -148,7 +149,7 @@ describe('Administrative Class Programmability TDD (Views, Functions, Triggers, 
     });
 
     it('Trả về 404 nếu mã lớp không tồn tại', async () => {
-      const res = await request(app)
+      const res = await requestAs(app, "training", 1)
         .get('/api/classes/LOP_KHONG_TON_TAI/tuition-report')
         .set('Authorization', `Bearer ${tokenDaoTao}`);
 

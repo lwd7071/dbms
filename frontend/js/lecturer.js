@@ -44,13 +44,13 @@ async function loadLecturerClasses(maGV) {
 
       return `
         <tr>
-          <td class="cell-nowrap"><strong>${c.maLHP}</strong></td>
+          <td class="cell-nowrap"><strong>${escapeHtml(c.maLHP)}</strong></td>
           <td>
-            <div style="font-weight: 600;">${c.tenMonHoc}</div>
-            <div style="font-size: 0.75rem; color: var(--color-text-muted);">${c.tenLHP}</div>
+            <div style="font-weight: 600;">${escapeHtml(c.tenMonHoc)}</div>
+            <div style="font-size: 0.75rem; color: var(--color-text-muted);">${escapeHtml(c.tenLHP)}</div>
           </td>
           <td class="cell-nowrap" style="text-align: center;"><span class="badge badge-info">${c.soTinChi} TC</span></td>
-          <td class="cell-nowrap">${c.tenHocKy} (${c.namHoc})</td>
+          <td class="cell-nowrap">${escapeHtml(c.tenHocKy)} (${escapeHtml(c.namHoc)})</td>
           <td style="min-width: 140px;">
             <div style="font-size: 0.8125rem; font-weight: 600; display: flex; justify-content: space-between;">
               <span>${c.siSoHienTai}/${c.soLuongToiDa} SV</span>
@@ -64,13 +64,18 @@ async function loadLecturerClasses(maGV) {
             ${renderStatusBadge(c.trangThai)}
           </td>
           <td class="cell-nowrap" style="text-align: center;">
-            <button class="btn btn-sm btn-secondary" onclick="viewClassStudents('${c.maLHP}', '${c.tenMonHoc}')">
+            <button class="btn btn-sm btn-secondary js-view-class-students" data-class-id="${escapeHtml(c.maLHP)}" data-course-name="${escapeHtml(c.tenMonHoc)}">
               Danh sách SV
             </button>
           </td>
         </tr>
       `;
     }).join('');
+    tbody.onclick = event => {
+      const button = event.target.closest('.js-view-class-students');
+      if (button) viewClassStudents(button.dataset.classId, button.dataset.courseName);
+    };
+
     const renderCurrentPage = () => {
       const startIndex = (currentLecturerClassesPage - 1) * currentLecturerClassesPageSize;
       Array.from(tbody.rows).forEach((row, index) => {
@@ -92,7 +97,7 @@ async function loadLecturerClasses(maGV) {
     };
     renderCurrentPage();
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="7" style="color: var(--color-danger-text); padding: 1.5rem; text-align: center;">Lỗi tải dữ liệu: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="color: var(--color-danger-text); padding: 1.5rem; text-align: center;">Không thể tải danh sách lớp học phần. ${escapeHtml(err.message)}</td></tr>`;
   }
 }
 
@@ -115,7 +120,6 @@ async function loadLecturerSchedule(maGV) {
         <div class="timetable-header">Thứ 6</div>
         <div class="timetable-header">Thứ 7</div>
     `;
-
     for (let period = 1; period <= 10; period++) {
       gridHtml += `<div class="timetable-cell timetable-time">Tiết ${period}</div>`;
       for (let day = 2; day <= 7; day++) {
@@ -124,9 +128,9 @@ async function loadLecturerSchedule(maGV) {
           if (period === course.tietBatDau) {
             gridHtml += `
               <div class="timetable-cell timetable-slot occupied" style="grid-row: span ${course.soTiet}; background-color: #EFF6FF; border-left: 3px solid var(--color-primary);">
-                <div class="slot-title">${course.tenMonHoc}</div>
-                <div class="slot-room" style="font-weight: 600;">Lớp: ${course.maLHP}</div>
-                <div class="slot-room">Phòng: ${course.phongHoc}</div>
+              <div class="slot-title">${escapeHtml(course.tenMonHoc)}</div>
+              <div class="slot-room" style="font-weight: 600;">Lớp: ${escapeHtml(course.maLHP)}</div>
+              <div class="slot-room">Phòng: ${escapeHtml(course.phongHoc)}</div>
               </div>
             `;
           }
@@ -142,7 +146,7 @@ async function loadLecturerSchedule(maGV) {
     gridHtml += `</div>`;
     container.innerHTML = gridHtml;
   } catch (err) {
-    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 1.5rem; text-align: center;">Lỗi tải lịch dạy: ${err.message}</div>`;
+    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 1.5rem; text-align: center;">Không thể tải lịch giảng dạy. ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -201,7 +205,7 @@ async function viewClassStudents(maLHP, tenMonHoc) {
 
     renderClassStudentsTable(currentClassStudents);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="8" style="color: var(--color-danger-text); padding: 2rem; text-align: center;">Lỗi tải: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="color: var(--color-danger-text); padding: 2rem; text-align: center;">Không thể tải danh sách sinh viên. ${escapeHtml(err.message)}</td></tr>`;
     if (countBadge) countBadge.textContent = 'Lỗi';
   }
 }
@@ -291,16 +295,16 @@ function renderClassStudentsTable(students) {
   tbody.innerHTML = students.map((s, idx) => `
     <tr>
       <td class="cell-nowrap" style="text-align: center; color: var(--color-text-muted);">${idx + 1}</td>
-      <td class="cell-nowrap"><strong>${s.maSinhVien}</strong></td>
-      <td class="cell-nowrap" style="font-weight: 500;">${s.hoTen}</td>
+      <td class="cell-nowrap"><strong>${escapeHtml(s.maSinhVien)}</strong></td>
+      <td class="cell-nowrap" style="font-weight: 500;">${escapeHtml(s.hoTen)}</td>
       <td class="cell-nowrap" style="text-align: center;">
         <input 
           type="number" 
           class="form-control form-control-sm" 
           min="0" max="10" step="0.1" 
           style="width: 75px; text-align: right; display: inline-block; font-family: monospace; font-size: 0.8125rem;"
-          value="${s.diemQuaTrinh !== null && s.diemQuaTrinh !== undefined ? s.diemQuaTrinh : ''}"
-          oninput="onGradeInputChange(this, '${s.maDangKy}', 'diemQuaTrinh')"
+          value="${escapeHtml(s.diemQuaTrinh !== null && s.diemQuaTrinh !== undefined ? s.diemQuaTrinh : '')}"
+          data-registration-id="${escapeHtml(s.maDangKy)}" data-grade-field="diemQuaTrinh"
           placeholder="-"
         >
       </td>
@@ -310,8 +314,8 @@ function renderClassStudentsTable(students) {
           class="form-control form-control-sm" 
           min="0" max="10" step="0.1" 
           style="width: 75px; text-align: right; display: inline-block; font-family: monospace; font-size: 0.8125rem;"
-          value="${s.diemGiuaKy !== null && s.diemGiuaKy !== undefined ? s.diemGiuaKy : ''}"
-          oninput="onGradeInputChange(this, '${s.maDangKy}', 'diemGiuaKy')"
+          value="${escapeHtml(s.diemGiuaKy !== null && s.diemGiuaKy !== undefined ? s.diemGiuaKy : '')}"
+          data-registration-id="${escapeHtml(s.maDangKy)}" data-grade-field="diemGiuaKy"
           placeholder="-"
         >
       </td>
@@ -321,19 +325,24 @@ function renderClassStudentsTable(students) {
           class="form-control form-control-sm" 
           min="0" max="10" step="0.1" 
           style="width: 75px; text-align: right; display: inline-block; font-family: monospace; font-size: 0.8125rem;"
-          value="${s.diemCuoiKy !== null && s.diemCuoiKy !== undefined ? s.diemCuoiKy : ''}"
-          oninput="onGradeInputChange(this, '${s.maDangKy}', 'diemCuoiKy')"
+          value="${escapeHtml(s.diemCuoiKy !== null && s.diemCuoiKy !== undefined ? s.diemCuoiKy : '')}"
+          data-registration-id="${escapeHtml(s.maDangKy)}" data-grade-field="diemCuoiKy"
           placeholder="-"
         >
       </td>
-      <td class="cell-nowrap" style="text-align: right; font-weight: 700; font-family: monospace; color: var(--color-primary);" id="total-grade-${s.maDangKy}">
+      <td class="cell-nowrap" style="text-align: right; font-weight: 700; font-family: monospace; color: var(--color-primary);" id="total-grade-${escapeHtml(s.maDangKy)}">
         ${s.diemTongKet !== null && s.diemTongKet !== undefined ? Number(s.diemTongKet).toFixed(2) : '-'}
       </td>
-      <td class="cell-nowrap" style="text-align: center; font-weight: 600;" id="letter-grade-${s.maDangKy}">
-        ${s.diemChu && s.diemChu !== 'null' ? `<span class="badge ${s.diemChu === 'F' ? 'badge-danger' : 'badge-neutral'}">${s.diemChu}</span>` : '-'}
+      <td class="cell-nowrap" style="text-align: center; font-weight: 600;" id="letter-grade-${escapeHtml(s.maDangKy)}">
+        ${s.diemChu && s.diemChu !== 'null' ? `<span class="badge ${s.diemChu === 'F' ? 'badge-danger' : 'badge-neutral'}">${escapeHtml(s.diemChu)}</span>` : '-'}
       </td>
     </tr>
   `).join('');
+
+  tbody.oninput = event => {
+    const input = event.target.closest('[data-registration-id][data-grade-field]');
+    if (input) onGradeInputChange(input, input.dataset.registrationId, input.dataset.gradeField);
+  };
 }
 
 // Lưu bảng điểm cả lớp lên backend API
@@ -344,7 +353,7 @@ async function saveClassGrades() {
 
   const changedStudents = currentClassStudents.filter(s => changedGradeIds.has(String(s.maDangKy)));
   if (changedStudents.length === 0) {
-    showToast('Chưa có điểm nào thay đổi để lưu', 'info');
+    showToast('Chưa có điểm nào thay đổi để lưu.', 'info');
     return;
   }
 
@@ -354,7 +363,7 @@ async function saveClassGrades() {
   });
 
   if (invalidGrades) {
-    showToast('Vui lòng kiểm tra lại: Điểm số phải từ 0.0 đến 10.0', 'warning');
+    showToast('Điểm số phải nằm trong khoảng từ 0 đến 10. Vui lòng kiểm tra lại.', 'warning');
     return;
   }
 
@@ -368,7 +377,7 @@ async function saveClassGrades() {
   };
 
   if (payload.grades.length === 0) {
-    showToast('Lớp chưa có sinh viên nào để lưu điểm', 'info');
+    showToast('Lớp học phần hiện chưa có sinh viên để nhập điểm.', 'info');
     return;
   }
 
@@ -387,7 +396,7 @@ async function saveClassGrades() {
     currentClassStudents = Array.isArray(refreshed) ? refreshed : [];
     filterClassStudents();
   } catch (err) {
-    showToast(`Lỗi khi lưu bảng điểm: ${err.message}`, 'danger');
+    showToast(`Không thể lưu bảng điểm. ${err.message}`, 'danger');
   } finally {
     if (saveBtn) {
       saveBtn.disabled = false;

@@ -71,17 +71,17 @@ async function loadAvailableCourses(page = 1) {
 
       return `
         <tr>
-          <td class="cell-nowrap"><strong>${course.maLHP}</strong></td>
+          <td class="cell-nowrap"><strong>${escapeHtml(course.maLHP)}</strong></td>
           <td>
-            <div style="font-weight: 600;">${course.tenMonHoc}</div>
+            <div style="font-weight: 600;">${escapeHtml(course.tenMonHoc)}</div>
             <div style="display: flex; gap: 0.375rem; align-items: center; margin-top: 2px;">
-              <span style="font-size: 0.75rem; color: var(--color-text-muted);">${course.tenLHP}</span>
+              <span style="font-size: 0.75rem; color: var(--color-text-muted);">${escapeHtml(course.tenLHP)}</span>
               ${planBadge}
             </div>
           </td>
           <td class="cell-nowrap" style="text-align: center;"><span class="badge badge-info">${course.soTinChi} TC</span></td>
-          <td class="cell-nowrap">${course.tenGiangVien}</td>
-          <td class="cell-nowrap">Thứ ${course.thu}, Tiết ${course.tietBatDau}-${course.tietBatDau + course.soTiet - 1} (${course.phongHoc})</td>
+          <td class="cell-nowrap">${escapeHtml(course.tenGiangVien)}</td>
+          <td class="cell-nowrap">Thứ ${escapeHtml(course.thu)}, Tiết ${escapeHtml(course.tietBatDau)}-${escapeHtml(course.tietBatDau + course.soTiet - 1)} (${escapeHtml(course.phongHoc)})</td>
           <td style="min-width: 130px;">
             <div style="font-size: 0.8125rem; font-weight: 600; display: flex; justify-content: space-between;">
               <span>${course.siSoHienTai}/${course.soLuongToiDa}</span>
@@ -93,13 +93,17 @@ async function loadAvailableCourses(page = 1) {
           </td>
           <td class="cell-nowrap" style="text-align: center;">
             <button class="btn btn-sm ${isFull ? 'btn-secondary' : 'btn-primary'}" 
-              onclick="handleRegister('${course.maLHP}')" ${isFull ? 'disabled' : ''}>
+              data-register-lhp="${escapeHtml(course.maLHP)}" ${isFull ? 'disabled' : ''}>
               ${isFull ? 'Hết chỗ' : 'Đăng ký'}
             </button>
           </td>
         </tr>
       `;
     }).join('');
+    tbody.onclick = event => {
+      const button = event.target.closest('[data-register-lhp]');
+      if (button) handleRegister(button.dataset.registerLhp);
+    };
 
     // Render component phân trang chuẩn UI/UX Pro Max
     renderPagination({
@@ -115,7 +119,7 @@ async function loadAvailableCourses(page = 1) {
     });
 
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--color-danger-text); padding: 2rem;">Lỗi tải dữ liệu: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--color-danger-text); padding: 2rem;">Không thể tải danh sách môn học. ${escapeHtml(err.message)}</td></tr>`;
   }
 }
 
@@ -123,7 +127,7 @@ async function loadAvailableCourses(page = 1) {
 async function handleRegister(maLHP) {
   const user = api.getCurrentUser();
   if (!user || !user.maSV) {
-    showToast('Không xác định được mã sinh viên.', 'danger');
+    showToast('Không tìm thấy mã sinh viên trong phiên đăng nhập. Vui lòng đăng nhập lại.', 'danger');
     return;
   }
 
@@ -162,20 +166,24 @@ async function loadMyRegistrations() {
         totalCredits += c.soTinChi;
         return `
           <tr>
-            <td class="cell-nowrap"><strong>${c.maLHP}</strong></td>
-            <td>${c.tenMonHoc}</td>
+            <td class="cell-nowrap"><strong>${escapeHtml(c.maLHP)}</strong></td>
+            <td>${escapeHtml(c.tenMonHoc)}</td>
             <td class="cell-nowrap" style="text-align: center;"><span class="badge badge-info">${c.soTinChi} TC</span></td>
-            <td class="cell-nowrap">${c.tenGiangVien}</td>
-            <td class="cell-nowrap">Thứ ${c.thu}, Tiết ${c.tietBatDau}-${c.tietBatDau + c.soTiet - 1} (${c.phongHoc})</td>
+            <td class="cell-nowrap">${escapeHtml(c.tenGiangVien)}</td>
+            <td class="cell-nowrap">Thứ ${escapeHtml(c.thu)}, Tiết ${escapeHtml(c.tietBatDau)}-${escapeHtml(c.tietBatDau + c.soTiet - 1)} (${escapeHtml(c.phongHoc)})</td>
             <td class="cell-nowrap" style="text-align: center;">${renderStatusBadge(c.trangThai || 'REGISTERED')}</td>
             <td class="cell-nowrap" style="text-align: center;">
-              <button class="btn btn-sm btn-danger" onclick="handleCancel(${c.maDangKy}, '${c.maLHP}')">
+              <button class="btn btn-sm btn-danger" data-cancel-registration="${escapeHtml(c.maDangKy)}" data-class-id="${escapeHtml(c.maLHP)}">
                 Hủy môn
               </button>
             </td>
           </tr>
         `;
       }).join('');
+      tbody.onclick = event => {
+        const button = event.target.closest('[data-cancel-registration]');
+        if (button) handleCancel(Number(button.dataset.cancelRegistration), button.dataset.classId);
+      };
     } else {
       tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--color-text-muted); padding: 1.5rem;">Chưa có học phần nào được đăng ký trong học kỳ này.</td></tr>`;
     }
@@ -184,7 +192,7 @@ async function loadMyRegistrations() {
       countElem.textContent = `${list.length} môn (${totalCredits} tín chỉ)`;
     }
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="7" style="color: var(--color-danger-text); padding: 1rem;">Lỗi: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="color: var(--color-danger-text); padding: 1rem;">Không thể tải các học phần đã đăng ký. ${escapeHtml(err.message)}</td></tr>`;
   }
 }
 
@@ -201,7 +209,7 @@ async function handleCancel(maDangKy, maLHP) {
     loadSchedule();
     loadGrades();
   } catch (err) {
-    showToast(`Hủy thất bại: ${err.message}`, 'danger');
+    showToast(`Không thể hủy học phần. ${err.message}`, 'danger');
   }
 }
 
@@ -240,9 +248,9 @@ async function loadSchedule() {
           if (period === course.tietBatDau) {
             gridHtml += `
               <div class="timetable-cell timetable-slot occupied" style="grid-row: span ${course.soTiet};">
-                <div class="slot-title">${course.tenMonHoc}</div>
-                <div class="slot-room">Phòng: ${course.phongHoc}</div>
-                <div class="slot-room">GV: ${course.hoTenGiangVien}</div>
+                <div class="slot-title">${escapeHtml(course.tenMonHoc)}</div>
+                <div class="slot-room">Phòng: ${escapeHtml(course.phongHoc)}</div>
+                <div class="slot-room">GV: ${escapeHtml(course.hoTenGiangVien)}</div>
               </div>
             `;
           }
@@ -260,7 +268,7 @@ async function loadSchedule() {
     gridHtml += `</div>`;
     container.innerHTML = gridHtml;
   } catch (err) {
-    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 1rem;">Lỗi tải thời khóa biểu: ${err.message}</div>`;
+    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 1rem;">Không thể tải thời khóa biểu. ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -387,7 +395,7 @@ async function loadGrades() {
 
   } catch (err) {
     if (container) {
-      container.innerHTML = `<div style="color: var(--color-danger-text); padding: 1rem; text-align: center;">Lỗi tải bảng điểm: ${err.message}</div>`;
+      container.innerHTML = `<div style="color: var(--color-danger-text); padding: 1rem; text-align: center;">Không thể tải bảng điểm. ${escapeHtml(err.message)}</div>`;
     }
   }
 }

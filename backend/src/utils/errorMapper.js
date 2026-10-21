@@ -33,9 +33,13 @@ const SQL_ERROR_MAP = {
   51007: { status: 409, field: 'maLop', message: 'Không thể xóa lớp sinh hoạt đang có sinh viên trực thuộc.' },
   51008: { status: 404, field: 'maLop', message: 'Không tìm thấy lớp sinh hoạt được yêu cầu.' },
   51310: { status: 409, field: 'phongHoc', message: 'Lịch học bị trùng giảng viên hoặc trùng phòng học trong cùng khung giờ.' },
+  51311: { status: 409, field: 'lichHoc', message: 'Lớp học phần phải có ít nhất một lịch hợp lệ trước khi mở đăng ký.' },
 
   // SP_KhoaTaiKhoan
   51010: { status: 404, field: 'maTaiKhoan', message: 'Không tìm thấy tài khoản người dùng cần thao tác.' },
+  51012: { status: 403, field: 'permission', message: 'Tài khoản hiện tại không có quyền thực hiện thao tác này.' },
+  51014: { status: 403, field: 'permission', message: 'Phòng Đào tạo không được thay đổi trạng thái tài khoản quản trị.' },
+  51015: { status: 409, field: 'username', message: 'Không thể tự khóa tài khoản đang đăng nhập.' },
 
   // SP_XacNhanThanhToan & SP_TuChoiThanhToan
   51401: { status: 404, field: 'maThanhToan', message: 'Giao dịch thanh toán không tồn tại trong hệ thống.' },
@@ -70,6 +74,14 @@ const mapSqlError = (error, context = '') => {
     };
   }
 
+  if (errorNumber === 51008 && context === 'STUDENT_CLASS') {
+    return {
+      status: 422,
+      field: 'maCTDT',
+      message: 'Khoa và khóa tuyển sinh của sinh viên phải khớp với lớp và chương trình đào tạo.'
+    };
+  }
+
   // Tra cứu bảng map chuẩn
   if (SQL_ERROR_MAP[errorNumber]) {
     return SQL_ERROR_MAP[errorNumber];
@@ -87,7 +99,7 @@ const mapSqlError = (error, context = '') => {
     return {
       status: 409,
       field: 'foreignKey',
-      message: 'Dữ liệu liên quan không tồn tại hoặc vi phạm ràng buộc dữ liệu CSDL.'
+      message: 'Thông tin liên quan không còn tồn tại hoặc không phù hợp. Vui lòng kiểm tra lại.'
     };
   }
 
@@ -96,7 +108,7 @@ const mapSqlError = (error, context = '') => {
     return {
       status: 409,
       field: 'unique',
-      message: 'Dữ liệu bị trùng lặp khóa chính hoặc ràng buộc duy nhất.'
+      message: 'Thông tin này đã được sử dụng. Vui lòng kiểm tra lại.'
     };
   }
 
@@ -104,7 +116,7 @@ const mapSqlError = (error, context = '') => {
   return {
     status: 500,
     field: 'database',
-    message: error.message || 'Lỗi thao tác cơ sở dữ liệu.'
+    message: 'Đã xảy ra lỗi khi xử lý dữ liệu. Vui lòng thử lại hoặc liên hệ quản trị viên.'
   };
 };
 

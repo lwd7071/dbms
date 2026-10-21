@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const authRepo = require('../repositories/auth.repository');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dbms330284_super_secret_jwt_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 /**
  * Service xử lý nghiệp vụ xác thực đăng nhập

@@ -22,7 +22,7 @@ app.use('/api', apiRoutes);
 app.use((req, res) => {
   res.status(404).json(errorResponse({
     field: 'route',
-    message: `Đường dẫn ${req.method} ${req.originalUrl} không tồn tại.`
+    message: 'Chức năng bạn yêu cầu không tồn tại.'
   }));
 });
 

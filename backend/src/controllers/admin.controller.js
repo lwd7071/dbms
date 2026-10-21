@@ -7,7 +7,7 @@ const { successResponse } = require('../utils/apiResponse');
  */
 const getTuitionReport = async (req, res, next) => {
   try {
-    const { maHocKy, trangThai } = req.query;
+    const { maHocKy, trangThai } = req.validated?.query || req.query;
     const report = await tuitionService.getTuitionReport({ maHocKy, trangThai });
     return res.status(200).json(successResponse(report));
   } catch (err) {
@@ -17,7 +17,7 @@ const getTuitionReport = async (req, res, next) => {
 
 const getUsers = async (req, res, next) => {
   try {
-    const { vaiTro, trangThai, maLop, search, page, pageSize } = req.query;
+    const { vaiTro, trangThai, maLop, search, page, pageSize } = req.validated?.query || req.query;
     const result = await adminRepo.getUsersList({ vaiTro, trangThai, maLop, search, page, pageSize });
     return res.status(200).json(
       successResponse(result.items, {
@@ -34,9 +34,10 @@ const getUsers = async (req, res, next) => {
 
 const updateUserStatus = async (req, res, next) => {
   try {
-    const { username } = req.params;
+    const { username } = req.validated?.params || req.params;
     const { trangThai } = req.body;
-    const result = await adminRepo.updateUserStatus(username, trangThai);
+    req.context = 'ACCOUNT_STATUS';
+    const result = await adminRepo.updateUserStatus(username, trangThai, req.user);
     return res.status(200).json(successResponse(result));
   } catch (err) {
     next(err);
@@ -53,6 +54,13 @@ const getCurriculums = async (req, res, next) => {
   }
 };
 
+const getCurriculumOptions = async (req, res, next) => {
+  try {
+    const { maKhoa, namTuyenSinh } = req.validated?.query || req.query;
+    return res.status(200).json(successResponse(await adminRepo.getCurriculumOptions({ maKhoa, namTuyenSinh })));
+  } catch (err) { next(err); }
+};
+
 const getDashboardStats = async (req, res, next) => {
   try {
     const stats = await adminRepo.getDashboardStats();
@@ -64,7 +72,7 @@ const getDashboardStats = async (req, res, next) => {
 
 const getStudents = async (req, res, next) => {
   try {
-    const { search, maKhoa, maLop, trangThai, page, pageSize } = req.query;
+    const { search, maKhoa, maLop, trangThai, page, pageSize } = req.validated?.query || req.query;
     const result = await adminRepo.getStudentsList({ search, maKhoa, maLop, trangThai, page, pageSize });
     return res.status(200).json(
       successResponse(result.items, {
@@ -81,7 +89,7 @@ const getStudents = async (req, res, next) => {
 
 const getAllClasses = async (req, res, next) => {
   try {
-    const { maHocKy, search, page, pageSize } = req.query;
+    const { maHocKy, search, page, pageSize } = req.validated?.query || req.query;
     const result = await adminRepo.getAllClasses({ maHocKy, search, page, pageSize });
     return res.status(200).json(
       successResponse(result.items, {
@@ -96,9 +104,44 @@ const getAllClasses = async (req, res, next) => {
   }
 };
 
+const getCourses = async (req, res, next) => {
+  try { return res.status(200).json(successResponse(await adminRepo.getCourses())); }
+  catch (err) { next(err); }
+};
+
+const createCourse = async (req, res, next) => {
+  try { return res.status(201).json(successResponse(await adminRepo.createCourse(req.body))); }
+  catch (err) { next(err); }
+};
+
+const updateCourse = async (req, res, next) => {
+  try { return res.status(200).json(successResponse(await adminRepo.updateCourse((req.validated?.params || req.params).id, req.body))); }
+  catch (err) { next(err); }
+};
+
+const deleteCourse = async (req, res, next) => {
+  try { return res.status(200).json(successResponse(await adminRepo.deleteCourse((req.validated?.params || req.params).id))); }
+  catch (err) { next(err); }
+};
+
+const createClass = async (req, res, next) => {
+  try { return res.status(201).json(successResponse(await adminRepo.createClass(req.body))); }
+  catch (err) { next(err); }
+};
+
+const updateClass = async (req, res, next) => {
+  try { return res.status(200).json(successResponse(await adminRepo.updateClass((req.validated?.params || req.params).id, req.body))); }
+  catch (err) { next(err); }
+};
+
+const deleteClass = async (req, res, next) => {
+  try { return res.status(200).json(successResponse(await adminRepo.deleteClass((req.validated?.params || req.params).id))); }
+  catch (err) { next(err); }
+};
+
 const getRegistrations = async (req, res, next) => {
   try {
-    const { maSV, maLHP, maLop, trangThai, search, page, pageSize } = req.query;
+    const { maSV, maLHP, maLop, trangThai, search, page, pageSize } = req.validated?.query || req.query;
     const result = await adminRepo.getRegistrationsList({ maSV, maLHP, maLop, trangThai, search, page, pageSize });
     return res.status(200).json(
       successResponse(result.items, {
@@ -115,7 +158,7 @@ const getRegistrations = async (req, res, next) => {
 
 const getAuditLogs = async (req, res, next) => {
   try {
-    const { page, pageSize, limit } = req.query;
+    const { page, pageSize, limit } = req.validated?.query || req.query;
     const result = await adminRepo.getAuditLogs({ page, pageSize: pageSize || limit });
     return res.status(200).json(
       successResponse(result.items, {
@@ -132,6 +175,7 @@ const getAuditLogs = async (req, res, next) => {
 
 const createStudent = async (req, res, next) => {
   try {
+    req.context = 'STUDENT_CLASS';
     const student = await adminRepo.createStudent(req.body);
     return res.status(201).json(successResponse(student));
   } catch (err) {
@@ -141,7 +185,8 @@ const createStudent = async (req, res, next) => {
 
 const updateStudent = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    req.context = 'STUDENT_CLASS';
+    const { id } = req.validated?.params || req.params;
     const student = await adminRepo.updateStudent(Number(id), req.body);
     return res.status(200).json(successResponse(student));
   } catch (err) {
@@ -151,7 +196,7 @@ const updateStudent = async (req, res, next) => {
 
 const deleteStudent = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const { id } = req.validated?.params || req.params;
     const result = await adminRepo.deleteStudent(Number(id));
     return res.status(200).json(successResponse(result));
   } catch (err) {
@@ -164,9 +209,12 @@ module.exports = {
   getUsers,
   updateUserStatus,
   getCurriculums,
+  getCurriculumOptions,
   getDashboardStats,
   getStudents,
   getAllClasses,
+  getCourses, createCourse, updateCourse, deleteCourse,
+  createClass, updateClass, deleteClass,
   getRegistrations,
   getAuditLogs,
   createStudent,

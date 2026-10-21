@@ -42,17 +42,17 @@ async function loadStudentDashboard() {
 
     const gpa = gradesData.summary ? gradesData.summary.gpa : 0;
     const totalCredits = gradesData.summary ? gradesData.summary.tongTinChiTichLuy : 0;
-    const semesterDisplay = curSemester ? `${curSemester.tenHocKy} (${curSemester.namHoc})` : 'Học kỳ hiện tại';
+    const semesterDisplay = curSemester ? `${escapeHtml(curSemester.tenHocKy)} (${escapeHtml(curSemester.namHoc)})` : 'Học kỳ hiện tại';
 
     dashboardContainer.innerHTML = `
       <!-- Welcome Banner Compact -->
       <div class="welcome-banner" style="background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary)); color: white; padding: 0.65rem 1.15rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
         <div>
           <h2 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.15rem;">
-            Xin chào, ${profile ? profile.hoTen : user.hoTen}!
+            Xin chào, ${escapeHtml(profile ? profile.hoTen : user.hoTen)}!
           </h2>
           <p style="font-size: 0.8125rem; opacity: 0.9; margin: 0;">
-            MSSV: <strong>${profile ? profile.maSinhVien : user.username}</strong> | Lớp: <strong>${profile ? (profile.tenLop || profile.maLop || 'Chưa xếp lớp') : 'Chưa xếp lớp'}</strong> | Khoa: <strong>${profile ? (profile.tenKhoa || profile.maKhoa || 'Chưa cập nhật') : 'Chưa cập nhật'}</strong> | Trạng thái: ${renderStatusBadge(profile ? profile.trangThai : 'DANG_HOC')}
+            MSSV: <strong>${escapeHtml(profile ? profile.maSinhVien : user.username)}</strong> | Lớp: <strong>${escapeHtml(profile ? (profile.tenLop || profile.maLop || 'Chưa xếp lớp') : 'Chưa xếp lớp')}</strong> | Khoa: <strong>${escapeHtml(profile ? (profile.tenKhoa || profile.maKhoa || 'Chưa cập nhật') : 'Chưa cập nhật')}</strong> | Trạng thái: ${renderStatusBadge(profile ? profile.trangThai : 'DANG_HOC')}
           </p>
         </div>
         <div style="background: rgba(255, 255, 255, 0.15); padding: 0.4rem 0.875rem; border-radius: var(--radius-sm); text-align: right;">
@@ -205,7 +205,7 @@ async function loadStudentDashboard() {
       </div>
     `;
   } catch (err) {
-    dashboardContainer.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem; text-align: center;">Lỗi tải dữ liệu Tổng quan: ${err.message}</div>`;
+    dashboardContainer.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem; text-align: center;">Không thể tải bảng tổng quan. ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -250,11 +250,11 @@ async function loadStudentProfile() {
               <tbody>
                 <tr>
                   <td style="width: 140px; color: var(--color-text-muted); font-weight: 600;">Mã số sinh viên:</td>
-                  <td><strong>${profile.maSinhVien}</strong> (ID: #${profile.maSV})</td>
+                  <td><strong>${escapeHtml(profile.maSinhVien)}</strong> (ID: #${escapeHtml(profile.maSV)})</td>
                 </tr>
                 <tr>
                   <td style="color: var(--color-text-muted); font-weight: 600;">Họ và tên:</td>
-                  <td><strong>${profile.hoTen}</strong></td>
+                  <td><strong>${escapeHtml(profile.hoTen)}</strong></td>
                 </tr>
                 <tr>
                   <td style="color: var(--color-text-muted); font-weight: 600;">Ngày sinh:</td>
@@ -262,23 +262,23 @@ async function loadStudentProfile() {
                 </tr>
                 <tr>
                   <td style="color: var(--color-text-muted); font-weight: 600;">Lớp sinh hoạt:</td>
-                  <td><strong>${profile.tenLop || profile.maLop || 'Chưa cập nhật'}</strong> (Mã lớp: <code>${profile.maLop || '-'}</code>)</td>
+                  <td><strong>${escapeHtml(profile.tenLop || profile.maLop || 'Chưa cập nhật')}</strong> (Mã lớp: <code>${escapeHtml(profile.maLop || '-')}</code>)</td>
                 </tr>
                 <tr>
                   <td style="color: var(--color-text-muted); font-weight: 600;">Khóa học:</td>
-                  <td>${profile.khoaHoc || '-'}</td>
+                  <td>${escapeHtml(profile.khoaHoc || '-')}</td>
                 </tr>
                 <tr>
                   <td style="color: var(--color-text-muted); font-weight: 600;">Khoa trực thuộc:</td>
-                  <td><strong>${profile.tenKhoa}</strong> (${profile.maKhoa})</td>
+                  <td><strong>${escapeHtml(profile.tenKhoa)}</strong> (${escapeHtml(profile.maKhoa)})</td>
                 </tr>
                 <tr>
                   <td style="color: var(--color-text-muted); font-weight: 600;">Email học vụ:</td>
-                  <td>${profile.email || 'Chưa cập nhật'}</td>
+                  <td>${escapeHtml(profile.email || 'Chưa cập nhật')}</td>
                 </tr>
                 <tr>
                   <td style="color: var(--color-text-muted); font-weight: 600;">Số điện thoại:</td>
-                  <td>${profile.soDienThoai || 'Chưa cập nhật'}</td>
+                  <td>${escapeHtml(profile.soDienThoai || 'Chưa cập nhật')}</td>
                 </tr>
                 <tr>
                   <td style="color: var(--color-text-muted); font-weight: 600;">Ngày nhập học:</td>
@@ -306,11 +306,11 @@ async function loadStudentProfile() {
               <tbody>
                 <tr>
                   <td style="width: 140px; color: var(--color-text-muted); font-weight: 600;">Tên đăng nhập:</td>
-                  <td><code>${profile.username}</code></td>
+                  <td><code>${escapeHtml(profile.username)}</code></td>
                 </tr>
                 <tr>
                   <td style="color: var(--color-text-muted); font-weight: 600;">Vai trò:</td>
-                  <td><span class="badge badge-info">${profile.vaiTro}</span></td>
+                  <td><span class="badge badge-info">${escapeHtml(profile.vaiTro)}</span></td>
                 </tr>
                 <tr>
                   <td style="color: var(--color-text-muted); font-weight: 600;">Trạng thái tài khoản:</td>
@@ -337,7 +337,7 @@ async function loadStudentProfile() {
       </div>
     `;
   } catch (err) {
-    profileContainer.innerHTML = `<div style="color: var(--color-danger-text); padding: 1.5rem;">Lỗi tải hồ sơ: ${err.message}</div>`;
+    profileContainer.innerHTML = `<div style="color: var(--color-danger-text); padding: 1.5rem;">Không thể tải hồ sơ sinh viên. ${escapeHtml(err.message)}</div>`;
   }
 }
 

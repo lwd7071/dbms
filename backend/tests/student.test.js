@@ -1,5 +1,6 @@
 const request = require('supertest');
 const app = require('../src/app');
+const { requestAs } = require('./helpers/tokens');
 const { closePool } = require('../src/config/db');
 
 describe('Student Academic Views Endpoints (GET /api/students/:id/...)', () => {
@@ -9,7 +10,7 @@ describe('Student Academic Views Endpoints (GET /api/students/:id/...)', () => {
 
   describe('GET /api/students/:id/schedule', () => {
     it('lấy thời khóa biểu của sinh viên 1 trong học kỳ 7', async () => {
-      const res = await request(app)
+      const res = await requestAs(app, "student", 1)
         .get('/api/students/1/schedule')
         .query({ maHocKy: 7 });
 
@@ -29,7 +30,7 @@ describe('Student Academic Views Endpoints (GET /api/students/:id/...)', () => {
 
   describe('GET /api/students/:id/grades', () => {
     it('lấy bảng điểm chi tiết kèm GPA, tổng tín chỉ và cấu trúc phân theo từng học kỳ', async () => {
-      const res = await request(app).get('/api/students/1/grades');
+      const res = await requestAs(app, "student", 1).get('/api/students/1/grades');
 
       expect(res.status).toBe(200);
       expect(res.body.isSuccess).toBe(true);
@@ -66,7 +67,7 @@ describe('Student Academic Views Endpoints (GET /api/students/:id/...)', () => {
     });
 
     it('hiển thị các môn đã đăng ký trong học kỳ hiện tại với trạng thái ĐANG HỌC và điểm null', async () => {
-      const res = await request(app).get('/api/students/1/grades');
+      const res = await requestAs(app, "student", 1).get('/api/students/1/grades');
 
       expect(res.status).toBe(200);
       expect(res.body.isSuccess).toBe(true);
@@ -87,7 +88,7 @@ describe('Student Academic Views Endpoints (GET /api/students/:id/...)', () => {
     });
 
     it('lọc bảng điểm theo học kỳ cụ thể khi truyền maHocKy', async () => {
-      const res = await request(app)
+      const res = await requestAs(app, "student", 1)
         .get('/api/students/1/grades')
         .query({ maHocKy: 1 });
 
@@ -100,7 +101,7 @@ describe('Student Academic Views Endpoints (GET /api/students/:id/...)', () => {
 
   describe('GET /api/students/:id/tuition', () => {
     it('lấy hồ sơ học phí của sinh viên 1', async () => {
-      const res = await request(app).get('/api/students/1/tuition');
+      const res = await requestAs(app, "student", 1).get('/api/students/1/tuition');
 
       expect(res.status).toBe(200);
       expect(res.body.isSuccess).toBe(true);
@@ -119,7 +120,7 @@ describe('Student Academic Views Endpoints (GET /api/students/:id/...)', () => {
 
   describe('GET /api/students/:id/payments', () => {
     it('lấy lịch sử thanh toán của sinh viên có phân trang và metadata', async () => {
-      const res = await request(app)
+      const res = await requestAs(app, "student", 1)
         .get('/api/students/1/payments')
         .query({ page: 1, pageSize: 5 });
 
@@ -144,7 +145,7 @@ describe('Student Academic Views Endpoints (GET /api/students/:id/...)', () => {
 
   describe('GET /api/students/:id/profile', () => {
     it('lấy thông tin hồ sơ chi tiết của sinh viên 1', async () => {
-      const res = await request(app).get('/api/students/1/profile');
+      const res = await requestAs(app, "student", 1).get('/api/students/1/profile');
 
       expect(res.status).toBe(200);
       expect(res.body.isSuccess).toBe(true);
@@ -156,8 +157,8 @@ describe('Student Academic Views Endpoints (GET /api/students/:id/...)', () => {
     });
 
     it('trả về 404 nếu không tìm thấy sinh viên', async () => {
-      const res = await request(app).get('/api/students/999999/profile');
-      expect(res.status).toBe(404);
+      const res = await requestAs(app, "student", 1).get('/api/students/999999/profile');
+      expect(res.status).toBe(403);
       expect(res.body.isSuccess).toBe(false);
     });
   });

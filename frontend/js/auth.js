@@ -73,7 +73,7 @@ function requireAuth(allowedRoles = []) {
   if (userRoleElem) {
     userRoleElem.textContent = user.vaiTro === 'SINH_VIEN'
       ? `MSSV: ${user.maSinhVien || user.username}`
-      : `Vai trò: ${user.vaiTro} (${user.username})`;
+      : `Vai trò: ${formatRoleBadge(user.vaiTro).text} (${user.username})`;
   }
 
   return user;

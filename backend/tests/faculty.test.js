@@ -1,5 +1,6 @@
 const request = require('supertest');
 const app = require('../src/app');
+const { requestAs } = require('./helpers/tokens');
 const { closePool } = require('../src/config/db');
 
 describe('Metadata: Faculty Endpoints', () => {
@@ -9,7 +10,7 @@ describe('Metadata: Faculty Endpoints', () => {
 
   describe('GET /api/faculties', () => {
     it('lấy danh sách tất cả các khoa đang hoạt động trong CSDL', async () => {
-      const res = await request(app).get('/api/faculties');
+      const res = await requestAs(app, "student", 1).get('/api/faculties');
 
       expect(res.status).toBe(200);
       expect(res.body.isSuccess).toBe(true);

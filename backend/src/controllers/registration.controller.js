@@ -9,11 +9,7 @@ const createRegistration = async (req, res, next) => {
     const maSV = req.user.maSV;
     const { maLHP } = req.body;
 
-    const result = await regService.registerCourse({
-      maSV,
-      maLHP,
-      tinChiToiDa: 25
-    });
+    const result = await regService.registerCourse({ maSV, maLHP });
 
     return res.status(201).json(
       successResponse(result)

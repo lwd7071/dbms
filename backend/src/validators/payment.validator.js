@@ -11,7 +11,7 @@ const createPaymentSchema = z.object({
     .positive('Số tiền thanh toán phải lớn hơn 0.'),
   phuongThuc: z
     .enum(['CHUYEN_KHOAN', 'TIEN_MAT', 'THE_NGAN_HANG', 'VI_DIEN_TU'], {
-      errorMap: () => ({ message: 'Phương thức thanh toán phải là CHUYEN_KHOAN, TIEN_MAT, THE_NGAN_HANG hoặc VI_DIEN_TU.' })
+      error: 'Phương thức thanh toán không hợp lệ. Vui lòng chọn lại.'
     })
     .default('CHUYEN_KHOAN')
 });
@@ -22,7 +22,7 @@ const tuitionReportQuerySchema = z.object({
     .preprocess((val) => (val !== undefined && val !== '' ? Number(val) : undefined), z.number().int().positive().optional()),
   trangThai: z
     .enum(['UNPAID', 'PARTIAL', 'PAID'], {
-      errorMap: () => ({ message: 'Trạng thái học phí phải là UNPAID, PARTIAL hoặc PAID.' })
+      error: 'Trạng thái học phí không hợp lệ. Vui lòng chọn lại.'
     })
     .optional()
 });

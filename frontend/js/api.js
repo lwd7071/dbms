@@ -7,6 +7,37 @@ const API_BASE_URL = window.location.origin.includes('localhost:5000')
   ? '/api' 
   : 'http://localhost:5000/api';
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[character]);
+}
+
+const API_ERROR_FIELD_LABELS = {
+  vaiTro: 'Vai trò tài khoản', trangThai: 'Trạng thái', page: 'Số trang', pageSize: 'Số lượng mỗi trang',
+  maSinhVien: 'Mã sinh viên', maSV: 'Mã sinh viên', hoTen: 'Họ tên', ngaySinh: 'Ngày sinh',
+  email: 'Email', soDienThoai: 'Số điện thoại', maKhoa: 'Khoa', maCTDT: 'Chương trình đào tạo',
+  maLop: 'Lớp sinh hoạt', maLHP: 'Lớp học phần', maMonHoc: 'Môn học', maHocKy: 'Học kỳ',
+  maDangKy: 'Mã đăng ký học phần', diemQuaTrinh: 'Điểm quá trình', diemGiuaKy: 'Điểm giữa kỳ',
+  diemCuoiKy: 'Điểm cuối kỳ', maHocPhi: 'Hồ sơ học phí', soTien: 'Số tiền thanh toán',
+  phuongThuc: 'Phương thức thanh toán', username: 'Tên đăng nhập', password: 'Mật khẩu',
+  database: 'Dữ liệu', foreignKey: 'Dữ liệu liên quan', unique: 'Thông tin'
+};
+
+function toUserFacingApiMessage(error) {
+  const message = String(error?.message || '').trim();
+  const hasVietnamese = /[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]/i.test(message);
+  const hasTechnicalText = /\b(Invalid|expected|received|Exception|TypeError|SyntaxError|SELECT|INSERT|UPDATE|DELETE)\b/i.test(message)
+    || /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/.test(message);
+  if (message && hasVietnamese && !hasTechnicalText) {
+    return message;
+  }
+
+  const field = String(error?.field || '').split('.').filter(part => !/^\d+$/.test(part)).pop();
+  const label = API_ERROR_FIELD_LABELS[field] || 'Thông tin';
+  return `${label} chưa hợp lệ hoặc hệ thống chưa thể xử lý. Vui lòng kiểm tra lại và thử lại.`;
+}
+
 const api = {
   // Lấy Auth Token từ localStorage
   getToken() {
@@ -60,9 +91,12 @@ const api = {
 
       if (!response.ok || !data.isSuccess) {
         // Thu thập thông báo lỗi
-        let errorMsg = 'Đã có lỗi xảy ra.';
-        if (data.errors && data.errors.length > 0) {
-          errorMsg = data.errors.map(e => e.message).join('\n');
+        let errorMsg = 'Yêu cầu chưa được xử lý. Vui lòng thử lại sau.';
+        const normalizedErrors = Array.isArray(data.errors)
+          ? data.errors.map(error => ({ ...error, message: toUserFacingApiMessage(error) }))
+          : [];
+        if (normalizedErrors.length > 0) {
+          errorMsg = normalizedErrors.map(error => error.message).join('\n');
         }
         
         // Nếu lỗi 401 chưa đăng nhập
@@ -73,13 +107,14 @@ const api = {
 
         const error = new Error(errorMsg);
         error.status = response.status;
-        error.errors = data.errors || [];
+        error.errors = normalizedErrors;
         throw error;
       }
 
       return data.data;
     } catch (err) {
-      throw err;
+      if (err.status) throw err;
+      throw new Error('Không thể hoàn tất yêu cầu. Vui lòng kiểm tra kết nối và thử lại.');
     }
   },
 
@@ -178,7 +213,7 @@ async function populateClasses(selectElementOrId, options = {}) {
   select.innerHTML = `<option value="">Đang tải danh sách lớp...</option>`;
 
   const classes = await api.getClasses({ maKhoa, namNhapHoc });
-  select.innerHTML = `<option value="">${defaultText}</option>`;
+  select.innerHTML = `<option value="">${escapeHtml(defaultText)}</option>`;
 
   if (classes && classes.length > 0) {
     classes.forEach(c => {
@@ -204,7 +239,7 @@ async function populateFaculties(selectElementOrId, defaultText = '-- Tất cả
   select.innerHTML = `<option value="">Đang tải danh mục khoa...</option>`;
 
   const faculties = await api.getFaculties();
-  select.innerHTML = `<option value="">${defaultText}</option>`;
+  select.innerHTML = `<option value="">${escapeHtml(defaultText)}</option>`;
 
   if (faculties && faculties.length > 0) {
     faculties.forEach(f => {
@@ -230,7 +265,7 @@ async function populateSemesters(selectElementOrId, defaultText = '-- Tất cả
   select.innerHTML = `<option value="">Đang tải học kỳ...</option>`;
 
   const semesters = await api.getSemesters();
-  select.innerHTML = `<option value="">${defaultText}</option>`;
+  select.innerHTML = `<option value="">${escapeHtml(defaultText)}</option>`;
 
   if (semesters && semesters.length > 0) {
     semesters.forEach(s => {
@@ -275,7 +310,12 @@ function showToast(message, type = 'info') {
 
   const toast = document.createElement('div');
   toast.className = `toast toast-${type === 'error' ? 'danger' : type}`;
-  toast.innerHTML = `<div>${message.replace(/\n/g, '<br>')}</div>`;
+  toast.setAttribute('role', ['danger', 'error'].includes(type) ? 'alert' : 'status');
+  toast.setAttribute('aria-live', ['danger', 'error'].includes(type) ? 'assertive' : 'polite');
+  const content = document.createElement('div');
+  content.textContent = String(message ?? '');
+  content.style.whiteSpace = 'pre-line';
+  toast.appendChild(content);
 
   container.appendChild(toast);
 
@@ -428,10 +468,12 @@ const STATUS_DICTIONARY = {
   'BAO_LUU': { text: 'Bảo lưu', badgeClass: 'badge-warning' },
   'BUOC_THOI_HOC': { text: 'Buộc thôi học', badgeClass: 'badge-danger' },
   'TOT_NGHIEP': { text: 'Tốt nghiệp', badgeClass: 'badge-info' },
+  'THOI_HOC': { text: 'Thôi học', badgeClass: 'badge-danger' },
 
   // Tài khoản
   'ACTIVE': { text: 'Hoạt động', badgeClass: 'badge-success' },
   'LOCKED': { text: 'Đã khóa', badgeClass: 'badge-danger' },
+  'DISABLED': { text: 'Đã vô hiệu hóa', badgeClass: 'badge-secondary' },
   'INACTIVE': { text: 'Tạm khóa', badgeClass: 'badge-warning' },
 
   // Học phí & Thanh toán
@@ -532,35 +574,35 @@ const AUDIT_FIELD_DICTIONARY = {
 function formatStatusBadge(code) {
   if (!code) return { text: 'Chưa cập nhật', badgeClass: 'badge-secondary' };
   const normalized = String(code).trim().toUpperCase();
-  return STATUS_DICTIONARY[normalized] || { text: code, badgeClass: 'badge-secondary' };
+  return STATUS_DICTIONARY[normalized] || { text: 'Trạng thái khác', badgeClass: 'badge-secondary' };
 }
 
 function renderStatusBadge(code) {
   const { text, badgeClass } = formatStatusBadge(code);
-  return `<span class="badge ${badgeClass}">${text}</span>`;
+  return `<span class="badge ${badgeClass}">${escapeHtml(text)}</span>`;
 }
 
 function formatRoleBadge(role) {
   if (!role) return { text: 'Không rõ', badgeClass: 'badge-secondary' };
   const normalized = String(role).trim().toUpperCase();
-  return ROLE_DICTIONARY[normalized] || { text: role, badgeClass: 'badge-secondary' };
+  return ROLE_DICTIONARY[normalized] || { text: 'Vai trò khác', badgeClass: 'badge-secondary' };
 }
 
 function renderRoleBadge(role) {
   const { text, badgeClass } = formatRoleBadge(role);
-  return `<span class="badge ${badgeClass}">${text}</span>`;
+  return `<span class="badge ${badgeClass}">${escapeHtml(text)}</span>`;
 }
 
 function formatAuditAction(action) {
   if (!action) return { text: 'Khác', badgeClass: 'badge-secondary' };
   const normalized = String(action).trim().toUpperCase();
-  return AUDIT_ACTION_DICTIONARY[normalized] || { text: action, badgeClass: 'badge-secondary' };
+  return AUDIT_ACTION_DICTIONARY[normalized] || { text: escapeHtml(action), badgeClass: 'badge-secondary' };
 }
 
 function formatAuditTable(tableName) {
   if (!tableName) return '-';
   const normalized = String(tableName).trim().toUpperCase();
-  return AUDIT_TABLE_DICTIONARY[normalized] || tableName;
+  return AUDIT_TABLE_DICTIONARY[normalized] || escapeHtml(tableName);
 }
 
 /**
@@ -585,7 +627,7 @@ function formatAuditValue(key, val) {
   if (STATUS_DICTIONARY[strVal]) return STATUS_DICTIONARY[strVal].text;
   if (ROLE_DICTIONARY[strVal]) return ROLE_DICTIONARY[strVal].text;
 
-  return String(val);
+  return escapeHtml(val);
 }
 
 /**
@@ -600,8 +642,8 @@ function formatAuditContent(hanhDong, noiDungCu, noiDungMoi) {
 
   // Fallback nếu không thể parse
   if (!oldObj && !newObj) {
-    if (noiDungMoi) return `<span>${noiDungMoi}</span>`;
-    if (noiDungCu) return `<span style="color: var(--color-danger-text);">${noiDungCu}</span>`;
+    if (noiDungMoi) return `<span>${escapeHtml(noiDungMoi)}</span>`;
+    if (noiDungCu) return `<span style="color: var(--color-danger-text);">${escapeHtml(noiDungCu)}</span>`;
     return '<span style="color: var(--color-text-muted);">-</span>';
   }
 
@@ -623,7 +665,7 @@ function formatAuditContent(hanhDong, noiDungCu, noiDungMoi) {
             const newValFormatted = formatAuditValue(k, newObj[k]);
             return `
               <div class="audit-diff-item" style="font-size: 0.8125rem; line-height: 1.4;">
-                <span class="audit-field-name" style="font-weight: 600; color: #475569;">${fieldLabel}:</span>
+                <span class="audit-field-name" style="font-weight: 600; color: #475569;">${escapeHtml(fieldLabel)}:</span>
                 <span class="audit-old-val" style="color: #94A3B8; text-decoration: line-through; margin: 0 4px;">${oldValFormatted}</span>
                 <span class="audit-arrow" style="color: #64748B; font-weight: 700;">→</span>
                 <span class="audit-new-val" style="color: #16A34A; font-weight: 600; margin-left: 4px;">${newValFormatted}</span>
@@ -636,7 +678,7 @@ function formatAuditContent(hanhDong, noiDungCu, noiDungMoi) {
       const idKey = Object.keys(newObj).find(k => /Ma|Id|User/i.test(k)) || Object.keys(newObj)[0];
       htmlResult = `
         <div style="font-size: 0.8125rem; color: #475569;">
-          Cập nhật bản ghi ${idKey ? `<strong>${idKey}: ${newObj[idKey]}</strong>` : ''}
+          Cập nhật bản ghi ${idKey ? `<strong>${escapeHtml(idKey)}: ${formatAuditValue(idKey, newObj[idKey])}</strong>` : ''}
         </div>
       `;
     }
@@ -647,7 +689,7 @@ function formatAuditContent(hanhDong, noiDungCu, noiDungMoi) {
         <span style="font-weight: 600; color: #16A34A;">Tạo mới:</span>
         ${entries.map(([k, v]) => {
           const label = AUDIT_FIELD_DICTIONARY[k] || k;
-          return `${label}: <strong>${formatAuditValue(k, v)}</strong>`;
+          return `${escapeHtml(label)}: <strong>${formatAuditValue(k, v)}</strong>`;
         }).join(' • ')}
         ${Object.keys(newObj).length > 5 ? ' ...' : ''}
       </div>
@@ -659,7 +701,7 @@ function formatAuditContent(hanhDong, noiDungCu, noiDungMoi) {
         <span style="font-weight: 600;">Xóa bản ghi:</span>
         ${entries.map(([k, v]) => {
           const label = AUDIT_FIELD_DICTIONARY[k] || k;
-          return `${label}: <strong>${formatAuditValue(k, v)}</strong>`;
+          return `${escapeHtml(label)}: <strong>${formatAuditValue(k, v)}</strong>`;
         }).join(' • ')}
       </div>
     `;
@@ -668,7 +710,7 @@ function formatAuditContent(hanhDong, noiDungCu, noiDungMoi) {
     const entries = Object.entries(targetObj).slice(0, 4);
     htmlResult = `
       <div style="font-size: 0.8125rem; line-height: 1.4;">
-        ${entries.map(([k, v]) => `${AUDIT_FIELD_DICTIONARY[k] || k}: <strong>${formatAuditValue(k, v)}</strong>`).join(' • ')}
+        ${entries.map(([k, v]) => `${escapeHtml(AUDIT_FIELD_DICTIONARY[k] || k)}: <strong>${formatAuditValue(k, v)}</strong>`).join(' • ')}
       </div>
     `;
   }
@@ -679,7 +721,7 @@ function formatAuditContent(hanhDong, noiDungCu, noiDungMoi) {
     htmlResult += `
       <details style="margin-top: 6px; font-size: 0.72rem;">
         <summary style="cursor: pointer; color: var(--color-text-muted); user-select: none;">Chi tiết JSON gốc</summary>
-        <pre style="margin-top: 4px; padding: 6px 8px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 4px; max-height: 120px; overflow: auto; font-family: monospace; font-size: 0.72rem; color: #334155;">${typeof rawJson === 'object' ? JSON.stringify(rawJson, null, 2) : rawJson}</pre>
+      <pre style="margin-top: 4px; padding: 6px 8px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 4px; max-height: 120px; overflow: auto; font-family: monospace; font-size: 0.72rem; color: #334155;">${escapeHtml(typeof rawJson === 'object' ? JSON.stringify(rawJson, null, 2) : rawJson)}</pre>
       </details>
     `;
   }

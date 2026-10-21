@@ -245,6 +245,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
+.tab-dropdown-btn:focus-visible,
+.tab-dropdown-item:focus-visible {
+  outline: 3px solid var(--color-focus, #f59e0b);
+  outline-offset: 2px;
+  position: relative;
+  z-index: 101;
+}
+
 .tab-dropdown-btn.active {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
@@ -317,6 +325,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   background: rgba(30, 58, 138, 0.08);
   color: var(--color-primary);
   font-weight: 600;
+}
+
+.tab-dropdown-item[hidden],
+.tab-pane[hidden] {
+  display: none !important;
 }
 
 .tab-dropdown-item svg {
@@ -401,6 +414,34 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   box-shadow: var(--focus-ring);
   outline: none;
 }
+
+.field-error {
+  display: block;
+  min-height: 0;
+  margin-top: 0.25rem;
+  color: var(--color-danger-text, #B91C1C);
+  font-size: 0.8125rem;
+}
+
+.field-error:empty { display: none; }
+
+.form-control[aria-invalid="true"] {
+  border-color: var(--color-danger, #DC2626);
+  box-shadow: 0 0 0 1px var(--color-danger, #DC2626);
+}
+
+.form-error-summary {
+  margin-bottom: 1rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--color-danger, #DC2626);
+  border-radius: var(--radius-md, 8px);
+  background: #FEF2F2;
+  color: #7F1D1D;
+}
+
+.form-error-summary:focus { outline: 3px solid rgba(220, 38, 38, 0.25); outline-offset: 2px; }
+.form-error-summary ul { margin: 0.5rem 0 0; padding-left: 1.25rem; }
+.form-error-summary a { color: inherit; text-decoration: underline; }
 
 /* Buttons */
 .btn {

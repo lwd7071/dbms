@@ -6,7 +6,9 @@ const { successResponse } = require('../utils/apiResponse');
  */
 const getAvailableCourses = async (req, res, next) => {
   try {
-    const result = await courseService.getAvailableCourses(req.query);
+    const filters = { ...(req.validated?.query || req.query) };
+    if (req.courseMaSV) filters.maSV = req.courseMaSV;
+    const result = await courseService.getAvailableCourses(filters);
 
     return res.status(200).json(
       successResponse(result.items, {

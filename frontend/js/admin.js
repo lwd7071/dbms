@@ -3,6 +3,15 @@
 
 let adminTuitionReportData = [];
 let pendingPaymentsData = [];
+let studentCurriculumOptions = null;
+let adminNavigationRole = null;
+
+function setAdminNavigationRole(role) {
+  adminNavigationRole = role;
+  document.querySelectorAll('[data-required-role]').forEach(element => {
+    element.hidden = element.dataset.requiredRole !== role;
+  });
+}
 
 // Khởi tạo trang Admin
 async function initAdminPortal() {
@@ -65,13 +74,13 @@ async function loadPendingPayments() {
               <tr>
                 <td class="cell-nowrap"><strong>#${p.maThanhToan}</strong></td>
                 <td class="cell-nowrap">
-                  <div style="font-weight: 600;">${p.hoTenSinhVien}</div>
-                  <div style="font-size: 0.75rem; color: var(--color-text-muted);">${p.maSinhVien} (ID #${p.maSV})</div>
+                  <div style="font-weight: 600;">${escapeHtml(p.hoTenSinhVien)}</div>
+                  <div style="font-size: 0.75rem; color: var(--color-text-muted);">${escapeHtml(p.maSinhVien)} (ID #${escapeHtml(p.maSV)})</div>
                 </td>
                 <td class="cell-nowrap">
-                  <span class="badge badge-info">${p.tenLop || p.maLop || '-'}</span>
+                  <span class="badge badge-info">${escapeHtml(p.tenLop || p.maLop || '-')}</span>
                 </td>
-                <td class="cell-nowrap">${p.tenHocKy} (${p.namHoc})</td>
+                <td class="cell-nowrap">${escapeHtml(p.tenHocKy)} (${escapeHtml(p.namHoc)})</td>
                 <td class="cell-nowrap" style="text-align: right; font-weight: 700; font-family: monospace; color: var(--color-primary-dark);">
                   ${api.formatCurrency(p.soTien)}
                 </td>
@@ -82,10 +91,10 @@ async function loadPendingPayments() {
                 </td>
                 <td class="cell-nowrap" style="text-align: center;">
                   <div style="display: flex; gap: 0.5rem; justify-content: center;">
-                    <button class="btn btn-sm btn-success" onclick="confirmPaymentAdmin(${p.maThanhToan})">
+                    <button class="btn btn-sm btn-success" data-confirm-payment="${escapeHtml(p.maThanhToan)}">
                       Xác nhận
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="rejectPaymentAdmin(${p.maThanhToan})">
+                    <button class="btn btn-sm btn-danger" data-reject-payment="${escapeHtml(p.maThanhToan)}">
                       Từ chối
                     </button>
                   </div>
@@ -96,10 +105,16 @@ async function loadPendingPayments() {
         </table>
       </div>
     `;
+    container.onclick = event => {
+      const confirmButton = event.target.closest('[data-confirm-payment]');
+      const rejectButton = event.target.closest('[data-reject-payment]');
+      if (confirmButton) confirmPaymentAdmin(Number(confirmButton.dataset.confirmPayment));
+      if (rejectButton) rejectPaymentAdmin(Number(rejectButton.dataset.rejectPayment));
+    };
   } catch (err) {
     container.innerHTML = `
       <div style="text-align: center; padding: 2rem; color: var(--color-danger-text);">
-        Lỗi tải giao dịch: ${err.message}
+        Không thể tải danh sách giao dịch chờ xác nhận. ${escapeHtml(err.message)}
       </div>
     `;
   }
@@ -111,11 +126,11 @@ async function confirmPaymentAdmin(maThanhToan) {
 
   try {
     const res = await api.post(`/payments/${maThanhToan}/confirm`);
-    showToast(`Đã xác nhận giao dịch #${maThanhToan} thành công! Học phí mới: ${res.tuition.trangThai}`, 'success');
+    showToast(`Đã xác nhận giao dịch #${maThanhToan} thành công! Trạng thái học phí: ${formatStatusBadge(res.tuition.trangThai).text}.`, 'success');
     await loadPendingPayments();
     await loadTuitionReport();
   } catch (err) {
-    showToast(`Xác nhận thất bại: ${err.message}`, 'danger');
+    showToast(`Không thể xác nhận giao dịch. ${err.message}`, 'danger');
   }
 }
 
@@ -128,7 +143,7 @@ async function rejectPaymentAdmin(maThanhToan) {
     showToast(`Đã từ chối giao dịch #${maThanhToan}.`, 'warning');
     await loadPendingPayments();
   } catch (err) {
-    showToast(`Từ chối thất bại: ${err.message}`, 'danger');
+    showToast(`Không thể từ chối giao dịch. ${err.message}`, 'danger');
   }
 }
 
@@ -157,10 +172,10 @@ async function loadTuitionReport() {
   } catch (err) {
     container.innerHTML = `
       <div style="text-align: center; padding: 2rem; color: var(--color-danger-text);">
-        Lỗi khi trích xuất báo cáo: ${err.message || 'Lỗi kết nối'}
+        Không thể tải báo cáo học phí. ${err.message || 'Vui lòng kiểm tra kết nối và thử lại.'}
       </div>
     `;
-    showToast(err.message || 'Lỗi báo cáo', 'danger');
+    showToast(err.message || 'Không thể tải báo cáo học phí. Vui lòng thử lại sau.', 'danger');
   }
 }
 
@@ -241,8 +256,8 @@ function renderTuitionReport(data) {
         <tbody>
           ${data.map(r => `
             <tr>
-              <td><strong>${r.tenHocKy}</strong></td>
-              <td>${r.namHoc}</td>
+                  <td><strong>${escapeHtml(r.tenHocKy)}</strong></td>
+                  <td>${escapeHtml(r.namHoc)}</td>
               <td style="text-align: right; font-family: monospace;">${r.soHoSoHocPhi}</td>
               <td style="text-align: right; font-family: monospace; font-weight: 600;">${api.formatCurrency(r.tongTienPhaiThu)}</td>
               <td style="text-align: right; font-family: monospace; font-weight: 600; color: #16A34A;">${api.formatCurrency(r.tongTienDaThu)}</td>
@@ -270,7 +285,7 @@ async function searchStudentTuitionAdmin() {
 
   const maSV = input.value.trim();
   if (!maSV) {
-    showToast('Vui lòng nhập Mã SV (ID)', 'warning');
+    showToast('Vui lòng nhập mã sinh viên.', 'warning');
     return;
   }
 
@@ -295,7 +310,7 @@ async function searchStudentTuitionAdmin() {
     resultContainer.innerHTML = `
       <div style="margin-top: 1.25rem;">
         <h4 style="font-size: 0.9375rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--color-primary-dark);">
-          Kết quả học phí: ${list[0].hoTenSinhVien} (${list[0].maSinhVien})
+          Kết quả học phí: ${escapeHtml(list[0].hoTenSinhVien)} (${escapeHtml(list[0].maSinhVien)})
         </h4>
         <div class="table-responsive">
           <table class="table">
@@ -313,7 +328,7 @@ async function searchStudentTuitionAdmin() {
             <tbody>
               ${list.map(item => `
                 <tr>
-                  <td><strong>${item.tenHocKy}</strong> (${item.namHoc})</td>
+                  <td><strong>${escapeHtml(item.tenHocKy)}</strong> (${escapeHtml(item.namHoc)})</td>
                   <td style="text-align: right; font-family: monospace;">${item.soTinChi}</td>
                   <td style="text-align: right; font-family: monospace;">${api.formatCurrency(item.tongTien)}</td>
                   <td style="text-align: right; font-family: monospace; color: #16A34A;">${api.formatCurrency(item.soTienDaThanhToan)}</td>
@@ -325,7 +340,7 @@ async function searchStudentTuitionAdmin() {
                   </td>
                   <td style="text-align: center;">
                     ${item.soTienConLai > 0 ? `
-                      <button class="btn btn-primary btn-sm" onclick="openAdminCollectPayment(${item.maHocPhi}, '${item.hoTenSinhVien}', ${item.soTienConLai})">
+                      <button class="btn btn-primary btn-sm" data-collect-payment="${escapeHtml(item.maHocPhi)}" data-student-name="${escapeHtml(item.hoTenSinhVien)}" data-amount="${escapeHtml(item.soTienConLai)}">
                         Thu trực tiếp & Duyệt
                       </button>
                     ` : `<span style="color: #16A34A; font-size: 0.75rem; font-weight: 600;">Đã hoàn thành</span>`}
@@ -337,13 +352,17 @@ async function searchStudentTuitionAdmin() {
         </div>
       </div>
     `;
+    resultContainer.onclick = event => {
+      const button = event.target.closest('[data-collect-payment]');
+      if (button) openAdminCollectPayment(Number(button.dataset.collectPayment), button.dataset.studentName, Number(button.dataset.amount));
+    };
   } catch (err) {
     resultContainer.innerHTML = `
       <div style="text-align: center; padding: 1.5rem; color: var(--color-danger-text);">
-        Lỗi tra cứu: ${err.message || 'Không thể tra cứu sinh viên'}
+        Không thể tra cứu thông tin sinh viên. ${err.message || 'Vui lòng kiểm tra thông tin và thử lại.'}
       </div>
     `;
-    showToast(err.message || 'Lỗi tra cứu', 'danger');
+    showToast(err.message || 'Không thể tra cứu thông tin sinh viên. Vui lòng thử lại sau.', 'danger');
   }
 }
 
@@ -377,7 +396,7 @@ async function submitAdminPayment() {
   const phuongThuc = document.getElementById('adminPaymentMethod').value;
 
   if (isNaN(amount) || amount <= 0) {
-    showToast('Vui lòng nhập số tiền thu hợp lệ (> 0)', 'warning');
+    showToast('Vui lòng nhập số tiền thu lớn hơn 0.', 'warning');
     return;
   }
 
@@ -398,13 +417,13 @@ async function submitAdminPayment() {
     // 2. Tự động xác nhận giao dịch luôn vì thu tại quầy
     const confirmRes = await api.post(`/payments/${paymentId}/confirm`);
 
-    showToast(`Thu tiền và xác nhận thành công ${api.formatCurrency(amount)}! Trạng thái: ${confirmRes.tuition.trangThai}`, 'success');
+    showToast(`Thu tiền và xác nhận thành công ${api.formatCurrency(amount)}! Trạng thái học phí: ${formatStatusBadge(confirmRes.tuition.trangThai).text}.`, 'success');
     closeAdminPaymentModal();
 
     await searchStudentTuitionAdmin();
     await loadTuitionReport();
   } catch (err) {
-    showToast(err.message || 'Thu tiền thất bại', 'danger');
+    showToast(err.message || 'Không thể ghi nhận khoản thu. Vui lòng thử lại sau.', 'danger');
   } finally {
     btn.disabled = false;
     btn.innerHTML = 'Xác nhận thu tiền tại quầy';
@@ -508,7 +527,7 @@ async function loadAdminDashboard() {
       </div>
     `;
   } catch (err) {
-    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem;">Lỗi tải Dashboard: ${err.message}</div>`;
+    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem;">Không thể tải bảng tổng quan. ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -550,24 +569,24 @@ async function loadAdminStudents(page = 1, pageSize = 10) {
           </thead>
           <tbody>
             ${list.map(s => {
-              const studentJson = JSON.stringify(s).replace(/"/g, '&quot;');
+              const studentJson = escapeHtml(JSON.stringify(s));
               return `
               <tr>
-                <td class="cell-nowrap"><strong>${s.maSinhVien}</strong></td>
-                <td class="cell-nowrap"><strong>${s.hoTen}</strong></td>
-                <td class="cell-nowrap"><span class="badge badge-info">${s.tenLop || s.maLop || '-'}</span></td>
-                <td class="cell-nowrap">${s.tenKhoa}</td>
-                <td class="cell-nowrap">${s.email || '-'}</td>
-                <td class="cell-nowrap">${s.soDienThoai || '-'}</td>
+                <td class="cell-nowrap"><strong>${escapeHtml(s.maSinhVien)}</strong></td>
+                <td class="cell-nowrap"><strong>${escapeHtml(s.hoTen)}</strong></td>
+                <td class="cell-nowrap"><span class="badge badge-info">${escapeHtml(s.tenLop || s.maLop || '-')}</span></td>
+                <td class="cell-nowrap">${escapeHtml(s.tenKhoa)}</td>
+                <td class="cell-nowrap">${escapeHtml(s.email || '-')}</td>
+                <td class="cell-nowrap">${escapeHtml(s.soDienThoai || '-')}</td>
                 <td class="cell-nowrap" style="text-align: center;">${renderStatusBadge(s.trangThai)}</td>
                 <td class="cell-nowrap" style="text-align: center;">
-                  <button class="btn btn-secondary btn-sm" onclick="viewStudentDetailModal(${s.maSV}, '${s.maSinhVien}', '${s.hoTen}')" title="Xem chi tiết & học phí">
+                  <button class="btn btn-secondary btn-sm js-view-student" data-id="${escapeHtml(s.maSV)}" data-mssv="${escapeHtml(s.maSinhVien)}" data-name="${escapeHtml(s.hoTen)}" title="Xem chi tiết & học phí">
                     Chi tiết
                   </button>
-                  <button class="btn btn-primary btn-sm" onclick="openStudentModal('edit', ${studentJson})" title="Chỉnh sửa thông tin">
+                  <button class="btn btn-primary btn-sm js-edit-student" data-student="${studentJson}" title="Chỉnh sửa thông tin">
                     Sửa
                   </button>
-                  <button class="btn btn-danger btn-sm" onclick="confirmDeleteStudent(${s.maSV}, '${s.hoTen}', '${s.maSinhVien}')" title="Xóa hoặc cho thôi học">
+                  <button class="btn btn-danger btn-sm js-delete-student" data-id="${escapeHtml(s.maSV)}" data-name="${escapeHtml(s.hoTen)}" data-mssv="${escapeHtml(s.maSinhVien)}" title="Xóa hoặc cho thôi học">
                     Xóa
                   </button>
                 </td>
@@ -578,6 +597,14 @@ async function loadAdminStudents(page = 1, pageSize = 10) {
       </div>
       <div id="admin-students-pagination"></div>
     `;
+
+    container.onclick = event => {
+      const button = event.target.closest('button');
+      if (!button) return;
+      if (button.matches('.js-view-student')) viewStudentDetailModal(Number(button.dataset.id), button.dataset.mssv, button.dataset.name);
+      if (button.matches('.js-edit-student')) openStudentModal('edit', JSON.parse(button.dataset.student));
+      if (button.matches('.js-delete-student')) confirmDeleteStudent(Number(button.dataset.id), button.dataset.name, button.dataset.mssv);
+    };
 
     renderPagination({
       containerId: 'admin-students-pagination',
@@ -591,7 +618,7 @@ async function loadAdminStudents(page = 1, pageSize = 10) {
       }
     });
   } catch (err) {
-    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem;">Lỗi tải sinh viên: ${err.message}</div>`;
+    container.textContent = `Không thể tải danh sách sinh viên. ${err.message}`;
   }
 }
 
@@ -660,7 +687,7 @@ async function viewStudentDetailModal(maSV, maSinhVien, hoTen) {
       </div>
     `;
   } catch (err) {
-    body.innerHTML = `<div style="color: var(--color-danger-text); padding: 1rem;">Lỗi tải thông tin: ${err.message}</div>`;
+    body.innerHTML = `<div style="color: var(--color-danger-text); padding: 1rem;">Không thể tải thông tin sinh viên. ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -690,6 +717,7 @@ async function openStudentModal(mode = 'create', student = null) {
     mssvInput.readOnly = false;
     document.getElementById('studentFormTrangThai').value = 'DANG_HOC';
     document.getElementById('studentFormLop').innerHTML = '<option value="">-- Chưa phân lớp --</option>';
+    document.getElementById('studentFormMaCTDT').innerHTML = '<option value="">-- Chọn khoa trước --</option>';
   } else if (mode === 'edit' && student) {
     title.textContent = `Chỉnh sửa sinh viên: ${student.hoTen} (${student.maSinhVien})`;
     document.getElementById('studentFormMaSV').value = student.maSV;
@@ -703,6 +731,7 @@ async function openStudentModal(mode = 'create', student = null) {
     khoaSelect.value = student.maKhoa || '';
 
     await onStudentFormKhoaChange(student.maLop);
+    await updateStudentCurriculumOptions(student.maCTDT);
   }
 
   modal.classList.add('show');
@@ -727,19 +756,41 @@ async function onStudentFormKhoaChange(preselectedLop = '') {
   try {
     const classes = await api.getClasses();
     const filtered = classes.filter(c => c.maKhoa === maKhoa);
-    lopSelect.innerHTML = '<option value="">-- Chưa phân lớp --</option>' + 
-      filtered.map(c => `<option value="${c.maLop}">${c.tenLop || c.maLop}</option>`).join('');
+    lopSelect.innerHTML = '<option value="">-- Chưa phân lớp --</option>' +
+      filtered.map(c => `<option value="${escapeHtml(c.maLop)}" data-year="${escapeHtml(c.namNhapHoc)}">${escapeHtml(c.tenLop || c.maLop)}</option>`).join('');
 
-    if (preselectedLop) {
-      lopSelect.value = preselectedLop;
-    }
+    if (preselectedLop) lopSelect.value = preselectedLop;
+    await updateStudentCurriculumOptions();
   } catch (err) {
-    lopSelect.innerHTML = '<option value="">-- Lỗi tải lớp --</option>';
+    lopSelect.innerHTML = '<option value="">Không thể tải danh sách lớp</option>';
   }
+}
+
+async function updateStudentCurriculumOptions(preselectedMaCTDT = '') {
+  const select = document.getElementById('studentFormMaCTDT');
+  const faculty = document.getElementById('studentFormKhoa')?.value || '';
+  const classSelect = document.getElementById('studentFormLop');
+  if (!select) return;
+  const year = classSelect?.selectedOptions?.[0]?.dataset?.year || '';
+  try {
+    if (!studentCurriculumOptions) studentCurriculumOptions = await api.get('/admin/curriculum-options');
+    const options = studentCurriculumOptions.filter(item => item.maKhoa === faculty && (!year || Number(item.namTuyenSinh) === Number(year)));
+    select.innerHTML = '<option value="">-- Chọn chương trình đào tạo --</option>' + options.map(item =>
+      `<option value="${escapeHtml(item.maCTDT)}">${escapeHtml(item.tenCTDT)} · Khóa ${escapeHtml(item.namTuyenSinh)}</option>`
+    ).join('');
+    if (preselectedMaCTDT) select.value = preselectedMaCTDT;
+  } catch (err) {
+    select.innerHTML = '<option value="">Không thể tải chương trình đào tạo</option>';
+  }
+}
+
+function onStudentFormClassChange() {
+  updateStudentCurriculumOptions();
 }
 
 async function handleSaveStudent(event) {
   event.preventDefault();
+  clearStudentFormErrors();
   const maSV = document.getElementById('studentFormMaSV').value;
   const isEdit = Boolean(maSV);
 
@@ -750,6 +801,7 @@ async function handleSaveStudent(event) {
     email: document.getElementById('studentFormEmail').value.trim() || null,
     soDienThoai: document.getElementById('studentFormSDT').value.trim() || null,
     maKhoa: document.getElementById('studentFormKhoa').value,
+    maCTDT: document.getElementById('studentFormMaCTDT').value,
     maLop: document.getElementById('studentFormLop').value || null,
     trangThai: document.getElementById('studentFormTrangThai').value
   };
@@ -774,13 +826,72 @@ async function handleSaveStudent(event) {
     closeStudentFormModal();
     await loadAdminStudents();
   } catch (err) {
-    showToast(`Lỗi: ${err.message}`, 'danger');
+    showStudentFormErrors(err.errors || [], err.message);
+    showToast(`Không thể lưu hồ sơ sinh viên. ${err.message}`, 'danger');
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
     }
   }
+}
+
+const STUDENT_FORM_FIELDS = {
+  maSinhVien: 'studentFormMSSV', hoTen: 'studentFormHoTen', ngaySinh: 'studentFormNgaySinh',
+  email: 'studentFormEmail', soDienThoai: 'studentFormSDT', maKhoa: 'studentFormKhoa', maLop: 'studentFormLop', maCTDT: 'studentFormMaCTDT',
+  unique: 'studentFormMSSV', username: 'studentFormMSSV'
+};
+const STUDENT_FORM_FIELD_LABELS = {
+  maSinhVien: 'Mã sinh viên', hoTen: 'Họ tên', ngaySinh: 'Ngày sinh', email: 'Email',
+  soDienThoai: 'Số điện thoại', maKhoa: 'Khoa', maLop: 'Lớp sinh hoạt', maCTDT: 'Chương trình đào tạo',
+  unique: 'Mã sinh viên', username: 'Tên đăng nhập'
+};
+
+function clearStudentFormErrors() {
+  const summary = document.getElementById('studentFormErrors');
+  if (summary) summary.hidden = true;
+  const list = document.getElementById('studentFormErrorsList');
+  if (list) list.replaceChildren();
+  Object.values(STUDENT_FORM_FIELDS).forEach(id => {
+    const input = document.getElementById(id);
+    const inline = document.getElementById(`${id}-error`);
+    if (input) { input.removeAttribute('aria-invalid'); input.removeAttribute('aria-describedby'); }
+    if (inline) inline.textContent = '';
+  });
+}
+
+function showStudentFormErrors(errors, fallbackMessage) {
+  const summary = document.getElementById('studentFormErrors');
+  const list = document.getElementById('studentFormErrorsList');
+  if (!summary || !list) return;
+  const visibleErrors = [];
+  for (const item of errors) {
+    const field = String(item.field || '').split('.').pop();
+    const inputId = STUDENT_FORM_FIELDS[field];
+    const message = String(item.message || fallbackMessage || 'Dữ liệu không hợp lệ.');
+    const input = inputId && document.getElementById(inputId);
+    const inline = inputId && document.getElementById(`${inputId}-error`);
+    if (input && inline) {
+      input.setAttribute('aria-invalid', 'true');
+      input.setAttribute('aria-describedby', `${inputId}-error`);
+      inline.textContent = message;
+    }
+    visibleErrors.push({ input, label: input?.labels?.[0]?.textContent?.trim() || STUDENT_FORM_FIELD_LABELS[field] || 'Thông tin', message });
+  }
+  if (!visibleErrors.length) visibleErrors.push({ label: 'Lỗi', message: fallbackMessage || 'Không thể lưu hồ sơ sinh viên.' });
+  list.replaceChildren(...visibleErrors.map(({ input, label, message }) => {
+    const li = document.createElement('li');
+    if (input) {
+      const link = document.createElement('a');
+      link.href = `#${input.id}`;
+      link.textContent = `${label}: ${message}`;
+      link.addEventListener('click', () => input.focus());
+      li.append(link);
+    } else li.textContent = `${label}: ${message}`;
+    return li;
+  }));
+  summary.hidden = false;
+  summary.focus();
 }
 
 async function confirmDeleteStudent(maSV, hoTen, maSinhVien) {
@@ -793,7 +904,7 @@ async function confirmDeleteStudent(maSV, hoTen, maSinhVien) {
     showToast(res.message || `Đã xử lý hồ sơ sinh viên ${maSinhVien} thành công!`, 'success');
     await loadAdminStudents();
   } catch (err) {
-    showToast(`Xóa thất bại: ${err.message}`, 'danger');
+    showToast(`Không thể xử lý hồ sơ sinh viên. ${err.message}`, 'danger');
   }
 }
 
@@ -834,17 +945,17 @@ async function loadAdminClasses(page = 1, pageSize = 10) {
             ${list.map(c => {
               const percent = Math.min(100, Math.round((c.siSoHienTai / c.soLuongToiDa) * 100));
               const isFull = c.siSoHienTai >= c.soLuongToiDa;
-              const schedule = c.thu ? `Thứ ${c.thu}, Tiết ${c.tietBatDau}-${c.tietBatDau + c.soTiet - 1} (${c.phongHoc})` : 'Chưa xếp lịch';
+              const schedule = c.thu ? `Thứ ${escapeHtml(c.thu)}, Tiết ${escapeHtml(c.tietBatDau)}-${escapeHtml(c.tietBatDau + c.soTiet - 1)} (${escapeHtml(c.phongHoc)})` : 'Chưa xếp lịch';
 
               return `
                 <tr>
-                  <td class="cell-nowrap"><strong>${c.maLHP}</strong></td>
+                  <td class="cell-nowrap"><strong>${escapeHtml(c.maLHP)}</strong></td>
                   <td>
-                    <div style="font-weight: 600;">${c.tenMonHoc}</div>
-                    <div style="font-size: 0.75rem; color: var(--color-text-muted);">${c.tenLHP}</div>
+                    <div style="font-weight: 600;">${escapeHtml(c.tenMonHoc)}</div>
+                    <div style="font-size: 0.75rem; color: var(--color-text-muted);">${escapeHtml(c.tenLHP)}</div>
                   </td>
                   <td class="cell-nowrap" style="text-align: center;"><span class="badge badge-info">${c.soTinChi} TC</span></td>
-                  <td class="cell-nowrap">${c.hoTenGiangVien}</td>
+                  <td class="cell-nowrap">${escapeHtml(c.hoTenGiangVien)}</td>
                   <td class="cell-nowrap">${schedule}</td>
                   <td style="min-width: 140px;">
                     <div style="font-size: 0.8125rem; font-weight: 600; display: flex; justify-content: space-between;">
@@ -877,7 +988,7 @@ async function loadAdminClasses(page = 1, pageSize = 10) {
       }
     });
   } catch (err) {
-    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem;">Lỗi tải lớp học phần: ${err.message}</div>`;
+    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem;">Không thể tải danh sách lớp học phần. ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -922,14 +1033,14 @@ async function loadAdminRegistrations(page = 1, pageSize = 10) {
               <tr>
                 <td class="cell-nowrap">#${r.maDangKy}</td>
                 <td class="cell-nowrap">
-                  <strong>${r.hoTenSinhVien}</strong>
-                  <div style="font-size: 0.75rem; color: var(--color-text-muted);">${r.maSinhVien} (ID #${r.maSV})</div>
+                  <strong>${escapeHtml(r.hoTenSinhVien)}</strong>
+                  <div style="font-size: 0.75rem; color: var(--color-text-muted);">${escapeHtml(r.maSinhVien)} (ID #${escapeHtml(r.maSV)})</div>
                 </td>
                 <td class="cell-nowrap">
-                  <span class="badge badge-info">${r.tenLop || r.maLop || '-'}</span>
+                  <span class="badge badge-info">${escapeHtml(r.tenLop || r.maLop || '-')}</span>
                 </td>
                 <td class="cell-nowrap"><strong>${r.maLHP}</strong></td>
-                <td>${r.tenMonHoc}</td>
+                <td>${escapeHtml(r.tenMonHoc)}</td>
                 <td class="cell-nowrap" style="text-align: center;"><span class="badge badge-info">${r.soTinChi} TC</span></td>
                 <td class="cell-nowrap">${new Date(r.ngayDangKy).toLocaleString('vi-VN')}</td>
                 <td class="cell-nowrap" style="text-align: center;">
@@ -955,7 +1066,7 @@ async function loadAdminRegistrations(page = 1, pageSize = 10) {
       }
     });
   } catch (err) {
-    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem;">Lỗi tải đăng ký: ${err.message}</div>`;
+    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem;">Không thể tải danh sách đăng ký. ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -999,12 +1110,12 @@ async function loadAdminUsers(page = 1, pageSize = 10) {
           <tbody>
             ${list.map(u => `
               <tr>
-                <td class="cell-nowrap"><code>${u.username}</code></td>
-                <td class="cell-nowrap"><strong>${u.hoTen}</strong></td>
+                <td class="cell-nowrap"><code>${escapeHtml(u.username)}</code></td>
+                <td class="cell-nowrap"><strong>${escapeHtml(u.hoTen)}</strong></td>
                 <td class="cell-nowrap">
-                  ${u.maLop ? `<span class="badge badge-info">${u.tenLop || u.maLop}</span>` : '<span style="color: var(--color-text-muted);">-</span>'}
+                  ${u.maLop ? `<span class="badge badge-info">${escapeHtml(u.tenLop || u.maLop)}</span>` : '<span style="color: var(--color-text-muted);">-</span>'}
                 </td>
-                <td class="cell-nowrap">${u.email}</td>
+                <td class="cell-nowrap">${escapeHtml(u.email)}</td>
                 <td class="cell-nowrap" style="text-align: center;">${renderRoleBadge(u.vaiTro)}</td>
                 <td class="cell-nowrap" style="text-align: center;">
                   ${renderStatusBadge(u.trangThai)}
@@ -1012,11 +1123,11 @@ async function loadAdminUsers(page = 1, pageSize = 10) {
                 <td class="cell-nowrap">${u.lanDangNhapCuoi ? new Date(u.lanDangNhapCuoi).toLocaleString('vi-VN') : 'Chưa đăng nhập'}</td>
                 <td class="cell-nowrap" style="text-align: center;">
                   ${u.trangThai === 'ACTIVE' ? `
-                    <button class="btn btn-danger btn-sm" onclick="toggleUserStatus('${u.username}', 'LOCKED')">
+                    <button class="btn btn-danger btn-sm js-toggle-user" data-username="${escapeHtml(u.username)}" data-status="LOCKED">
                       Khóa
                     </button>
                   ` : `
-                    <button class="btn btn-success btn-sm" onclick="toggleUserStatus('${u.username}', 'ACTIVE')">
+                    <button class="btn btn-success btn-sm js-toggle-user" data-username="${escapeHtml(u.username)}" data-status="ACTIVE">
                       Mở khóa
                     </button>
                   `}
@@ -1028,6 +1139,11 @@ async function loadAdminUsers(page = 1, pageSize = 10) {
       </div>
       <div id="admin-users-pagination"></div>
     `;
+
+    container.onclick = event => {
+      const button = event.target.closest('.js-toggle-user');
+      if (button) toggleUserStatus(button.dataset.username, button.dataset.status);
+    };
 
     renderPagination({
       containerId: 'admin-users-pagination',
@@ -1041,7 +1157,7 @@ async function loadAdminUsers(page = 1, pageSize = 10) {
       }
     });
   } catch (err) {
-    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem;">Lỗi tải tài khoản: ${err.message}</div>`;
+    container.textContent = `Không thể tải danh sách tài khoản. ${err.message}`;
   }
 }
 
@@ -1055,7 +1171,7 @@ async function toggleUserStatus(username, newStatus) {
     showToast(`Đã ${actionText.toLowerCase()} tài khoản "${username}" thành công.`, 'success');
     await loadAdminUsers();
   } catch (err) {
-    showToast(`Thao tác thất bại: ${err.message}`, 'danger');
+    showToast(`Không thể cập nhật trạng thái tài khoản. ${err.message}`, 'danger');
   }
 }
 
@@ -1101,10 +1217,10 @@ async function loadAdminAuditLogs(page = 1, pageSize = 10) {
                 <tr>
                   <td class="cell-nowrap"><strong>#${l.maLog}</strong></td>
                   <td class="cell-nowrap">${new Date(l.thoiGian).toLocaleString('vi-VN')}</td>
-                  <td class="cell-nowrap"><strong>${l.username}</strong> <span style="font-size: 0.75rem; color: var(--color-text-muted);">(${userRoleLabel})</span></td>
+                <td class="cell-nowrap"><strong>${escapeHtml(l.username)}</strong> <span style="font-size: 0.75rem; color: var(--color-text-muted);">(${escapeHtml(userRoleLabel)})</span></td>
                   <td class="cell-nowrap"><span class="badge ${actionInfo.badgeClass}">${actionInfo.text}</span></td>
-                  <td class="cell-nowrap"><span class="badge badge-secondary" title="${l.tenBang}">${tableLabel}</span></td>
-                  <td class="cell-nowrap">${l.khoaBanGhi ? `<code>${l.khoaBanGhi}</code>` : '-'}</td>
+                  <td class="cell-nowrap"><span class="badge badge-secondary" title="${escapeHtml(l.tenBang)}">${tableLabel}</span></td>
+                  <td class="cell-nowrap">${l.khoaBanGhi ? `<code>${escapeHtml(l.khoaBanGhi)}</code>` : '-'}</td>
                   <td style="min-width: 280px; max-width: 450px;">
                     ${diffContent}
                   </td>
@@ -1129,7 +1245,7 @@ async function loadAdminAuditLogs(page = 1, pageSize = 10) {
       }
     });
   } catch (err) {
-    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem;">Lỗi tải Audit Log: ${err.message}</div>`;
+    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem;">Không thể tải nhật ký hoạt động. ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -1177,16 +1293,16 @@ async function loadAdminAdministrativeClasses() {
             <div style="padding: 1rem 1.25rem;">
               <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
                 <div>
-                  <span style="font-family: monospace; font-weight: 700; font-size: 1.05rem; color: var(--color-primary-dark);">${c.maLop}</span>
+                  <span style="font-family: monospace; font-weight: 700; font-size: 1.05rem; color: var(--color-primary-dark);">${escapeHtml(c.maLop)}</span>
                 </div>
-                <span class="badge badge-info">${c.khoaHoc || ('K' + (c.namNhapHoc % 100))}</span>
+                <span class="badge badge-info">${escapeHtml(c.khoaHoc || ('K' + (c.namNhapHoc % 100)))}</span>
               </div>
               <h4 style="font-size: 0.9375rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--color-text);">
-                ${c.tenLop}
+                ${escapeHtml(c.tenLop)}
               </h4>
               <div style="font-size: 0.8125rem; color: var(--color-text-muted); line-height: 1.6;">
-                <div>Khoa: <strong style="color: var(--color-text);">${c.tenKhoa}</strong></div>
-                <div>Năm nhập học: <strong>${c.namNhapHoc}</strong></div>
+                <div>Khoa: <strong style="color: var(--color-text);">${escapeHtml(c.tenKhoa)}</strong></div>
+                <div>Năm nhập học: <strong>${escapeHtml(c.namNhapHoc)}</strong></div>
               </div>
             </div>
             <div style="padding: 0.75rem 1.25rem; background: var(--color-surface-hover); border-top: 1px solid var(--color-border-subtle); display: flex; justify-content: space-between; align-items: center;">
@@ -1199,7 +1315,7 @@ async function loadAdminAdministrativeClasses() {
                 </svg>
                 <span>${c.soLuongSV ?? c.siSo ?? 0} sinh viên</span>
               </div>
-              <button class="btn btn-secondary btn-sm" onclick="viewClassDetailModal('${c.maLop}')">
+              <button class="btn btn-secondary btn-sm js-view-admin-class" data-class-id="${escapeHtml(c.maLop)}">
                 Danh sách SV &rarr;
               </button>
             </div>
@@ -1207,8 +1323,12 @@ async function loadAdminAdministrativeClasses() {
         `).join('')}
       </div>
     `;
+    container.onclick = event => {
+      const button = event.target.closest('.js-view-admin-class');
+      if (button) viewClassDetailModal(button.dataset.classId);
+    };
   } catch (err) {
-    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem;">Lỗi tải lớp sinh hoạt: ${err.message}</div>`;
+    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem;">Không thể tải danh sách lớp sinh hoạt. ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -1264,8 +1384,8 @@ async function viewClassDetailModal(maLop) {
     body.innerHTML = `
       <div style="background: var(--color-surface-hover); padding: 0.875rem 1.25rem; border-radius: var(--radius-sm); margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
         <div>
-          <div>Mã lớp: <strong>${lop.maLop}</strong> &bull; Khoa: <strong>${lop.tenKhoa}</strong></div>
-          <div style="font-size: 0.8125rem; color: var(--color-text-muted);">Khóa học: ${lop.khoaHoc || '-'} &bull; Năm nhập học: ${lop.namNhapHoc || '-'}</div>
+          <div>Mã lớp: <strong>${escapeHtml(lop.maLop)}</strong> &bull; Khoa: <strong>${escapeHtml(lop.tenKhoa)}</strong></div>
+          <div style="font-size: 0.8125rem; color: var(--color-text-muted);">Khóa học: ${escapeHtml(lop.khoaHoc || '-')} &bull; Năm nhập học: ${escapeHtml(lop.namNhapHoc || '-')}</div>
         </div>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
           <span class="badge badge-success" style="font-size: 0.875rem; padding: 0.35rem 0.75rem;">Sĩ số: ${lop.soLuongSV || currentAdminClassStudents.length} sinh viên</span>
@@ -1292,7 +1412,7 @@ async function viewClassDetailModal(maLop) {
 
     renderAdminClassStudentsTable(currentAdminClassStudents);
   } catch (err) {
-    body.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem; text-align: center;">Lỗi tải chi tiết lớp: ${err.message}</div>`;
+    body.innerHTML = `<div style="color: var(--color-danger-text); padding: 2rem; text-align: center;">Không thể tải thông tin lớp. ${escapeHtml(err.message)}</div>`;
     if (countBadge) countBadge.textContent = 'Lỗi';
   }
 }
@@ -1344,14 +1464,14 @@ function renderAdminClassStudentsTable(students) {
         ${students.map((s, idx) => `
           <tr>
             <td class="cell-nowrap" style="text-align: center; color: var(--color-text-muted);">${idx + 1}</td>
-            <td class="cell-nowrap"><strong>${s.maSinhVien}</strong></td>
-            <td class="cell-nowrap"><strong>${s.hoTen}</strong></td>
+            <td class="cell-nowrap"><strong>${escapeHtml(s.maSinhVien)}</strong></td>
+            <td class="cell-nowrap"><strong>${escapeHtml(s.hoTen)}</strong></td>
             <td class="cell-nowrap">${s.ngaySinh ? new Date(s.ngaySinh).toLocaleDateString('vi-VN') : '-'}</td>
-            <td class="cell-nowrap">${s.email || '-'}</td>
-            <td class="cell-nowrap">${s.soDienThoai || '-'}</td>
+            <td class="cell-nowrap">${escapeHtml(s.email || '-')}</td>
+            <td class="cell-nowrap">${escapeHtml(s.soDienThoai || '-')}</td>
             <td class="cell-nowrap" style="text-align: center;">${renderStatusBadge(s.trangThai)}</td>
             <td class="cell-nowrap" style="text-align: center;">
-              <button class="btn btn-secondary btn-sm" onclick="closeClassDetailModal(); viewStudentDetailModal(${s.maSV}, '${s.maSinhVien}', '${s.hoTen}');">
+              <button class="btn btn-secondary btn-sm js-view-class-student" data-id="${escapeHtml(s.maSV)}" data-mssv="${escapeHtml(s.maSinhVien)}" data-name="${escapeHtml(s.hoTen)}">
                 Hồ sơ
               </button>
             </td>
@@ -1360,6 +1480,13 @@ function renderAdminClassStudentsTable(students) {
       </tbody>
     </table>
   `;
+  container.onclick = event => {
+    const button = event.target.closest('.js-view-class-student');
+    if (button) {
+      closeClassDetailModal();
+      viewStudentDetailModal(Number(button.dataset.id), button.dataset.mssv, button.dataset.name);
+    }
+  };
 }
 
 // Lọc sinh viên trong lớp theo từ khóa
@@ -1400,20 +1527,31 @@ function toggleTabDropdown(groupName, e) {
 
   const isOpen = targetGroup.classList.contains('open');
   // Đóng tất cả các nhóm khác
-  document.querySelectorAll('.tab-group.open').forEach(g => g.classList.remove('open'));
+  document.querySelectorAll('.tab-group.open').forEach(g => setTabDropdownOpen(g, false));
 
   // Toggle nhóm hiện tại
   if (!isOpen) {
-    targetGroup.classList.add('open');
+    setTabDropdownOpen(targetGroup, true);
+  } else {
+    setTabDropdownOpen(targetGroup, false);
   }
 }
 
+function setTabDropdownOpen(group, isOpen) {
+  group.classList.toggle('open', isOpen);
+  const button = group.querySelector('.tab-dropdown-btn');
+  if (button) button.setAttribute('aria-expanded', String(isOpen));
+}
+
 function switchAdminTab(tabName, clickedBtn) {
+  const restrictedTab = document.querySelector(`[data-tab-name="${tabName}"][data-required-role]`);
+  if (restrictedTab && restrictedTab.dataset.requiredRole !== adminNavigationRole) return;
+
   // 1. Reset active tất cả nút và menu items
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
   document.querySelectorAll('.tab-dropdown-btn').forEach(btn => btn.classList.remove('active'));
   document.querySelectorAll('.tab-dropdown-item').forEach(item => item.classList.remove('active'));
-  document.querySelectorAll('.tab-group.open').forEach(g => g.classList.remove('open'));
+  document.querySelectorAll('.tab-group.open').forEach(g => setTabDropdownOpen(g, false));
 
   // 2. Chuyển đổi tab-pane
   document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
@@ -1462,18 +1600,22 @@ function switchAdminTab(tabName, clickedBtn) {
 // Xử lý đóng dropdown khi click outside hoặc nhấn phím Escape
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.tab-group')) {
-    document.querySelectorAll('.tab-group.open').forEach(g => g.classList.remove('open'));
+    document.querySelectorAll('.tab-group.open').forEach(g => setTabDropdownOpen(g, false));
   }
 });
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    document.querySelectorAll('.tab-group.open').forEach(g => g.classList.remove('open'));
+    const openGroups = [...document.querySelectorAll('.tab-group.open')];
+    openGroups.forEach(g => setTabDropdownOpen(g, false));
+    const trigger = openGroups[0]?.querySelector('.tab-dropdown-btn');
+    if (trigger) trigger.focus();
   }
 });
 
 // Xuất các hàm ra Global Window
 window.initAdminPortal = initAdminPortal;
+window.toggleTabDropdown = toggleTabDropdown;
 window.loadPendingPayments = loadPendingPayments;
 window.confirmPaymentAdmin = confirmPaymentAdmin;
 window.rejectPaymentAdmin = rejectPaymentAdmin;
@@ -1490,6 +1632,7 @@ window.closeStudentDetailModal = closeStudentDetailModal;
 window.openStudentModal = openStudentModal;
 window.closeStudentFormModal = closeStudentFormModal;
 window.onStudentFormKhoaChange = onStudentFormKhoaChange;
+window.onStudentFormClassChange = onStudentFormClassChange;
 window.handleSaveStudent = handleSaveStudent;
 window.confirmDeleteStudent = confirmDeleteStudent;
 
@@ -1505,3 +1648,4 @@ window.loadAdminAuditLogs = loadAdminAuditLogs;
 
 window.toggleTabDropdown = toggleTabDropdown;
 window.switchAdminTab = switchAdminTab;
+window.setAdminNavigationRole = setAdminNavigationRole;

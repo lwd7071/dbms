@@ -1,4 +1,5 @@
 const { errorResponse } = require('../utils/apiResponse');
+const { validationMessage } = require('../utils/validationMessage');
 
 /**
  * Middleware validate request payload qua Zod schema
@@ -9,6 +10,12 @@ const validate = (schema, source = 'body') => {
   return (req, res, next) => {
     try {
       const parsed = schema.parse(req[source]);
+      req.validated = { ...req.validated, [source]: parsed };
+      if (source === 'query') return next();
+      if (source === 'params') {
+        req.params = parsed;
+        return next();
+      }
       if (req[source] && typeof req[source] === 'object') {
         for (const key of Object.keys(req[source])) {
           delete req[source][key];
@@ -24,7 +31,7 @@ const validate = (schema, source = 'body') => {
         // Format danh sách lỗi từ Zod
         const errors = issues.map(e => ({
           field: e.path.join('.') || source,
-          message: e.message
+          message: validationMessage(e, source)
         }));
         return res.status(400).json(errorResponse(errors));
       }

@@ -2,6 +2,7 @@ const request = require('supertest');
 const fs = require('fs');
 const path = require('path');
 const app = require('../src/app');
+const { requestAs } = require('./helpers/tokens');
 const { closePool } = require('../src/config/db');
 
 describe('Admin Class Detail Modal & Filter Sync (/tdd & /ui-ux-pro-max)', () => {
@@ -22,7 +23,7 @@ describe('Admin Class Detail Modal & Filter Sync (/tdd & /ui-ux-pro-max)', () =>
 
   describe('Lát cắt 1: Backend API GET /api/classes/:id trả về cấu trúc chuẩn', () => {
     it('trả về chi tiết lớp kèm mảng sinh viên và soLuongSV (200 OK)', async () => {
-      const res = await request(app).get('/api/classes/ATTT25_01');
+      const res = await requestAs(app, 'training').get('/api/classes/ATTT25_01');
 
       expect(res.status).toBe(200);
       expect(res.body.isSuccess).toBe(true);

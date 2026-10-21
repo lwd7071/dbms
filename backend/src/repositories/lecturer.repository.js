@@ -169,6 +169,9 @@ const updateClassGrades = async (maLHP, grades) => {
       const request = new sql.Request(transaction);
       request.input('MaDangKy', sql.BigInt, g.maDangKy);
       request.input('MaLHP', sql.VarChar(30), maLHP);
+      request.input('HasDiemQuaTrinh', sql.Bit, g.diemQuaTrinh !== undefined);
+      request.input('HasDiemGiuaKy', sql.Bit, g.diemGiuaKy !== undefined);
+      request.input('HasDiemCuoiKy', sql.Bit, g.diemCuoiKy !== undefined);
       request.input('DiemQuaTrinh', sql.Decimal(4, 2), g.diemQuaTrinh !== undefined ? g.diemQuaTrinh : null);
       request.input('DiemGiuaKy', sql.Decimal(4, 2), g.diemGiuaKy !== undefined ? g.diemGiuaKy : null);
       request.input('DiemCuoiKy', sql.Decimal(4, 2), g.diemCuoiKy !== undefined ? g.diemCuoiKy : null);
@@ -188,9 +191,9 @@ const updateClassGrades = async (maLHP, grades) => {
         IF EXISTS (SELECT 1 FROM dbo.DIEMSO WHERE MaDangKy = @MaDangKy)
         BEGIN
           UPDATE dbo.DIEMSO
-          SET DiemQuaTrinh = @DiemQuaTrinh,
-              DiemGiuaKy = @DiemGiuaKy,
-              DiemCuoiKy = @DiemCuoiKy
+          SET DiemQuaTrinh = CASE WHEN @HasDiemQuaTrinh = 1 THEN @DiemQuaTrinh ELSE DiemQuaTrinh END,
+              DiemGiuaKy = CASE WHEN @HasDiemGiuaKy = 1 THEN @DiemGiuaKy ELSE DiemGiuaKy END,
+              DiemCuoiKy = CASE WHEN @HasDiemCuoiKy = 1 THEN @DiemCuoiKy ELSE DiemCuoiKy END
           WHERE MaDangKy = @MaDangKy;
         END
         ELSE

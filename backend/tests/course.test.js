@@ -1,5 +1,6 @@
 const request = require('supertest');
 const app = require('../src/app');
+const { requestAs } = require('./helpers/tokens');
 const { closePool } = require('../src/config/db');
 
 describe('Slice 4: Available Courses Endpoints', () => {
@@ -9,7 +10,7 @@ describe('Slice 4: Available Courses Endpoints', () => {
 
   describe('GET /api/courses/available', () => {
     it('lấy danh sách lớp học phần mở đăng ký kèm phân trang và sĩ số tính động', async () => {
-      const res = await request(app)
+      const res = await requestAs(app, "student", 1)
         .get('/api/courses/available')
         .query({ maHocKy: 7, page: 1, pageSize: 10 });
 
@@ -36,7 +37,7 @@ describe('Slice 4: Available Courses Endpoints', () => {
     });
 
     it('tìm kiếm môn học theo từ khóa search (CSDL hoặc ANHVAN)', async () => {
-      const res = await request(app)
+      const res = await requestAs(app, "student", 1)
         .get('/api/courses/available')
         .query({ maHocKy: 7, search: 'ANHVAN' });
 
@@ -53,7 +54,7 @@ describe('Slice 4: Available Courses Endpoints', () => {
     });
 
     it('lọc danh sách theo mã khoa (CNTT)', async () => {
-      const res = await request(app)
+      const res = await requestAs(app, "student", 1)
         .get('/api/courses/available')
         .query({ maHocKy: 7, maKhoa: 'CNTT', page: 1, pageSize: 5 });
 
@@ -63,7 +64,7 @@ describe('Slice 4: Available Courses Endpoints', () => {
     });
 
     it('lọc danh sách lớp học phần THEO KẾ HOẠCH (type=PLAN, maSV=1) chỉ trả về môn HK7 của sinh viên', async () => {
-      const res = await request(app)
+      const res = await requestAs(app, "student", 1)
         .get('/api/courses/available')
         .query({ maHocKy: 7, maSV: 1, type: 'PLAN' });
 
@@ -79,7 +80,7 @@ describe('Slice 4: Available Courses Endpoints', () => {
     });
 
     it('lọc danh sách lớp học phần NGOÀI KẾ HOẠCH (type=OTHER, maSV=1) không chứa môn HK7 của sinh viên', async () => {
-      const res = await request(app)
+      const res = await requestAs(app, "student", 1)
         .get('/api/courses/available')
         .query({ maHocKy: 7, maSV: 1, type: 'OTHER' });
 
@@ -94,7 +95,7 @@ describe('Slice 4: Available Courses Endpoints', () => {
     });
 
     it('từ chối tham số phân trang không hợp lệ (400 Bad Request)', async () => {
-      const res = await request(app)
+      const res = await requestAs(app, "student", 1)
         .get('/api/courses/available')
         .query({ page: -1 });
 

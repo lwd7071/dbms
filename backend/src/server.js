@@ -15,7 +15,7 @@ const startServer = async () => {
       console.log(`💾 DB Healthcheck:  http://localhost:${PORT}/api/health/db`);
     });
   } catch (err) {
-    console.error('❌ Không thể khởi động server do lỗi kết nối CSDL:', err.message);
+    console.error('❌ Không thể khởi động server (kiểm tra cấu hình bắt buộc và kết nối SQL Server):', err.message);
     process.exit(1);
   }
 };

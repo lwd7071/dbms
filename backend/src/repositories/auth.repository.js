@@ -36,6 +36,34 @@ const findByUsername = async (username) => {
   return result.recordset[0] || null;
 };
 
+const findById = async (maTaiKhoan) => {
+  const pool = await getPool();
+  const result = await pool.request()
+    .input('MaTaiKhoan', sql.Int, maTaiKhoan)
+    .query(`
+      SELECT
+        tk.MaTaiKhoan,
+        tk.Username,
+        tk.VaiTro,
+        tk.TrangThai,
+        tk.MaSV,
+        tk.MaGV,
+        sv.MaSinhVien,
+        sv.HoTen AS HoTenSinhVien,
+        sv.MaLop,
+        l.TenLop AS TenLopSV,
+        gv.MaGiangVien,
+        gv.HoTen AS HoTenGiangVien
+      FROM dbo.TAIKHOAN tk
+      LEFT JOIN dbo.SINHVIEN sv ON tk.MaSV = sv.MaSV
+      LEFT JOIN dbo.LOP l ON sv.MaLop = l.MaLop
+      LEFT JOIN dbo.GIANGVIEN gv ON tk.MaGV = gv.MaGV
+      WHERE tk.MaTaiKhoan = @MaTaiKhoan;
+    `);
+
+  return result.recordset[0] || null;
+};
+
 const updateLastLogin = async (maTaiKhoan) => {
   const pool = await getPool();
   await pool
@@ -50,5 +78,6 @@ const updateLastLogin = async (maTaiKhoan) => {
 
 module.exports = {
   findByUsername,
+  findById,
   updateLastLogin
 };

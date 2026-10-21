@@ -1,5 +1,6 @@
 const request = require('supertest');
 const app = require('../src/app');
+const { requestAs } = require('./helpers/tokens');
 const { closePool } = require('../src/config/db');
 
 describe('Lecturer Portal APIs (/api/lecturers)', () => {
@@ -9,7 +10,7 @@ describe('Lecturer Portal APIs (/api/lecturers)', () => {
 
   it('lấy danh sách lớp học phần giảng viên phụ trách (200 OK)', async () => {
     // Giảng viên MaGV = 1 (hoặc giảng viên có lớp)
-    const res = await request(app).get('/api/lecturers/1/classes');
+    const res = await requestAs(app, "lecturer", 1).get('/api/lecturers/1/classes');
 
     expect(res.status).toBe(200);
     expect(res.body.isSuccess).toBe(true);
@@ -24,7 +25,7 @@ describe('Lecturer Portal APIs (/api/lecturers)', () => {
   });
 
   it('lấy lịch dạy theo tuần của giảng viên (200 OK)', async () => {
-    const res = await request(app).get('/api/lecturers/1/schedule');
+    const res = await requestAs(app, "lecturer", 1).get('/api/lecturers/1/schedule');
 
     expect(res.status).toBe(200);
     expect(res.body.isSuccess).toBe(true);
@@ -40,7 +41,7 @@ describe('Lecturer Portal APIs (/api/lecturers)', () => {
   });
 
   it('lấy danh sách sinh viên lớp học phần bao gồm thông tin lớp sinh hoạt hợp lệ (200 OK)', async () => {
-    const res = await request(app).get('/api/lecturers/classes/LHP_HK7_DEVOPS_01/students');
+    const res = await requestAs(app, "lecturer", 1).get('/api/lecturers/classes/LHP_HK7_DEVOPS_01/students');
 
     expect(res.status).toBe(200);
     expect(res.body.isSuccess).toBe(true);
@@ -58,11 +59,9 @@ describe('Lecturer Portal APIs (/api/lecturers)', () => {
   });
 
   it('trả về danh sách rỗng khi lớp học phần không có sinh viên (200 OK)', async () => {
-    const res = await request(app).get('/api/lecturers/classes/LHP_NOT_EXIST/students');
+    const res = await requestAs(app, "lecturer", 1).get('/api/lecturers/classes/LHP_NOT_EXIST/students');
 
-    expect(res.status).toBe(200);
-    expect(res.body.isSuccess).toBe(true);
-    expect(Array.isArray(res.body.data)).toBe(true);
-    expect(res.body.data.length).toBe(0);
+    expect(res.status).toBe(403);
+    expect(res.body.isSuccess).toBe(false);
   });
 });

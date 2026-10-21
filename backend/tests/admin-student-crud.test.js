@@ -1,24 +1,22 @@
-const request = require('supertest');
+﻿const request = require('supertest');
 const app = require('../src/app');
+const { requestAs } = require('./helpers/tokens');
 const { getPool, closePool, sql } = require('../src/config/db');
 
 describe('Admin Student CRUD APIs (/api/admin/students)', () => {
   let pool;
-  const testMSSV = '24119999';
+  const testMSSV = `T${Date.now()}`;
   let createdMaSV = null;
+  let duplicateMaSV = null;
 
   beforeAll(async () => {
     pool = await getPool();
-    // Dọn dẹp dữ liệu test cũ nếu có
-    await pool.request()
-      .input('MaSinhVien', sql.VarChar(20), testMSSV)
-      .query('DELETE FROM dbo.SINHVIEN WHERE MaSinhVien = @MaSinhVien');
   });
 
   afterAll(async () => {
-    if (createdMaSV) {
+    for (const maSV of [createdMaSV, duplicateMaSV].filter(Boolean)) {
       await pool.request()
-        .input('MaSV', sql.Int, createdMaSV)
+        .input('MaSV', sql.Int, maSV)
         .query('DELETE FROM dbo.SINHVIEN WHERE MaSV = @MaSV');
     }
     await closePool();
@@ -30,14 +28,15 @@ describe('Admin Student CRUD APIs (/api/admin/students)', () => {
       maSinhVien: testMSSV,
       hoTen: 'Lê Hoàng Minh',
       ngaySinh: '2005-05-15',
-      email: 'sv_24119999@student.edu.vn',
+      email: `sv_${testMSSV}@student.edu.vn`,
       soDienThoai: '0988776655',
       maKhoa: 'CNTT',
+      maCTDT: 'CTDT_CNTT_CQ',
       maLop: 'CNTT23_01',
       trangThai: 'DANG_HOC'
     };
 
-    const res = await request(app)
+    const res = await requestAs(app, "admin", 1)
       .post('/api/admin/students')
       .send(payload);
 
@@ -51,19 +50,60 @@ describe('Admin Student CRUD APIs (/api/admin/students)', () => {
 
   // TEST 2: Từ chối khi trùng mã sinh viên (409 Conflict)
   it('từ chối khi trùng mã sinh viên đã tồn tại (409 Conflict)', async () => {
+    const duplicateMSSV = `D${Date.now()}`;
+    const initial = await requestAs(app, 'admin').post('/api/admin/students').send({
+      maSinhVien: duplicateMSSV,
+      hoTen: 'Sinh viên fixture trùng MSSV',
+      maKhoa: 'CNTT',
+      maCTDT: 'CTDT_CNTT_CQ',
+      maLop: 'CNTT23_01'
+    });
+    expect(initial.status).toBe(201);
+    duplicateMaSV = initial.body.data.maSV;
+
     const payload = {
-      maSinhVien: testMSSV,
+      maSinhVien: duplicateMSSV,
       hoTen: 'Người Trùng Mã',
       maKhoa: 'CNTT',
+      maCTDT: 'CTDT_CNTT_CQ',
       maLop: 'CNTT23_01'
     };
 
-    const res = await request(app)
+    const res = await requestAs(app, "admin", 1)
       .post('/api/admin/students')
       .send(payload);
 
     expect([400, 409]).toContain(res.status);
     expect(res.body.isSuccess).toBe(false);
+    expect(res.body.errors[0].field).toBe('maSinhVien');
+  });
+
+  it('rejects impossible calendar dates before sending them to SQL Server', async () => {
+    const res = await requestAs(app, 'admin')
+      .post('/api/admin/students')
+      .send({
+        maSinhVien: `D${Date.now()}`,
+        hoTen: 'Ngày không hợp lệ',
+        ngaySinh: '2025-02-30',
+        maKhoa: 'CNTT',
+        maCTDT: 'CTDT_CNTT_CQ'
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.errors[0].field).toBe('ngaySinh');
+  });
+
+  it('returns 404 when updating a student record that does not exist', async () => {
+    const res = await requestAs(app, 'admin')
+      .put('/api/admin/students/2147483647')
+      .send({ hoTen: 'Không tồn tại' });
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 404 when deleting a student record that does not exist', async () => {
+    const res = await requestAs(app, 'admin')
+      .delete('/api/admin/students/2147483647');
+    expect(res.status).toBe(404);
   });
 
   // TEST 3: Cập nhật thông tin sinh viên (200 OK)
@@ -72,14 +112,15 @@ describe('Admin Student CRUD APIs (/api/admin/students)', () => {
 
     const payload = {
       hoTen: 'Lê Hoàng Minh (Đã Cập Nhật)',
-      email: 'minh_updated@student.edu.vn',
+      email: `updated_${testMSSV}@student.edu.vn`,
       soDienThoai: '0911223344',
       maKhoa: 'CNTT',
+      maCTDT: 'CTDT_CNTT_CQ',
       maLop: 'CNTT23_01',
       trangThai: 'DANG_HOC'
     };
 
-    const res = await request(app)
+    const res = await requestAs(app, "admin", 1)
       .put(`/api/admin/students/${createdMaSV}`)
       .send(payload);
 
@@ -92,7 +133,7 @@ describe('Admin Student CRUD APIs (/api/admin/students)', () => {
   it('xóa mềm chuyển trạng thái sinh viên sang THOI_HOC (200 OK)', async () => {
     expect(createdMaSV).not.toBeNull();
 
-    const res = await request(app)
+    const res = await requestAs(app, "admin", 1)
       .delete(`/api/admin/students/${createdMaSV}`);
 
     expect(res.status).toBe(200);

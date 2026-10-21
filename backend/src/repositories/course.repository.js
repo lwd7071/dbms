@@ -65,11 +65,14 @@ const findAvailableCourses = async ({ maHocKy, maKhoa, search, type, maSV, page 
       SELECT 1 
       FROM dbo.CTDT_MONHOC ctm
       INNER JOIN dbo.CHUONGTRINHDAOTAO ctdt ON ctm.MaCTDT = ctdt.MaCTDT
-      INNER JOIN dbo.NGANH n ON ctdt.MaNganh = n.MaNganh
-      INNER JOIN dbo.SINHVIEN sv ON sv.MaKhoa = n.MaKhoa
+      INNER JOIN dbo.SINHVIEN sv ON sv.MaCTDT = ctdt.MaCTDT
+      INNER JOIN dbo.HOCKY hk ON hk.MaHocKy = lhp.MaHocKy
       WHERE sv.MaSV = @MaSV 
         AND ctm.MaMonHoc = lhp.MaMonHoc 
-        AND ctm.HocKyDuKien = lhp.MaHocKy
+        AND ctm.HocKyDuKien =
+          ((YEAR(hk.NgayBatDau) - CASE WHEN hk.TenHocKy LIKE N'%2%' THEN 1 ELSE 0 END
+            - ctdt.NamTuyenSinh) * 2)
+          + CASE WHEN hk.TenHocKy LIKE N'%2%' THEN 2 ELSE 1 END
     )
   `;
 

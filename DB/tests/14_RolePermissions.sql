@@ -33,6 +33,14 @@ REVERT;
 EXECUTE AS USER = 'dbms_test_runtime';
 SELECT TOP (0) MaHocPhi FROM dbo.V_HocPhiSinhVien;
 BEGIN TRY
+    SELECT TOP (0) Username FROM dbo.TAIKHOAN;
+    REVERT;
+    THROW 52024, N'Runtime đọc được bảng tài khoản trực tiếp.', 1;
+END TRY BEGIN CATCH
+    IF ERROR_NUMBER() = 52024 THROW;
+    SET @Passed += 1;
+END CATCH;
+BEGIN TRY
     UPDATE dbo.HOCPHI SET TongTien = TongTien WHERE 1 = 0;
     REVERT;
     THROW 52022, N'Runtime có quyền ghi trực tiếp hồ sơ học phí.', 1;
@@ -41,6 +49,6 @@ END TRY BEGIN CATCH
     SET @Passed += 1;
 END CATCH;
 REVERT;
-IF @Passed <> 4 THROW 52023, N'Thiếu phản chứng quyền SQL.', 1;
+IF @Passed <> 5 THROW 52023, N'Thiếu phản chứng quyền SQL.', 1;
 SELECT 'PASS' AS Result, @Passed AS PermissionAssertions;
 GO

@@ -1,5 +1,6 @@
 const request = require('supertest');
 const app = require('../src/app');
+const { requestAs } = require('./helpers/tokens');
 const { closePool } = require('../src/config/db');
 
 describe('Metadata: Semester Endpoints', () => {
@@ -9,7 +10,7 @@ describe('Metadata: Semester Endpoints', () => {
 
   describe('GET /api/semesters', () => {
     it('lấy danh sách tất cả các học kỳ trong hệ thống', async () => {
-      const res = await request(app).get('/api/semesters');
+      const res = await requestAs(app, "student", 1).get('/api/semesters');
 
       expect(res.status).toBe(200);
       expect(res.body.isSuccess).toBe(true);
@@ -26,7 +27,7 @@ describe('Metadata: Semester Endpoints', () => {
 
   describe('GET /api/semesters/current', () => {
     it('lấy thông tin học kỳ hiện tại đang mở đăng ký', async () => {
-      const res = await request(app).get('/api/semesters/current');
+      const res = await requestAs(app, "student", 1).get('/api/semesters/current');
 
       expect(res.status).toBe(200);
       expect(res.body.isSuccess).toBe(true);

@@ -497,7 +497,7 @@ Các đối tượng SQL dưới đây được khai báo trong `DB/`; mức ki�
 2. `GIANG_VIEN`: Quyền xem lịch giảng dạy, danh sách sinh viên lớp học phần và chấm điểm.
 3. `DAO_TAO`: Quản lý chương trình học, mở lớp học phần, quản lý đăng ký tín chỉ và xác nhận học phí.
 4. `QUAN_TRI`: Quản trị hệ thống, quản lý tài khoản người dùng và xem Audit Log.
-5. `APP_RUNTIME`: role giới hạn quyền cho ứng dụng; chưa provision login runtime và chưa xác nhận backend chạy đầy đủ dưới role này.
+5. `APP_RUNTIME`: role giới hạn quyền cho ứng dụng; đã xác minh `dbms_test_runtime` không đọc trực tiếp `TAIKHOAN` và không cập nhật trực tiếp `HOCPHI`. Tính đến 21/10/2026 chưa provision login `dbms_app`; backend đang dùng `sa`/`dbo`, chưa xác nhận toàn bộ API chạy dưới role này.
 
 ---
 
@@ -535,7 +535,8 @@ Các đối tượng SQL dưới đây được khai báo trong `DB/`; mức ki�
 - [x] Triển khai và kiểm thử 7 Functions.
 - [x] Triển khai và kiểm thử 9 Stored Procedures.
 - [x] Khai báo 19 index thường; chưa đo execution plan/IO trong lượt nâng cấp này.
-- [x] Thiết lập 4 role nghiệp vụ và role runtime APP_RUNTIME; login runtime chưa được provision.
+- [x] Thiết lập 4 role nghiệp vụ và role runtime APP_RUNTIME; phản chứng đọc `TAIKHOAN` và ghi `HOCPHI` trực tiếp đã chạy trên test principal.
+- [ ] Provision login runtime và chuyển API sau khi chuyển các thao tác DML trực tiếp sang stored procedure hoặc grants riêng đã được duyệt.
 - [x] Khởi tạo seed demo: 1.500 sinh viên, 24 CTĐT, 480 CTĐT–môn học; số liệu khác xem trực tiếp trong demo DB.
 - [x] Bộ SQL integration hiện chạy được trên DB demo; xem `DB/tests/13_Test_Integration.sql`. Các kịch bản concurrency/backup vẫn cần chạy riêng.
 - [ ] Backup, restore và `DBCC CHECKDB` chưa chạy trong lượt nâng cấp này.
@@ -759,7 +760,7 @@ GROUP BY MaLHP;
 
 ## Phụ lục – Baseline schema được kiểm chứng ngày 21/10/2026
 
-Schema SQL được dựng và nạp trong DB cô lập `DBMS330284_CodexDemo_Final`. `DB/14_Verify.sql` kiểm tra được 19 bảng, 6 view, 7 function, 9 stored procedure, 20 trigger đang bật, 24 CTĐT, 480 liên kết CTĐT–môn học và 1.500 sinh viên. Ngày 21/10/2026, migration được diễn tập trên bản restore trước khi áp dụng vào `DBMS330284`; backup trước migration đã qua checksum và `RESTORE VERIFYONLY`. SQL integration, role và invariant tests pass trên DB cũ sau migration. Jest pass 34 suites/217 tests. Migration đồng bộ cache thanh toán bị lệch 145.000 đồng từ các giao dịch xác nhận; các bảng nghiệp vụ chính vẫn giữ số dòng (1.501 sinh viên, 44.545 đăng ký, 34.535 điểm, 7.424 hồ sơ học phí, 8.167 chi tiết thanh toán). Restore/DBCC CHECKDB trước migration trên DB demo pass. Các scripts transaction/concurrency nằm trong `DB/tests/`; `04_SeedData.sql` từ chối DB không trống và không xóa hoặc reseed dữ liệu.
+Schema SQL được dựng và nạp trong DB cô lập `DBMS330284_CodexDemo_Final`. `DB/14_Verify.sql` kiểm tra được 19 bảng, 6 view, 7 function, 9 stored procedure, 20 trigger đang bật, 24 CTĐT, 480 liên kết CTĐT–môn học và 1.500 sinh viên. Ngày 21/10/2026, migration được diễn tập trên bản restore trước khi áp dụng vào `DBMS330284`; backup trước migration đã qua checksum và `RESTORE VERIFYONLY`. SQL integration, role và invariant tests pass trên DB cũ sau migration. Jest pass 34 suites/221 tests. Migration đồng bộ cache thanh toán bị lệch 145.000 đồng từ các giao dịch xác nhận; các bảng nghiệp vụ chính vẫn giữ số dòng (1.501 sinh viên, 44.545 đăng ký, 34.535 điểm, 7.424 hồ sơ học phí, 8.167 chi tiết thanh toán). Restore/DBCC CHECKDB trước migration trên DB demo pass. Các scripts transaction/concurrency nằm trong `DB/tests/`; `04_SeedData.sql` từ chối DB không trống và không xóa hoặc reseed dữ liệu.
 
 ### ERD cập nhật và optionality
 
@@ -784,4 +785,4 @@ erDiagram
 
 `LOP.MaLop` là nullable ở `SINHVIEN`; vì vậy sinh viên chưa biên chế lớp vẫn phải có khoa và CTĐT. `DIEMSO` là quan hệ 0..1 trên mỗi đăng ký, do đó view bảng điểm dùng `LEFT JOIN`. CTĐT được phép chưa có `CTDT_MONHOC`; lớp học phần nháp được phép chưa có `LICHHOC`, nhưng trigger bắt buộc lịch khi chuyển sang trạng thái mở. Truy vấn PLAN tính kỳ dự kiến theo `NamTuyenSinh` và học kỳ 1/2, tuyệt đối không dùng `MaHocKy` làm số thứ tự kỳ CTĐT.
 
-> `APP_RUNTIME` được khai báo với quyền đọc giới hạn, execute procedure được liệt kê và DENY ghi trực tiếp vào các bảng giao dịch nhạy cảm. Tài khoản SQL login chưa được tự tạo hoặc cấu hình vào `.env`; backend repository hiện còn một số luồng đọc/ghi trực tiếp, nên chưa xác nhận toàn bộ API chạy với principal này.
+> `APP_RUNTIME` được khai báo với quyền đọc giới hạn, execute procedure được liệt kê và DENY ghi trực tiếp vào các bảng giao dịch nhạy cảm. Test SQL xác nhận runtime test principal không thể đọc `TAIKHOAN` hoặc cập nhật `HOCPHI` trực tiếp. Login `dbms_app` chưa được provision; backend vẫn dùng `sa`/`dbo`, vì repository còn luồng ghi trực tiếp.

@@ -4,8 +4,8 @@ const courseRepo = require('../repositories/course.repository');
 /**
  * Service xử lý nghiệp vụ Đăng ký và Hủy đăng ký tín chỉ
  */
-const registerCourse = async ({ maSV, maLHP, tinChiToiDa = 25 }) => {
-  return await regRepo.registerCourse(maSV, maLHP, tinChiToiDa);
+const registerCourse = async ({ maSV, maLHP }) => {
+  return await regRepo.registerCourse(maSV, maLHP);
 };
 
 const cancelRegistration = async (id, maSV) => {

@@ -30,10 +30,10 @@ async function loadTuition(maSV) {
   } catch (err) {
     container.innerHTML = `
       <div style="text-align: center; padding: 2rem; color: var(--color-danger-text);">
-        Không thể tải thông tin học phí: ${err.message || 'Lỗi kết nối máy chủ'}
+        Không thể tải thông tin học phí. ${err.message || 'Vui lòng kiểm tra kết nối và thử lại.'}
       </div>
     `;
-    showToast(err.message || 'Lỗi khi tải học phí', 'danger');
+    showToast(err.message || 'Không thể tải thông tin học phí. Vui lòng thử lại sau.', 'danger');
   }
 }
 
@@ -104,10 +104,10 @@ function renderTuitionList(list) {
         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; border-bottom: 1px solid var(--color-border-subtle); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
           <div>
             <span style="font-weight: 700; font-size: 1.05rem; color: var(--color-primary-dark);">
-              ${item.tenHocKy} (${item.namHoc})
+              ${escapeHtml(item.tenHocKy)} (${escapeHtml(item.namHoc)})
             </span>
             <div style="font-size: 0.8125rem; color: var(--color-text-muted); margin-top: 2px;">
-              Mã hồ sơ: HP#${item.maHocPhi} | Số tín chỉ: <strong>${item.soTinChi}</strong> | Đơn giá: ${api.formatCurrency(item.donGiaTinChi)}/TC
+              Mã hồ sơ: HP#${escapeHtml(item.maHocPhi)} | Số tín chỉ: <strong>${escapeHtml(item.soTinChi)}</strong> | Đơn giá: ${api.formatCurrency(item.donGiaTinChi)}/TC
             </div>
           </div>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -118,7 +118,7 @@ function renderTuitionList(list) {
                   <circle cx="12" cy="12" r="10"></circle>
                   <polyline points="12 6 12 12 16 14"></polyline>
                 </svg>
-                Chờ duyệt (${item.soGiaoDichChoDuyet} GD)
+                Chờ duyệt (${escapeHtml(item.soGiaoDichChoDuyet)} GD)
               </span>
             ` : ''}
           </div>
@@ -167,7 +167,7 @@ function renderTuitionList(list) {
           </div>
         ` : canPay ? `
           <div style="display: flex; justify-content: flex-end; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--color-border-subtle);">
-            <button class="btn btn-primary" onclick="openPaymentModal(${item.maHocPhi})">
+            <button class="btn btn-primary" data-open-payment="${escapeHtml(item.maHocPhi)}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;">
                 <rect x="2" y="5" width="20" height="14" rx="2"></rect>
                 <line x1="2" y1="10" x2="22" y2="10"></line>
@@ -185,6 +185,10 @@ function renderTuitionList(list) {
   }).join('');
 
   container.innerHTML = summaryHtml + cardsHtml;
+  container.onclick = event => {
+    const button = event.target.closest('[data-open-payment]');
+    if (button) openPaymentModal(Number(button.dataset.openPayment));
+  };
 }
 
 // 3. Tải lịch sử các giao dịch thanh toán của sinh viên có phân trang
@@ -231,7 +235,7 @@ async function loadPaymentHistory(maSV, page = 1, pageSize = 5) {
               return `
                 <tr>
                   <td class="cell-nowrap"><strong>#${p.maThanhToan}</strong></td>
-                  <td class="cell-nowrap">${p.tenHocKy} (${p.namHoc})</td>
+                  <td class="cell-nowrap">${escapeHtml(p.tenHocKy)} (${escapeHtml(p.namHoc)})</td>
                   <td class="cell-nowrap" style="text-align: right; font-weight: 600; font-family: monospace;">${api.formatCurrency(p.soTien)}</td>
                   <td class="cell-nowrap">${p.phuongThuc === 'CHUYEN_KHOAN' ? 'Chuyển khoản' : 'Tiền mặt'}</td>
                   <td class="cell-nowrap">${new Date(p.ngayThanhToan).toLocaleString('vi-VN')}</td>
@@ -260,7 +264,7 @@ async function loadPaymentHistory(maSV, page = 1, pageSize = 5) {
     });
 
   } catch (err) {
-    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 1rem;">Lỗi tải lịch sử: ${err.message}</div>`;
+    container.innerHTML = `<div style="color: var(--color-danger-text); padding: 1rem;">Không thể tải lịch sử thanh toán. ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -270,7 +274,7 @@ function openPaymentModal(maHocPhi) {
   if (!selectedTuition) return;
 
   if (selectedTuition.hasPendingPayment) {
-    showToast('Hồ sơ học phí này đang có yêu cầu nộp tiền chờ duyệt đối soát.', 'warning');
+    showToast('Hồ sơ này đang có yêu cầu thanh toán chờ xác nhận.', 'warning');
     return;
   }
 
@@ -312,7 +316,7 @@ async function submitPayment() {
   const amount = parseFloat(amountInput.value);
 
   if (isNaN(amount) || amount <= 0) {
-    showToast('Vui lòng nhập số tiền hợp lệ (> 0 VNĐ)', 'warning');
+    showToast('Vui lòng nhập số tiền lớn hơn 0 đồng.', 'warning');
     return;
   }
 
@@ -337,7 +341,7 @@ async function submitPayment() {
       await loadPaymentHistory(user.maSV);
     }
   } catch (err) {
-    showToast(err.message || 'Tạo giao dịch thất bại', 'danger');
+    showToast(err.message || 'Không thể gửi yêu cầu thanh toán. Vui lòng thử lại sau.', 'danger');
   } finally {
     btnSubmit.disabled = false;
     btnSubmit.innerHTML = 'Xác nhận tạo yêu cầu nộp tiền';

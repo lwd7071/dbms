@@ -1,17 +1,16 @@
-const { getPool, sql } = require('../config/db');
+﻿const { getPool, sql } = require('../config/db');
 
 /**
  * Repository thao tác giao dịch Đăng ký tín chỉ qua Stored Procedures
  */
 
 // Đăng ký tín chỉ bằng cách gọi SP_DangKyTinChi
-const registerCourse = async (maSV, maLHP, tinChiToiDa = 25) => {
+const registerCourse = async (maSV, maLHP) => {
   const pool = await getPool();
   const result = await pool
     .request()
     .input('MaSV', sql.Int, maSV)
     .input('MaLHP', sql.VarChar(20), maLHP)
-    .input('TinChiToiDa', sql.Int, tinChiToiDa)
     .execute('dbo.SP_DangKyTinChi');
 
   const record = result.recordset[0];
