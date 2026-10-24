@@ -1,4 +1,4 @@
-# Sơ Đồ Thực Thể - Quan Hệ (ERD) - DBMS330284
+﻿# Sơ Đồ Thực Thể - Quan Hệ (ERD) - DBMS330284
 
 Tài liệu thiết kế và sơ đồ tương tác ERD cho Hệ thống Quản lý Đào tạo & Đăng ký Tín chỉ.
 

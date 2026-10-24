@@ -5,6 +5,7 @@ let adminTuitionReportData = [];
 let pendingPaymentsData = [];
 let studentCurriculumOptions = null;
 let adminNavigationRole = null;
+let adminCurriculumCatalog = null;
 
 function setAdminNavigationRole(role) {
   adminNavigationRole = role;
@@ -1543,6 +1544,48 @@ function setTabDropdownOpen(group, isOpen) {
   if (button) button.setAttribute('aria-expanded', String(isOpen));
 }
 
+async function loadAdminCurriculums() {
+  const container = document.getElementById('adminCurriculumContainer');
+  if (!container) return;
+  const count = document.getElementById('curriculumResultCount');
+  container.innerHTML = '<div style="text-align:center;padding:1.5rem;">Đang tải chương trình đào tạo...</div>';
+  try {
+    if (!adminCurriculumCatalog) {
+      adminCurriculumCatalog = await api.get('/admin/curriculums');
+      const faculties = [...new Map(adminCurriculumCatalog.map(item => [item.maKhoa, item])).values()];
+      const facultySelect = document.getElementById('filterCurriculumFaculty');
+      facultySelect.innerHTML = '<option value="">-- Tất cả khoa --</option>' + faculties.map(item => `<option value="${escapeHtml(item.maKhoa)}">${escapeHtml(item.tenKhoa)} (${escapeHtml(item.maKhoa)})</option>`).join('');
+      const years = [...new Set(adminCurriculumCatalog.map(item => item.namTuyenSinh))].sort((a, b) => b - a);
+      const yearSelect = document.getElementById('filterCurriculumYear');
+      yearSelect.innerHTML = '<option value="">-- Tất cả khóa tuyển sinh --</option>' + years.map(year => `<option value="${year}">${year}</option>`).join('');
+      const programs = [...new Map(adminCurriculumCatalog.map(item => [item.maCTDT, item])).values()];
+      const programSelect = document.getElementById('filterCurriculumProgram');
+      programSelect.innerHTML = '<option value="">-- Tất cả chương trình --</option>' + programs.map(item => `<option value="${escapeHtml(item.maCTDT)}">${escapeHtml(item.tenCTDT)} (${escapeHtml(item.khoaHoc)})</option>`).join('');
+      const maxTerms = Math.max(0, ...adminCurriculumCatalog.map(item => Number(item.thoiGianDaoTao) || 0)) * 2;
+      const terms = Array.from({ length: maxTerms }, (_, index) => index + 1);
+      const termSelect = document.getElementById('filterCurriculumTerm');
+      termSelect.innerHTML = '<option value="">-- Tất cả học kỳ --</option>' + terms.map(term => `<option value="${term}">Học kỳ ${term}</option>`).join('');
+    }
+    const filters = {
+      maKhoa: document.getElementById('filterCurriculumFaculty').value,
+      namTuyenSinh: document.getElementById('filterCurriculumYear').value,
+      maCTDT: document.getElementById('filterCurriculumProgram').value,
+      hocKyDuKien: document.getElementById('filterCurriculumTerm').value
+    };
+    const rows = Object.values(filters).some(Boolean) ? await api.get('/admin/curriculums', filters) : adminCurriculumCatalog;
+    const programs = new Set(rows.map(item => item.maCTDT));
+    count.textContent = `${programs.size} chương trình`;
+    if (!rows.length) {
+      container.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--color-text-muted);">Không tìm thấy chương trình phù hợp.</div>';
+      return;
+    }
+    container.innerHTML = `<table class="table" style="min-width:1200px"><thead><tr><th>STT</th><th>Chương trình</th><th>Khoa / Ngành</th><th>Khóa tuyển sinh</th><th>Học kỳ</th><th>Mã học phần</th><th>Tên môn học</th><th>Số tín chỉ</th><th>Học phần tiên quyết</th><th>Trạng thái</th></tr></thead><tbody>${rows.map((item, index) => `<tr><td>${index + 1}</td><td><strong>${escapeHtml(item.tenCTDT)}</strong><br><code>${escapeHtml(item.maCTDT)}</code></td><td>${escapeHtml(item.tenKhoa)}<br>${escapeHtml(item.nganh)}</td><td>${escapeHtml(item.namTuyenSinh)} (${escapeHtml(item.khoaHoc)})</td><td>${item.hocKyDuKien ? `HK${item.hocKyDuKien}` : '—'}</td><td>${item.maMonHoc ? `<code>${escapeHtml(item.maMonHoc)}</code>` : '—'}</td><td>${item.tenMonHoc ? escapeHtml(item.tenMonHoc) : '<span style="color:var(--color-text-muted)">Chưa có môn học trong kỳ này</span>'}</td><td>${item.soTinChi ?? '—'}</td><td>${item.hocPhanTienQuyet ? escapeHtml(item.hocPhanTienQuyet) : '—'}</td><td><span class="badge ${item.trangThai ? 'badge-success' : 'badge-warning'}">${item.trangThai ? 'Đang áp dụng' : 'Ngừng áp dụng'}</span></td></tr>`).join('')}</tbody></table>`;
+  } catch (error) {
+    count.textContent = 'Không tải được';
+    container.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--color-danger-text);">Không thể tải chương trình đào tạo. ${escapeHtml(error.message)}</div>`;
+  }
+}
+
 function switchAdminTab(tabName, clickedBtn) {
   const restrictedTab = document.querySelector(`[data-tab-name="${tabName}"][data-required-role]`);
   if (restrictedTab && restrictedTab.dataset.requiredRole !== adminNavigationRole) return;
@@ -1578,6 +1621,8 @@ function switchAdminTab(tabName, clickedBtn) {
     loadAdminDashboard();
   } else if (tabName === 'students') {
     loadAdminStudents();
+  } else if (tabName === 'curriculums') {
+    loadAdminCurriculums();
   } else if (tabName === 'classes-sh') {
     loadAdminAdministrativeClasses();
   } else if (tabName === 'classes') {
@@ -1627,6 +1672,7 @@ window.submitAdminPayment = submitAdminPayment;
 
 window.loadAdminDashboard = loadAdminDashboard;
 window.loadAdminStudents = loadAdminStudents;
+window.loadAdminCurriculums = loadAdminCurriculums;
 window.viewStudentDetailModal = viewStudentDetailModal;
 window.closeStudentDetailModal = closeStudentDetailModal;
 window.openStudentModal = openStudentModal;

@@ -289,9 +289,11 @@ async function loadGrades() {
   }
 
   try {
-    const data = await api.get(`/students/${user.maSV}/grades`, {
-      maHocKy: selectedSemester || undefined
-    });
+    const [data, profile] = await Promise.all([
+      api.get(`/students/${user.maSV}/grades`, { maHocKy: selectedSemester || undefined }),
+      api.get(`/students/${user.maSV}/profile`).catch(() => null)
+    ]);
+    const khoaHoc = profile?.khoaHoc;
 
     if (gpaElem) gpaElem.textContent = data.summary.gpa.toFixed(2);
     if (creditsElem) creditsElem.textContent = data.summary.tongTinChiTichLuy;
@@ -301,7 +303,7 @@ async function loadGrades() {
       data.semesters.forEach(sem => {
         const opt = document.createElement('option');
         opt.value = sem.maHocKy;
-        opt.textContent = `${sem.namHoc} - ${sem.tenHocKy}`;
+        opt.textContent = formatStudentSemesterLabel(sem, khoaHoc);
         semesterSelect.appendChild(opt);
       });
     }
@@ -324,7 +326,7 @@ async function loadGrades() {
                 <line x1="16" y1="2" x2="16" y2="6"></line>
                 <line x1="8" y1="2" x2="8" y2="6"></line>
               </svg>
-              ${sem.namHoc} - ${sem.tenHocKy}
+              ${formatStudentSemesterLabel(sem, khoaHoc)}
             </div>
             <span class="badge badge-info">${sem.grades.length} môn học</span>
           </div>

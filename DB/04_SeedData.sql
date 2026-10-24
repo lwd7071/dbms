@@ -2,7 +2,7 @@
 -- HE THONG QUAN LY DANG KY TIN CHI DBMS330284 - SEED DATA
 -- ENCODING: UTF-8 WITH BOM
 -- =========================================================
-USE [$(DatabaseName)];
+USE [DBMS330284];
 GO
 
 SET NOCOUNT ON;

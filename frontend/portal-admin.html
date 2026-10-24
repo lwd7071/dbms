@@ -40,7 +40,7 @@
   <!-- Container Chính -->
   <main class="main-container">
 
-    <!-- Navigation Tabs (9 Màn Hình Chuẩn Đặc Tả) -->
+    <!-- Navigation Tabs for training and administration -->
     <!-- Navigation Tabs (Gom nhóm 4 Phân Hệ Chuẩn UI/UX Pro Max) -->
     <nav class="tabs-nav">
       <!-- 1. Dashboard -->
@@ -75,6 +75,13 @@
               <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
             </svg>
             <span>Quản lý sinh viên</span>
+          </button>
+          <button class="tab-dropdown-item" onclick="switchAdminTab('curriculums', this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            <span>Chương trình đào tạo</span>
           </button>
           <button class="tab-dropdown-item" onclick="switchAdminTab('classes-sh', this)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -216,6 +223,27 @@
       </section>
     </div>
 
+    <!-- MÀN HÌNH 3: CHƯƠNG TRÌNH ĐÀO TẠO -->
+    <div id="tab-curriculums" class="tab-pane">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">Tra cứu chương trình đào tạo</h2>
+          <span id="curriculumResultCount" class="badge badge-info">Đang tải...</span>
+        </div>
+        <div class="card-body">
+          <div class="toolbar" style="flex-wrap: wrap;">
+            <select id="filterCurriculumFaculty" class="form-control" aria-label="Lọc CTĐT theo khoa" onchange="loadAdminCurriculums()"><option value="">-- Tất cả khoa --</option></select>
+            <select id="filterCurriculumYear" class="form-control" aria-label="Lọc CTĐT theo khóa tuyển sinh" onchange="loadAdminCurriculums()"><option value="">-- Tất cả khóa tuyển sinh --</option></select>
+            <select id="filterCurriculumProgram" class="form-control" aria-label="Lọc theo chương trình đào tạo" onchange="loadAdminCurriculums()"><option value="">-- Tất cả chương trình --</option></select>
+            <select id="filterCurriculumTerm" class="form-control" aria-label="Lọc theo học kỳ dự kiến" onchange="loadAdminCurriculums()"><option value="">-- Tất cả học kỳ --</option></select>
+          </div>
+          <div id="adminCurriculumContainer" class="table-responsive" style="margin-top: 1rem;">
+            <div style="text-align:center;padding:1.5rem;">Đang tải chương trình đào tạo...</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <!-- MÀN HÌNH 2.1: QUẢN LÝ LỚP SINH HOẠT (36 LỚP) -->
     <div id="tab-classes-sh" class="tab-pane">
       <section class="card">
@@ -254,7 +282,7 @@
       </section>
     </div>
 
-    <!-- MÀN HÌNH 3: QUẢN LÝ LỚP HỌC PHẦN -->
+    <!-- MÀN HÌNH 4: QUẢN LÝ LỚP HỌC PHẦN -->
     <div id="tab-classes" class="tab-pane">
       <section class="card">
         <div class="card-header">
@@ -278,7 +306,7 @@
       </section>
     </div>
 
-    <!-- MÀN HÌNH 4: QUẢN LÝ ĐĂNG KÝ TÍN CHỈ -->
+    <!-- MÀN HÌNH 5: QUẢN LÝ ĐĂNG KÝ TÍN CHỈ -->
     <div id="tab-registrations" class="tab-pane">
       <section class="card">
         <div class="card-header">
@@ -314,7 +342,7 @@
       </section>
     </div>
 
-    <!-- MÀN HÌNH 5: XÁC NHẬN THANH TOÁN (CHO_XAC_NHAN) -->
+    <!-- MÀN HÌNH 6: XÁC NHẬN THANH TOÁN (CHO_XAC_NHAN) -->
     <div id="tab-pending" class="tab-pane">
       <section class="card">
         <div class="card-header">
@@ -345,7 +373,7 @@
       </section>
     </div>
 
-    <!-- MÀN HÌNH 6: QUẢN LÝ HỌC PHÍ & QUẦY THU -->
+    <!-- MÀN HÌNH 7: QUẢN LÝ HỌC PHÍ & QUẦY THU -->
     <div id="tab-cashier" class="tab-pane">
       <section class="card">
         <div class="card-header">
@@ -371,7 +399,7 @@
       </section>
     </div>
 
-    <!-- MÀN HÌNH 7: BÁO CÁO / THỐNG KÊ (SP) -->
+    <!-- MÀN HÌNH 8: BÁO CÁO / THỐNG KÊ (SP) -->
     <div id="tab-report" class="tab-pane">
       <section class="card">
         <div class="card-header">
@@ -415,7 +443,7 @@
       </section>
     </div>
 
-    <!-- MÀN HÌNH 8: QUẢN LÝ TÀI KHOẢN -->
+    <!-- MÀN HÌNH 9: QUẢN LÝ TÀI KHOẢN -->
     <div id="tab-users" class="tab-pane">
       <section class="card">
         <div class="card-header">
@@ -461,7 +489,7 @@
       </section>
     </div>
 
-    <!-- MÀN HÌNH 9: AUDIT LOG -->
+    <!-- MÀN HÌNH 10: AUDIT LOG -->
     <div id="tab-audit" class="tab-pane" data-required-role="QUAN_TRI" hidden>
       <section class="card">
         <div class="card-header">

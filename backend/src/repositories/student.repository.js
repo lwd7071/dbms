@@ -254,10 +254,35 @@ const getStudentProfile = async (maSV) => {
   };
 };
 
+const getStudentCurriculum = async (maSV) => {
+  const pool = await getPool();
+  const result = await pool.request().input('MaSV', sql.Int, maSV).query(`
+    SELECT sv.MaSV, c.MaCTDT, c.TenCTDT, c.KhoaHoc, c.NamTuyenSinh,
+      c.TongTinChiYeuCau, c.ThoiGianDaoTao, c.TrangThai AS TrangThaiCTDT,
+      n.MaKhoa, k.TenKhoa, n.TenNganh AS Nganh,
+      mh.MaMonHoc, mh.TenMonHoc, mh.SoTinChi,
+      ctm.HocKyDuKien, ctm.LoaiMon, ctm.ThuTu,
+      (SELECT STRING_AGG(CONVERT(NVARCHAR(MAX), CONCAT(pre.MaMonHoc, N' - ', pre.TenMonHoc)), N'; ')
+       FROM dbo.MONHOCTIENQUYET mtq
+       INNER JOIN dbo.MONHOC pre ON pre.MaMonHoc = mtq.MaMonTienQuyet
+       WHERE mtq.MaMonHoc = mh.MaMonHoc) AS HocPhanTienQuyet
+    FROM dbo.SINHVIEN sv
+    LEFT JOIN dbo.CHUONGTRINHDAOTAO c ON c.MaCTDT = sv.MaCTDT
+    LEFT JOIN dbo.NGANH n ON n.MaNganh = c.MaNganh
+    LEFT JOIN dbo.KHOA k ON k.MaKhoa = n.MaKhoa
+    LEFT JOIN dbo.CTDT_MONHOC ctm ON ctm.MaCTDT = c.MaCTDT
+    LEFT JOIN dbo.MONHOC mh ON mh.MaMonHoc = ctm.MaMonHoc
+    WHERE sv.MaSV = @MaSV
+    ORDER BY ctm.HocKyDuKien, ctm.ThuTu, mh.MaMonHoc;
+  `);
+  return result.recordset;
+};
+
 module.exports = {
   getSchedule,
   getGrades,
   getTuition,
   getPaymentHistory,
-  getStudentProfile
+  getStudentProfile,
+  getStudentCurriculum
 };

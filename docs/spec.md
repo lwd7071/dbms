@@ -103,9 +103,9 @@ ProjectDBMS/
     │   ├── registration.js      # Xử lý tương tác đăng ký môn
     │   └── tuition.js           # Xử lý tra cứu & nộp học phí
     ├── index.html               # Trang đăng nhập & bảng Quick Login demo
-    ├── portal-student.html      # Cổng Sinh viên: ĐK tín chỉ, TKB, Bảng điểm, Học phí
+    ├── portal-student.html      # Cổng Sinh viên: CTĐT, ĐK tín chỉ, TKB, Bảng điểm, Học phí
     ├── portal-lecturer.html     # Cổng Giảng viên: Lịch dạy, Sổ điểm lớp học phần
-    └── portal-admin.html        # Cổng Đào tạo / Quản trị: 9 phân hệ điều hành
+    └── portal-admin.html        # Cổng Đào tạo / Quản trị: 10 phân hệ điều hành
 ```
 
 ---
@@ -357,7 +357,8 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `DB/05_Triggers.sql` và `
 - **`GET /api/admin/courses`**, **`POST /api/admin/courses`**, **`PUT /api/admin/courses/:id`**, **`DELETE /api/admin/courses/:id`**: Đọc và CRUD môn học, dành cho `DAO_TAO` và `QUAN_TRI`; thao tác xóa bị SQL Server từ chối nếu còn dữ liệu tham chiếu.
 - **`GET /api/admin/registrations`**: Tra cứu toàn bộ giao dịch đăng ký tín chỉ của sinh viên.
 - **`GET /api/admin/audit-logs`**: Nhật ký kiểm toán bảo mật từ bảng `LOGHOATDONG` (chỉ role `QUAN_TRI`).
-- **`GET /api/admin/curriculums`**: Khung môn học từ View `V_CauTrucChuongTrinhDaoTao`.
+- **`GET /api/admin/curriculums?maKhoa=&namTuyenSinh=&maCTDT=&hocKyDuKien=`**: Danh sách CTĐT và môn theo kỳ, lọc theo khoa, khóa tuyển sinh, chương trình và kỳ dự kiến; giữ cả CTĐT/kỳ chưa có môn.
+- **`GET /api/students/:id/curriculum`**: CTĐT được gán cho sinh viên, nhóm môn theo toàn bộ kỳ dự kiến kèm các môn tiên quyết; kiểm tra quyền bằng `authorizeStudentRecord`.
 - **`GET /api/admin/curriculum-options?maKhoa=&namTuyenSinh=`**: lựa chọn CTĐT đang hoạt động, lọc theo khoa và năm tuyển sinh.
 - `POST /api/admin/students` bắt buộc có `maCTDT`; `PUT` nhận `maCTDT` tùy chọn. Backend kiểm tra CTĐT thuộc khoa đã chọn và khóa CTĐT khớp lớp nếu sinh viên đã được phân lớp.
 - **`GET /api/lecturers/:id/schedule`**: Lịch giảng dạy theo tuần của Giảng viên.
@@ -441,7 +442,7 @@ Tại màn hình đăng nhập (`index.html`), cung cấp bảng **Quick Login P
 
 #### Màn hình 2: Cổng Sinh viên (`portal-student.html`)
 
-Bao gồm 7 phân hệ màn hình chức năng chính:
+Bao gồm 8 phân hệ màn hình chức năng chính:
 
 1. **Dashboard / Tổng quan**
    - Thông tin sinh viên (Họ tên, MSSV, Khóa, Ngành/Khoa, Lớp sinh hoạt).
@@ -465,14 +466,18 @@ Bao gồm 7 phân hệ màn hình chức năng chính:
    - Chi tiết từng ô lịch: Tên môn, Lớp học phần, Phòng học và Giảng viên.
    - Cho phép lọc/chuyển học kỳ tra cứu.
 
-4. **Kết quả học tập**
+4. **Chương trình đào tạo**
+   - Chỉ xem CTĐT được gán cho sinh viên đăng nhập.
+   - Chọn từng học kỳ dự kiến để xem STT, mã học phần, tên môn, số tín chỉ và học phần tiên quyết; kỳ chưa có môn hiển thị trạng thái rỗng.
+
+5. **Kết quả học tập**
    - Trích xuất dữ liệu từ View `V_BangDiemChiTiet`.
    - Danh sách môn đã học kèm lọc theo học kỳ.
    - Điểm thành phần: Điểm quá trình (QT), Điểm giữa kỳ (GK), Điểm cuối kỳ (CK).
    - Tỷ trọng các điểm thành phần, Điểm tổng kết hệ 10, Điểm chữ hệ 4.
    - Kết quả: ĐẠT / KHÔNG ĐẠT.
 
-5. **Học phí**
+6. **Học phí**
    - Trích xuất dữ liệu từ View `V_HocPhiSinhVien`.
    - Chi tiết từng học kỳ: Tổng học phí phải nộp, Đơn giá tín chỉ, Số tín chỉ đăng ký.
    - Số tiền đã thanh toán thực tế (Chỉ tính các giao dịch `DA_XAC_NHAN`).
@@ -480,13 +485,13 @@ Bao gồm 7 phân hệ màn hình chức năng chính:
    - Trạng thái công nợ: `UNPAID` / `PARTIAL` / `PAID`.
    - Lịch sử các giao dịch thanh toán của sinh viên.
 
-6. **Thanh toán**
+7. **Thanh toán**
    - Tạo yêu cầu nộp học phí trực tuyến (chuyển khoản, tiền mặt).
    - Hiển thị danh sách giao dịch đang ở trạng thái `CHO_XAC_NHAN`.
    - Hiển thị giao dịch đã duyệt `DA_XAC_NHAN` hoặc bị từ chối `TU_CHOI`.
    - Nghiệp vụ bảo mật: Tuyệt đối không cho phép sinh viên tự chuyển trạng thái xác nhận thanh toán.
 
-7. **Thông tin tài khoản**
+8. **Thông tin tài khoản**
    - Thông tin cá nhân sinh viên, email, số điện thoại, ngày tạo.
    - Username tài khoản đăng nhập.
    - Trạng thái tài khoản (ACTIVE / LOCKED).
@@ -494,7 +499,7 @@ Bao gồm 7 phân hệ màn hình chức năng chính:
 
 #### Màn hình 3: Cổng Đào tạo & Quản trị (`portal-admin.html`)
 
-Bao gồm 9 phân hệ màn hình chức năng chính:
+Bao gồm 10 phân hệ màn hình chức năng chính:
 
 1. **Dashboard / Tổng quan**
    - Thống kê tổng số lượng sinh viên toàn trường và theo khoa.
@@ -508,43 +513,47 @@ Bao gồm 9 phân hệ màn hình chức năng chính:
    - Xem chi tiết hồ sơ sinh viên: Khoa, Ngành, Khóa học, CTĐT.
    - Xem tình trạng đăng ký học phần và công nợ học phí của sinh viên.
 
-3. **Quản lý lớp học phần**
+3. **Chương trình đào tạo**
+   - Tra cứu tất cả CTĐT, gồm cả chương trình đã ngừng áp dụng hoặc chưa có môn học.
+   - Lọc theo khoa, năm tuyển sinh, CTĐT và kỳ dự kiến; hiển thị môn học, tín chỉ và trạng thái CTĐT.
+
+4. **Quản lý lớp học phần**
    - Danh sách lớp học phần theo học kỳ.
    - Thông tin môn học, Giảng viên giảng dạy, Lịch học, Phòng học.
    - Sĩ số hiện tại / Sức chứa tối đa.
    - Trạng thái lớp (`MO_DANG_KY`, `DANG_MO`, `DA_KHOA`, `DA_HUY`).
 
-4. **Quản lý đăng ký tín chỉ**
+5. **Quản lý đăng ký tín chỉ**
    - Tra cứu danh sách đăng ký tín chỉ toàn hệ thống.
    - Lọc theo sinh viên, theo lớp học phần, theo học kỳ.
    - Xem trạng thái đăng ký (`REGISTERED`, `CANCELLED`) và thời điểm đăng ký.
 
-5. **Xác nhận thanh toán**
+6. **Xác nhận thanh toán**
    - Danh sách toàn bộ giao dịch đang ở trạng thái `CHO_XAC_NHAN`.
    - Xem chi tiết giao dịch: Mã GD, Sinh viên, Học kỳ, Số tiền, Phương thức nộp, Thời gian gửi.
    - Nút thao tác: **Xác nhận thanh toán** (Gọi `SP_XacNhanThanhToan` -> chuyển `DA_XAC_NHAN` -> kích hoạt trigger cập nhật `HOCPHI`).
    - Nút thao tác: **Từ chối thanh toán** (Gọi `SP_TuChoiThanhToan` -> chuyển `TU_CHOI`).
    - Hiển thị thông tin người xác nhận (`MaTaiKhoanXacNhan`) và thời gian xác nhận (`NgayXacNhan`).
 
-6. **Quản lý học phí**
+7. **Quản lý học phí**
    - Tra cứu công nợ học phí theo sinh viên / theo học kỳ.
    - Hiển thị Tổng phải đóng, Đã thanh toán, Còn lại.
    - Trạng thái học phí: `UNPAID` / `PARTIAL` / `PAID`.
    - Quầy thu học phí trực tiếp tại quầy cho sinh viên.
 
-7. **Báo cáo / Thống kê**
+8. **Báo cáo / Thống kê**
    - Báo cáo đăng ký tín chỉ.
    - Báo cáo tài chính thu học phí theo học kỳ (gọi Stored Procedure `SP_ThongKeHocPhi`).
    - Thống kê số lượng sinh viên, lớp học phần.
    - Nguyên tắc: Ưu tiên sử dụng View / Stored Procedure từ SQL Server thay vì tự tính lại dữ liệu ở frontend.
 
-8. **Quản lý tài khoản**
+9. **Quản lý tài khoản**
    - Danh sách toàn bộ tài khoản người dùng từ View `V_TaiKhoanNguoiDung`.
    - Lọc theo vai trò (`QUAN_TRI`, `DAO_TAO`, `GIANG_VIEN`, `SINH_VIEN`).
    - Trạng thái: `ACTIVE` / `LOCKED`.
    - Thao tác khóa / mở khóa tài khoản người dùng phù hợp với quyền được cấp.
 
-9. **Audit Log**
+10. **Audit Log**
    - Danh sách lịch sử hoạt động hệ thống từ bảng `LOGHOATDONG`.
    - Thời gian thực hiện, Tài khoản thực hiện.
    - Hành động (`INSERT`, `UPDATE`, `DELETE`).
@@ -613,8 +622,8 @@ Bao gồm 9 phân hệ màn hình chức năng chính:
 - **Giai đoạn 5 (Giao diện Frontend Thực dụng):**
   - Khởi tạo `frontend/`, dựng layout CSS Slate/Navy học vụ theo chuẩn `/ui-ux-pro-max`.
   - Dựng trang `index.html` với Quick Login Presets.
-  - Dựng Student Portal (`portal-student.html`) đầy đủ 7 phân hệ: Dashboard, Đăng ký học phần, TKB, Kết quả học tập, Học phí, Thanh toán, Thông tin tài khoản.
-  - Dựng Admin Portal (`portal-admin.html`) đầy đủ 9 phân hệ: Dashboard, Quản lý sinh viên, Lớp học phần, Đăng ký tín chỉ, Xác nhận thanh toán, Quản lý học phí, Báo cáo thống kê, Quản lý tài khoản, Audit Log.
+  - Dựng Student Portal (`portal-student.html`) đầy đủ 8 phân hệ gồm tra cứu CTĐT theo từng kỳ.
+  - Dựng Admin Portal (`portal-admin.html`) đầy đủ 10 phân hệ gồm tra cứu CTĐT theo bộ lọc.
   - Dựng Cổng Giảng viên (`portal-lecturer.html`) quản lý lịch dạy và danh sách sinh viên lớp.
 - **Giai đoạn 6 (Kiểm thử Toàn diện & Báo cáo):**
   - Chạy toàn bộ test suite Jest đảm bảo pass 100%.

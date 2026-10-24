@@ -1,5 +1,13 @@
 # SQL Server scripts
 
+## Dựng CSDL đầy đủ trong SSMS
+
+Nếu chỉ lấy thư mục `DB/`, mở `00_Build_DBMS330284.sql` trong SQL Server Management Studio và chạy toàn bộ file (F5). File tự tạo database `DBMS330284`, dựng schema, phân quyền, nạp dữ liệu mẫu và chạy kiểm tra `14_Verify.sql`; không cần SQLCMD mode, Node.js, `.env` hay file nào ngoài thư mục này.
+
+Tài khoản chạy cần quyền `CREATE DATABASE` và quyền tạo đối tượng trong database. **Mỗi lần chạy, nếu `DBMS330284` đã tồn tại, file `00` sẽ xóa toàn bộ database đó (gồm tất cả dữ liệu) rồi tạo lại.** Nếu một batch lỗi giữa chừng, các batch sau sẽ dừng an toàn; xóa database dở dang trước khi chạy lại.
+
+Các file thành phần `.sql` cũng ghi rõ `DBMS330284` trong lệnh `USE`, nên có thể mở riêng từng file để kiểm tra hoặc chạy theo đúng thứ tự. Seed chỉ dùng cho database mới/trống; không chạy seed lặp lại trên dữ liệu đang dùng. Runner Node vẫn dùng được cho database demo và rehearsal: runner đổi tên đích `DBMS330284` thành database được truyền qua `--database`.
+
 ## Thứ tự triển khai
 
 `run_all_db_files.js` tách các thao tác để tránh chạy seed/test nhầm trong lúc dựng schema. `build/seed` chỉ nhận database có tên `DBMS330284_CodexDemo` hoặc biến thể `_...`; runner không có thao tác drop và từ chối build trên DB đã có bảng. `migrate` nhận DB đích cũ và DB rehearsal được allowlist riêng.

@@ -46,8 +46,7 @@ const updateUserStatus = async (req, res, next) => {
 
 const getCurriculums = async (req, res, next) => {
   try {
-    const { maKhoa } = req.query;
-    const curriculums = await adminRepo.getCurriculums(maKhoa);
+    const curriculums = await adminRepo.getCurriculums(req.validated?.query || req.query);
     return res.status(200).json(successResponse(curriculums));
   } catch (err) {
     next(err);

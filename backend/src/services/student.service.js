@@ -116,10 +116,49 @@ const getStudentProfile = async (maSV) => {
   return await studentRepo.getStudentProfile(Number(maSV));
 };
 
+const getStudentCurriculum = async (maSV) => {
+  const rows = await studentRepo.getStudentCurriculum(Number(maSV));
+  if (!rows.length || !rows[0].MaCTDT) return null;
+  const first = rows[0];
+  const soHocKy = Number(first.ThoiGianDaoTao || 0) * 2;
+  const hocKy = Array.from({ length: soHocKy }, (_, index) => ({
+    hocKyDuKien: index + 1,
+    monHoc: []
+  }));
+
+  rows.forEach(row => {
+    if (!row.MaMonHoc || !row.HocKyDuKien) return;
+    const term = hocKy[Number(row.HocKyDuKien) - 1];
+    if (term) term.monHoc.push({
+      maMonHoc: row.MaMonHoc,
+      tenMonHoc: row.TenMonHoc,
+      soTinChi: row.SoTinChi,
+      loaiMon: row.LoaiMon,
+      thuTu: row.ThuTu,
+      hocPhanTienQuyet: row.HocPhanTienQuyet
+    });
+  });
+
+  return {
+    maCTDT: first.MaCTDT,
+    tenCTDT: first.TenCTDT,
+    nganh: first.Nganh,
+    khoaHoc: first.KhoaHoc,
+    namTuyenSinh: first.NamTuyenSinh,
+    maKhoa: first.MaKhoa,
+    tenKhoa: first.TenKhoa,
+    tongTinChiYeuCau: first.TongTinChiYeuCau,
+    thoiGianDaoTao: first.ThoiGianDaoTao,
+    trangThai: Boolean(first.TrangThaiCTDT),
+    hocKy
+  };
+};
+
 module.exports = {
   getSchedule,
   getGrades,
   getTuition,
   getPaymentHistory,
-  getStudentProfile
+  getStudentProfile,
+  getStudentCurriculum
 };

@@ -25,6 +25,7 @@ const FIELD_LABELS = {
   soTietThucHanh: 'Số tiết thực hành',
   maHocKy: 'Học kỳ',
   namTuyenSinh: 'Năm tuyển sinh',
+  hocKyDuKien: 'Học kỳ dự kiến',
   maGiangVien: 'Giảng viên',
   tenLHP: 'Tên lớp học phần',
   soLuongToiDa: 'Sĩ số tối đa',

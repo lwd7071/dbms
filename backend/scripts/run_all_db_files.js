@@ -38,7 +38,9 @@ const runFile = async (pool, file) => {
   const filePath = path.join(dbDir, file);
   if (!fs.existsSync(filePath)) throw new Error(`SQL file not found: ${filePath}`);
   console.log(`▶ ${file}`);
-  const source = fs.readFileSync(filePath, 'utf8').replace(/\$\(DatabaseName\)/g, databaseName);
+  const source = fs.readFileSync(filePath, 'utf8')
+    .replace(/\$\(DatabaseName\)/g, databaseName)
+    .replace(/\[DBMS330284\]/g, `[${databaseName}]`);
   for (const batch of splitBatches(source)) await pool.request().batch(batch);
 };
 (async () => {

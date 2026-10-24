@@ -71,10 +71,21 @@ const getProfile = async (req, res, next) => {
   }
 };
 
+const getCurriculum = async (req, res, next) => {
+  try {
+    const data = await studentService.getStudentCurriculum(req.params.id);
+    if (!data) return res.status(404).json(errorResponse({ field: 'maCTDT', message: 'Sinh viên chưa được gán chương trình đào tạo.' }));
+    return res.status(200).json(successResponse(data));
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getSchedule,
   getGrades,
   getTuition,
   getPaymentHistory,
-  getProfile
+  getProfile,
+  getCurriculum
 };

@@ -40,7 +40,7 @@
   <!-- Container Chính -->
   <main class="main-container">
 
-    <!-- Thanh Điều Hướng 7 Màn Hình -->
+    <!-- Thanh Điều Hướng 8 Màn Hình -->
     <div class="tabs-nav">
       <!-- 1. Dashboard -->
       <button class="tab-btn active" onclick="switchStudentTab('dashboard', this)">
@@ -73,6 +73,14 @@
           <line x1="3" y1="10" x2="21" y2="10"></line>
         </svg>
         Thời khóa biểu
+      </button>
+
+      <button class="tab-btn" onclick="switchStudentTab('curriculum', this)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+        Chương trình đào tạo
       </button>
 
       <!-- 4. Kết quả học tập -->
@@ -179,7 +187,7 @@
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                   <polyline points="22 4 12 14.01 9 11.01"></polyline>
                 </svg>
-                Theo kế hoạch (HK7)
+                Theo kế hoạch (Học kỳ hiện tại)
               </button>
               <button type="button" class="segmented-btn" data-filter="OTHER" onclick="switchCourseFilter('OTHER')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -264,7 +272,25 @@
       </section>
     </div>
 
-    <!-- MÀN HÌNH 4: KẾT QUẢ HỌC TẬP -->
+    <!-- MÀN HÌNH 4: CHƯƠNG TRÌNH ĐÀO TẠO -->
+    <div id="tab-curriculum" class="tab-pane">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">Chương trình đào tạo của tôi</h2>
+          <span id="studentCurriculumStatus" class="badge badge-info">Đang tải...</span>
+        </div>
+        <div class="card-body">
+          <div id="studentCurriculumSummary" class="curriculum-overview" aria-live="polite"></div>
+          <div style="max-width: 280px; margin-bottom: 1rem;">
+            <label class="form-label" for="studentCurriculumTerm">Học kỳ dự kiến</label>
+            <select id="studentCurriculumTerm" class="form-control" aria-label="Chọn học kỳ dự kiến" onchange="renderStudentCurriculumTerm()"></select>
+          </div>
+          <div id="studentCurriculumCourses" class="table-responsive"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- MÀN HÌNH 5: KẾT QUẢ HỌC TẬP -->
     <div id="tab-grades" class="tab-pane">
       <!-- Summary KPIs -->
       <div class="summary-cards">
@@ -306,7 +332,7 @@
       </section>
     </div>
 
-    <!-- MÀN HÌNH 5: HỌC PHÍ -->
+    <!-- MÀN HÌNH 6: HỌC PHÍ -->
     <div id="tab-tuition" class="tab-pane">
       <section class="card">
         <div class="card-header">
@@ -327,7 +353,7 @@
       </section>
     </div>
 
-    <!-- MÀN HÌNH 6: THANH TOÁN -->
+    <!-- MÀN HÌNH 7: THANH TOÁN -->
     <div id="tab-payment" class="tab-pane">
       <!-- Lịch sử giao dịch & Theo dõi duyệt -->
       <section class="card">
@@ -352,7 +378,7 @@
       </section>
     </div>
 
-    <!-- MÀN HÌNH 7: THÔNG TIN TÀI KHOẢN -->
+    <!-- MÀN HÌNH 8: THÔNG TIN TÀI KHOẢN -->
     <div id="tab-profile" class="tab-pane">
       <div id="studentProfileContent">
         <div style="text-align: center; padding: 2rem;">Đang tải hồ sơ tài khoản...</div>
@@ -406,7 +432,7 @@
       if (!user) return;
 
       // Nạp thông tin học kỳ và danh mục khoa động từ CSDL
-      updateCurrentSemesterBadges();
+      updateCurrentSemesterBadges().then(() => applyCurrentStudentStudyTermLabel());
       populateFaculties('filter-khoa');
 
       // Nạp mặc định Dashboard
@@ -436,6 +462,8 @@
         loadMyRegistrations();
       } else if (tabName === 'schedule') {
         loadSchedule();
+      } else if (tabName === 'curriculum') {
+        loadStudentCurriculum();
       } else if (tabName === 'grades') {
         loadGrades();
       } else if (tabName === 'tuition') {

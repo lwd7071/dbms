@@ -383,6 +383,106 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   padding: 1.25rem;
 }
 
+/* Curriculum program identity and metadata */
+#tab-curriculum .card-header {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.curriculum-overview {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0 0 1.25rem;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.curriculum-program-name {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.curriculum-program-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.curriculum-program-code code {
+  padding: 0.15rem 0.45rem;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-hover);
+  color: var(--color-text-main);
+  overflow-wrap: anywhere;
+}
+
+.curriculum-program-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem 1.5rem;
+  margin: 0;
+}
+
+.curriculum-program-facts > div {
+  min-width: 0;
+}
+
+.curriculum-program-facts dt,
+.curriculum-program-metric span {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.curriculum-program-facts dd {
+  margin: 0.15rem 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.curriculum-program-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.curriculum-program-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.65rem 0.8rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-hover);
+}
+
+.curriculum-program-metric strong {
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
+@media (max-width: 576px) {
+  .curriculum-program-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.65rem;
+  }
+
+  .curriculum-program-metrics {
+    gap: 0.5rem;
+  }
+
+  .curriculum-program-metric {
+    padding: 0.6rem;
+  }
+}
+
 /* Filters & Toolbars */
 .toolbar {
   display: flex;

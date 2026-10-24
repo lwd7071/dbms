@@ -9,7 +9,7 @@ const { accountStatusSchema, usernameParamsSchema } = require('../validators/adm
 const {
   positiveIdParamsSchema, codeIdParamsSchema, adminUsersQuerySchema,
   adminStudentsQuerySchema, adminClassesQuerySchema,
-  adminRegistrationsQuerySchema, adminAuditQuerySchema, curriculumOptionsQuerySchema
+  adminRegistrationsQuerySchema, adminAuditQuerySchema, curriculumOptionsQuerySchema, curriculumsQuerySchema
 } = require('../validators/common.validator');
 const { verifyToken, authorizeRoles } = require('../middlewares/auth.middleware');
 
@@ -50,7 +50,7 @@ router.get('/registrations', validate(adminRegistrationsQuerySchema, 'query'), a
 router.get('/audit-logs', authorizeRoles('QUAN_TRI'), validate(adminAuditQuerySchema, 'query'), adminController.getAuditLogs);
 
 // Khung chương trình đào tạo (V_CauTrucChuongTrinhDaoTao)
-router.get('/curriculums', adminController.getCurriculums);
+router.get('/curriculums', validate(curriculumsQuerySchema, 'query'), adminController.getCurriculums);
 router.get('/curriculum-options', validate(curriculumOptionsQuerySchema, 'query'), adminController.getCurriculumOptions);
 
 module.exports = router;

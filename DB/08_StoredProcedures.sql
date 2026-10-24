@@ -1,12 +1,15 @@
 ﻿-- ENCODING: UTF-8 WITH BOM
-USE [$(DatabaseName)];
+USE [DBMS330284];
 GO
 
 SET ANSI_NULLS ON;
 GO
 SET QUOTED_IDENTIFIER ON;
 GO
-CREATE OR ALTER PROCEDURE [dbo].[SP_TaoTaiKhoan]
+IF OBJECT_ID(N'dbo.SP_TaoTaiKhoan', N'P') IS NOT NULL
+    DROP PROCEDURE [dbo].[SP_TaoTaiKhoan];
+GO
+CREATE PROCEDURE [dbo].[SP_TaoTaiKhoan]
     @Username       VARCHAR(50),
     @PasswordHash   VARCHAR(255),
     @VaiTro         VARCHAR(30),
@@ -155,7 +158,10 @@ END CATCH;
 
 END;
 GO
-CREATE OR ALTER PROCEDURE [dbo].[SP_KhoaTaiKhoan]
+IF OBJECT_ID(N'dbo.SP_KhoaTaiKhoan', N'P') IS NOT NULL
+    DROP PROCEDURE [dbo].[SP_KhoaTaiKhoan];
+GO
+CREATE PROCEDURE [dbo].[SP_KhoaTaiKhoan]
     @MaTaiKhoan INT,
     @MaTaiKhoanNguoiThaoTac INT = NULL
 AS
@@ -254,7 +260,10 @@ END CATCH;
 
 END;
 GO
-CREATE OR ALTER PROCEDURE [dbo].[SP_DangKyTinChi]
+IF OBJECT_ID(N'dbo.SP_DangKyTinChi', N'P') IS NOT NULL
+    DROP PROCEDURE [dbo].[SP_DangKyTinChi];
+GO
+CREATE PROCEDURE [dbo].[SP_DangKyTinChi]
     @MaSV INT,
     @MaLHP VARCHAR(20)
 AS
@@ -407,7 +416,10 @@ END CATCH;
 
 END;
 GO
-CREATE OR ALTER PROCEDURE [dbo].[SP_HuyDangKy]
+IF OBJECT_ID(N'dbo.SP_HuyDangKy', N'P') IS NOT NULL
+    DROP PROCEDURE [dbo].[SP_HuyDangKy];
+GO
+CREATE PROCEDURE [dbo].[SP_HuyDangKy]
     @MaSV INT,
     @MaLHP VARCHAR(20)
 AS
@@ -477,7 +489,10 @@ END CATCH;
 
 END;
 GO
-CREATE OR ALTER PROCEDURE [dbo].[SP_TinhHocPhiSinhVien]
+IF OBJECT_ID(N'dbo.SP_TinhHocPhiSinhVien', N'P') IS NOT NULL
+    DROP PROCEDURE [dbo].[SP_TinhHocPhiSinhVien];
+GO
+CREATE PROCEDURE [dbo].[SP_TinhHocPhiSinhVien]
     @MaSV INT,
     @MaHocKy INT
 AS
@@ -618,7 +633,10 @@ END CATCH;
 
 END;
 GO
-CREATE OR ALTER PROCEDURE [dbo].[SP_ThongKeHocPhi]
+IF OBJECT_ID(N'dbo.SP_ThongKeHocPhi', N'P') IS NOT NULL
+    DROP PROCEDURE [dbo].[SP_ThongKeHocPhi];
+GO
+CREATE PROCEDURE [dbo].[SP_ThongKeHocPhi]
     @MaHocKy INT = NULL,
     @TrangThai VARCHAR(20) = NULL
 AS
@@ -664,7 +682,10 @@ END;
 GO
 
 -- 7. Thủ tục báo cáo thống kê học phí chi tiết theo Lớp sinh hoạt
-CREATE OR ALTER PROCEDURE [dbo].[SP_ThongKeHocPhiTheoLop]
+IF OBJECT_ID(N'dbo.SP_ThongKeHocPhiTheoLop', N'P') IS NOT NULL
+    DROP PROCEDURE [dbo].[SP_ThongKeHocPhiTheoLop];
+GO
+CREATE PROCEDURE [dbo].[SP_ThongKeHocPhiTheoLop]
     @MaLop VARCHAR(20),
     @MaHocKy INT = NULL
 AS
@@ -717,7 +738,10 @@ GO
 -- ============================================================================
 -- 8. SP_XacNhanThanhToan: Xác nhận giao dịch học phí (CHO_XAC_NHAN -> DA_XAC_NHAN)
 -- ============================================================================
-CREATE OR ALTER PROCEDURE dbo.SP_XacNhanThanhToan
+IF OBJECT_ID(N'dbo.SP_XacNhanThanhToan', N'P') IS NOT NULL
+    DROP PROCEDURE [dbo].[SP_XacNhanThanhToan];
+GO
+CREATE PROCEDURE dbo.SP_XacNhanThanhToan
     @MaThanhToan BIGINT,
     @MaTaiKhoanXacNhan INT
 AS
@@ -815,7 +839,10 @@ GO
 -- ============================================================================
 -- 9. SP_TuChoiThanhToan: Từ chối giao dịch học phí (CHO_XAC_NHAN -> TU_CHOI)
 -- ============================================================================
-CREATE OR ALTER PROCEDURE dbo.SP_TuChoiThanhToan
+IF OBJECT_ID(N'dbo.SP_TuChoiThanhToan', N'P') IS NOT NULL
+    DROP PROCEDURE [dbo].[SP_TuChoiThanhToan];
+GO
+CREATE PROCEDURE dbo.SP_TuChoiThanhToan
     @MaThanhToan BIGINT,
     @MaTaiKhoanXacNhan INT
 AS

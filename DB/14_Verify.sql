@@ -1,4 +1,4 @@
-﻿USE [$(DatabaseName)];
+﻿USE [DBMS330284];
 GO
 SET NOCOUNT ON;
 IF (SELECT COUNT(*) FROM sys.tables WHERE is_ms_shipped = 0) <> 19 THROW 52010, N'Sai số lượng bảng; mong đợi 19.', 1;

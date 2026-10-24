@@ -1,6 +1,30 @@
 // frontend/js/student.js
 // Quản lý Dashboard Tổng quan và Hồ sơ cá nhân của Sinh viên
 
+function getStudentTermNumber(namHoc, tenHocKy, khoaHoc) {
+  const cohortStartYear = Number(String(khoaHoc || '').match(/\d{4}/)?.[0]);
+  const academicStartYear = Number(String(namHoc || '').match(/\d{4}/)?.[0]);
+  const termInYear = Number(String(tenHocKy || '').match(/(?:học kỳ|hk)\s*(\d+)/i)?.[1]);
+  if (!cohortStartYear || !academicStartYear || ![1, 2].includes(termInYear)) return null;
+
+  const termNumber = (academicStartYear - cohortStartYear) * 2 + termInYear;
+  return termNumber >= 1 && termNumber <= 8 ? termNumber : null;
+}
+
+function formatStudentSemesterLabel(semester, khoaHoc) {
+  const termNumber = getStudentTermNumber(semester.namHoc, semester.tenHocKy, khoaHoc);
+  return termNumber ? `Học kỳ ${termNumber}` : `${escapeHtml(semester.namHoc)} - ${escapeHtml(semester.tenHocKy)}`;
+}
+
+let currentStudentStudyTermLabel = null;
+
+function applyCurrentStudentStudyTermLabel() {
+  if (!currentStudentStudyTermLabel) return;
+  document.querySelectorAll('.semester-badge, .dynamic-semester-name').forEach(element => {
+    element.textContent = currentStudentStudyTermLabel;
+  });
+}
+
 // 1. Tải dữ liệu Dashboard Tổng quan
 async function loadStudentDashboard() {
   const user = api.getCurrentUser();
@@ -43,6 +67,14 @@ async function loadStudentDashboard() {
     const gpa = gradesData.summary ? gradesData.summary.gpa : 0;
     const totalCredits = gradesData.summary ? gradesData.summary.tongTinChiTichLuy : 0;
     const semesterDisplay = curSemester ? `${escapeHtml(curSemester.tenHocKy)} (${escapeHtml(curSemester.namHoc)})` : 'Học kỳ hiện tại';
+    const currentStudyTerm = curSemester
+      ? getStudentTermNumber(curSemester.namHoc, curSemester.tenHocKy, profile?.khoaHoc)
+      : null;
+    const studyTermLabel = currentStudyTerm ? `Học kỳ ${currentStudyTerm}` : 'Học kỳ hiện tại';
+    if (currentStudyTerm) {
+      currentStudentStudyTermLabel = studyTermLabel;
+      applyCurrentStudentStudyTermLabel();
+    }
 
     dashboardContainer.innerHTML = `
       <!-- Welcome Banner Compact -->
@@ -57,7 +89,7 @@ async function loadStudentDashboard() {
         </div>
         <div style="background: rgba(255, 255, 255, 0.15); padding: 0.4rem 0.875rem; border-radius: var(--radius-sm); text-align: right;">
           <div style="font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.9;">Học kỳ hiện tại</div>
-          <div style="font-size: 0.9375rem; font-weight: 700;">${semesterDisplay}</div>
+          <div style="font-size: 0.9375rem; font-weight: 700;">${currentStudyTerm ? studyTermLabel : semesterDisplay}</div>
         </div>
       </div>
 
@@ -76,7 +108,7 @@ async function loadStudentDashboard() {
         </div>
 
         <div class="summary-card">
-          <div class="summary-label">Đăng Ký Học Kỳ 7</div>
+          <div class="summary-label">Đăng Ký ${studyTermLabel}</div>
           <div class="summary-value" style="color: #0284C7;">${creditsThisSemester} <span style="font-size: 0.8125rem; font-weight: normal; color: var(--color-text-muted);">TC</span></div>
           <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.15rem;">Đã đăng ký ${regCourses.length} môn học</div>
         </div>
@@ -107,7 +139,7 @@ async function loadStudentDashboard() {
           <div class="card-body" style="padding: 0.75rem 1rem;">
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
               <div style="padding: 0.5rem 0.75rem; border-left: 3px solid #3B82F6; background: var(--color-surface-hover); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;">
-                <div style="font-weight: 600; font-size: 0.8125rem; color: var(--color-primary-dark);">Hệ thống Đăng ký Tín chỉ Học kỳ 7 đang mở</div>
+                <div style="font-weight: 600; font-size: 0.8125rem; color: var(--color-primary-dark);">Hệ thống Đăng ký Tín chỉ ${studyTermLabel} đang mở</div>
                 <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.15rem;">
                   Hạn đăng ký đến 23:59 ngày 31/10/2026. Sinh viên kiểm tra kỹ thời khóa biểu để tránh trùng lịch.
                 </div>
@@ -153,7 +185,7 @@ async function loadStudentDashboard() {
                 </span>
                 <span class="shortcut-info">
                   <span class="shortcut-title">Đăng ký học phần</span>
-                  <span class="shortcut-desc">Đăng ký môn học kỳ 7</span>
+                  <span class="shortcut-desc">Đăng ký môn ${studyTermLabel.toLowerCase()}</span>
                 </span>
               </button>
 
@@ -341,5 +373,67 @@ async function loadStudentProfile() {
   }
 }
 
+let studentCurriculumData = null;
+
+async function loadStudentCurriculum() {
+  const user = api.getCurrentUser();
+  const status = document.getElementById('studentCurriculumStatus');
+  const summary = document.getElementById('studentCurriculumSummary');
+  const select = document.getElementById('studentCurriculumTerm');
+  const courses = document.getElementById('studentCurriculumCourses');
+  if (!user?.maSV || !status || !summary || !select || !courses) return;
+  status.textContent = 'Đang tải...';
+  courses.innerHTML = '<div style="text-align:center;padding:1.5rem;">Đang tải chương trình đào tạo...</div>';
+  try {
+    studentCurriculumData = await api.get(`/students/${user.maSV}/curriculum`);
+    const program = studentCurriculumData;
+    status.textContent = program.trangThai ? 'Đang áp dụng' : 'Ngừng áp dụng';
+    status.className = `badge ${program.trangThai ? 'badge-success' : 'badge-warning'}`;
+    summary.innerHTML = renderStudentCurriculumSummary(program);
+    select.innerHTML = program.hocKy.map(term => `<option value="${term.hocKyDuKien}">Học kỳ ${term.hocKyDuKien}</option>`).join('');
+    renderStudentCurriculumTerm();
+  } catch (error) {
+    status.textContent = 'Chưa có dữ liệu';
+    summary.textContent = '';
+    select.innerHTML = '';
+    courses.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--color-text-muted);">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+function renderStudentCurriculumSummary(program) {
+  return `
+    <div class="curriculum-program-heading">
+      <div class="curriculum-program-identity">
+        <h3 class="curriculum-program-name">${escapeHtml(program.tenCTDT)}</h3>
+        <div class="curriculum-program-code"><span>Mã CTĐT</span><code>${escapeHtml(program.maCTDT)}</code></div>
+      </div>
+    </div>
+    <dl class="curriculum-program-facts">
+      <div><dt>Ngành</dt><dd>${escapeHtml(program.nganh || 'Chưa cập nhật')}</dd></div>
+      <div><dt>Khoa</dt><dd>${escapeHtml(program.tenKhoa || 'Chưa cập nhật')}</dd></div>
+      <div><dt>Khóa học</dt><dd>${escapeHtml(program.khoaHoc || 'Chưa cập nhật')}</dd></div>
+    </dl>
+    <div class="curriculum-program-metrics">
+      <div class="curriculum-program-metric"><span>Tín chỉ yêu cầu</span><strong>${escapeHtml(program.tongTinChiYeuCau ?? '—')}</strong></div>
+      <div class="curriculum-program-metric"><span>Thời gian đào tạo</span><strong>${program.thoiGianDaoTao ? `${escapeHtml(program.thoiGianDaoTao)} năm` : '—'}</strong></div>
+    </div>`;
+}
+
+function renderStudentCurriculumTerm() {
+  const courses = document.getElementById('studentCurriculumCourses');
+  const termNo = Number(document.getElementById('studentCurriculumTerm')?.value);
+  const term = studentCurriculumData?.hocKy.find(item => item.hocKyDuKien === termNo);
+  if (!courses || !term) return;
+  if (!term.monHoc.length) {
+    courses.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--color-text-muted);">Học kỳ này chưa có môn học trong chương trình.</div>';
+    return;
+  }
+  courses.innerHTML = `<table class="table" style="min-width:850px"><thead><tr><th>STT</th><th>Mã học phần</th><th>Tên môn học</th><th>Số tín chỉ</th><th>Học phần tiên quyết</th></tr></thead><tbody>${term.monHoc.map((course, index) => `<tr><td>${index + 1}</td><td><code>${escapeHtml(course.maMonHoc)}</code></td><td>${escapeHtml(course.tenMonHoc)}</td><td>${course.soTinChi}</td><td>${course.hocPhanTienQuyet ? escapeHtml(course.hocPhanTienQuyet) : '—'}</td></tr>`).join('')}</tbody></table>`;
+}
+
 window.loadStudentDashboard = loadStudentDashboard;
 window.loadStudentProfile = loadStudentProfile;
+window.loadStudentCurriculum = loadStudentCurriculum;
+window.renderStudentCurriculumTerm = renderStudentCurriculumTerm;
+window.renderStudentCurriculumSummary = renderStudentCurriculumSummary;
+window.applyCurrentStudentStudyTermLabel = applyCurrentStudentStudyTermLabel;

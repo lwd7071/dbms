@@ -69,6 +69,13 @@ const curriculumOptionsQuerySchema = z.object({
   )
 });
 
+const curriculumsQuerySchema = z.object({
+  maKhoa: z.preprocess(value => value === '' ? undefined : value, z.string().trim().min(1).max(10).optional()),
+  namTuyenSinh: z.preprocess(value => value === undefined || value === '' ? undefined : Number(value), z.number().int().min(2000).max(2100).optional()),
+  maCTDT: z.preprocess(value => value === '' ? undefined : value, z.string().trim().min(1).max(24).optional()),
+  hocKyDuKien: z.preprocess(value => value === undefined || value === '' ? undefined : Number(value), z.number().int().min(1).max(20).optional())
+});
+
 const pendingPaymentsQuerySchema = z.object({
   maLop: z.string().trim().max(20, 'Mã lớp sinh hoạt tối đa 20 ký tự.').optional()
 });
@@ -83,5 +90,6 @@ module.exports = {
   adminRegistrationsQuerySchema,
   adminAuditQuerySchema,
   curriculumOptionsQuerySchema,
+  curriculumsQuerySchema,
   pendingPaymentsQuerySchema
 };

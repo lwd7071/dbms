@@ -19,5 +19,6 @@ router.get('/:id/payments', authorizeStudentRecord, studentController.getPayment
 
 // Thông tin hồ sơ sinh viên
 router.get('/:id/profile', authorizeStudentRecord, studentController.getProfile);
+router.get('/:id/curriculum', authorizeStudentRecord, studentController.getCurriculum);
 
 module.exports = router;

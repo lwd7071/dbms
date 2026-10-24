@@ -100,7 +100,7 @@ const authorizeMyStudentId = (req, res, next) => {
     }));
   }
 
-  if (req.body.maSV !== undefined && String(req.body.maSV) !== String(req.user.maSV)) {
+  if (req.body?.maSV !== undefined && String(req.body.maSV) !== String(req.user.maSV)) {
     return res.status(403).json(errorResponse({
       field: 'permission',
       message: 'Không thể thao tác đăng ký thay cho sinh viên khác.'

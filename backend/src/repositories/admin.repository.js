@@ -160,34 +160,34 @@ const updateUserStatus = async (username, status, actor) => {
 };
 
 // Lấy cấu trúc khung Chương trình Đào tạo từ View V_CauTrucChuongTrinhDaoTao
-const getCurriculums = async (maKhoa = null) => {
+const getCurriculums = async (filters = {}) => {
   const pool = await getPool();
   const request = pool.request();
-
-  let query = `
-    SELECT TOP 200
-      MaCTDT,
-      TenCTDT,
-      Nganh,
-      KhoaHoc,
-      MaKhoa,
-      TenKhoa,
-      MaMonHoc,
-      TenMonHoc,
-      SoTinChi,
-      HocKyDuKien,
-      LoaiMon,
-      ThuTu
-    FROM dbo.V_CauTrucChuongTrinhDaoTao
-    WHERE 1=1
+  const { maKhoa, namTuyenSinh, maCTDT, hocKyDuKien } = typeof filters === 'string' ? { maKhoa: filters } : filters;
+  request.input('MaKhoa', sql.VarChar(10), maKhoa || null)
+    .input('NamTuyenSinh', sql.SmallInt, namTuyenSinh || null)
+    .input('MaCTDT', sql.VarChar(24), maCTDT || null)
+    .input('HocKyDuKien', sql.TinyInt, hocKyDuKien || null);
+  const query = `
+    SELECT c.MaCTDT, c.TenCTDT, n.TenNganh AS Nganh, c.KhoaHoc, c.NamTuyenSinh,
+      c.TongTinChiYeuCau, c.ThoiGianDaoTao, c.TrangThai AS TrangThaiCTDT,
+      n.MaKhoa, k.TenKhoa, mh.MaMonHoc, mh.TenMonHoc, mh.SoTinChi,
+      ctm.HocKyDuKien, ctm.LoaiMon, ctm.ThuTu,
+      (SELECT STRING_AGG(CONVERT(NVARCHAR(MAX), CONCAT(pre.MaMonHoc, N' - ', pre.TenMonHoc)), N'; ')
+       FROM dbo.MONHOCTIENQUYET mtq
+       INNER JOIN dbo.MONHOC pre ON pre.MaMonHoc = mtq.MaMonTienQuyet
+       WHERE mtq.MaMonHoc = mh.MaMonHoc) AS HocPhanTienQuyet
+    FROM dbo.CHUONGTRINHDAOTAO c
+    INNER JOIN dbo.NGANH n ON n.MaNganh = c.MaNganh
+    INNER JOIN dbo.KHOA k ON k.MaKhoa = n.MaKhoa
+    LEFT JOIN dbo.CTDT_MONHOC ctm ON ctm.MaCTDT = c.MaCTDT
+      AND (@HocKyDuKien IS NULL OR ctm.HocKyDuKien = @HocKyDuKien)
+    LEFT JOIN dbo.MONHOC mh ON mh.MaMonHoc = ctm.MaMonHoc
+    WHERE (@MaKhoa IS NULL OR n.MaKhoa = @MaKhoa)
+      AND (@NamTuyenSinh IS NULL OR c.NamTuyenSinh = @NamTuyenSinh)
+      AND (@MaCTDT IS NULL OR c.MaCTDT = @MaCTDT)
+    ORDER BY c.MaCTDT, ctm.HocKyDuKien, ctm.ThuTu, mh.MaMonHoc;
   `;
-
-  if (maKhoa) {
-    query += ` AND MaKhoa = @MaKhoa`;
-    request.input('MaKhoa', sql.VarChar(20), maKhoa);
-  }
-
-  query += ` ORDER BY MaCTDT, HocKyDuKien, ThuTu`;
   const result = await request.query(query);
 
   return result.recordset.map(r => ({
@@ -195,6 +195,10 @@ const getCurriculums = async (maKhoa = null) => {
     tenCTDT: r.TenCTDT,
     nganh: r.Nganh,
     khoaHoc: r.KhoaHoc,
+    namTuyenSinh: r.NamTuyenSinh,
+    tongTinChiYeuCau: r.TongTinChiYeuCau,
+    thoiGianDaoTao: r.ThoiGianDaoTao,
+    trangThai: Boolean(r.TrangThaiCTDT),
     maKhoa: r.MaKhoa,
     tenKhoa: r.TenKhoa,
     maMonHoc: r.MaMonHoc,
@@ -202,7 +206,8 @@ const getCurriculums = async (maKhoa = null) => {
     soTinChi: r.SoTinChi,
     hocKyDuKien: r.HocKyDuKien,
     loaiMon: r.LoaiMon,
-    thuTu: r.ThuTu
+    thuTu: r.ThuTu,
+    hocPhanTienQuyet: r.HocPhanTienQuyet
   }));
 };
 

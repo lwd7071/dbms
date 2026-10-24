@@ -1,5 +1,5 @@
 ﻿-- ENCODING: UTF-8 WITH BOM
-USE [$(DatabaseName)];
+USE [DBMS330284];
 GO
 
 SET ANSI_NULLS ON;

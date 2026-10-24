@@ -1,4 +1,4 @@
-﻿USE [$(DatabaseName)];
+﻿USE [DBMS330284];
 GO
 SET NOCOUNT ON;
 DECLARE @Error int;

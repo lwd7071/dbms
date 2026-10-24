@@ -1,5 +1,5 @@
 ﻿-- ENCODING: UTF-8 WITH BOM
-DECLARE @DatabaseName sysname = N'$(DatabaseName)';
+DECLARE @DatabaseName sysname = N'DBMS330284';
 IF DB_ID(@DatabaseName) IS NULL
 BEGIN
     DECLARE @CreateSql nvarchar(max) = N'CREATE DATABASE ' + QUOTENAME(@DatabaseName);
@@ -10,7 +10,7 @@ ELSE
     PRINT N'Database đã tồn tại: ' + @DatabaseName;
 GO
 
-USE [$(DatabaseName)];
+USE [DBMS330284];
 GO
 
 SELECT

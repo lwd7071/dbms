@@ -1,6 +1,6 @@
--- Upgrade the existing sample database without deleting student/history rows.
+﻿-- Upgrade the existing sample database without deleting student/history rows.
 -- Rehearse against DBMS330284_MigrationRehearsal before applying to DBMS330284.
-USE [$(DatabaseName)];
+USE [DBMS330284];
 GO
 SET NOCOUNT ON;
 SET XACT_ABORT ON;

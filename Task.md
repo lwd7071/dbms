@@ -1,5 +1,102 @@
 # TASK LOG
 
+## Đồng bộ README thư mục Database bàn giao
+
+- Status: DONE
+- Date: 2026-10-22
+- Files changed:
+  - `Nhom16_QuanLiHocVuVaDangKyTinChi/Database/README.md`
+  - `Task.md`
+
+### Changes
+- Giữ nguyên cách đánh số file trong thư mục Database.
+- Sửa README để hướng dẫn chạy `00_Build_DBMS330284.sql` một lần hoặc chạy các file thành phần theo đúng thứ tự, trong đó seed chạy sau schema.
+- Cập nhật tên file security/verify theo đúng nội dung thư mục bàn giao.
+
+### Tests / Verification
+- Đối chiếu README với danh sách file hiện có trong `Database/`.
+- Xác nhận script all-in-one tồn tại và README ghi rõ không chạy lặp cùng các file thành phần.
+
+### Issues
+- None.
+
+### Next Step
+- Có thể bàn giao nguyên thư mục `Nhom16_QuanLiHocVuVaDangKyTinChi/` cùng file mã nguồn ZIP.
+
+## Đóng gói mã nguồn cho hồ sơ nộp bài
+
+- Status: DONE
+- Date: 2026-10-22
+- Files changed:
+  - `Nhom16_QuanLiHocVuVaDangKyTinChi/MaNguon_Nhom16.zip`
+  - `Task.md`
+
+### Changes
+- Tạo ZIP gồm backend source/tests, frontend, package manifests, `.env.example` và README chạy ứng dụng.
+- Dùng thư mục `Database/` đã có bên cạnh nơi giải nén, không đưa database, báo cáo, slide hay tài liệu thiết kế vào ZIP.
+- Loại `.env` thật, `node_modules` và thư mục tạm khỏi archive.
+
+### Tests / Verification
+- Kiểm kê archive: 112 entry, khớp toàn bộ 112 file dự kiến; không thiếu entry.
+- Rà các đường dẫn loại trừ: không có `.env` thật, `node_modules`, DB, báo cáo, slide hoặc tài liệu PDF/DOCX/PPTX.
+- Xác nhận README trỏ đúng tới script `../Database/00_Build_DBMS330284.sql` đang có trong hồ sơ.
+
+### Issues
+- None.
+
+### Next Step
+- Giải nén ZIP thành thư mục con nằm cạnh `Database/`, rồi làm theo README bên trong.
+
+## Ghi rõ tên CSDL trong các script SQL
+
+- Status: DONE
+- Date: 2026-10-22
+- Files changed:
+  - Các script SQL thành phần trong `DB/`, gồm migration và tests
+  - `backend/scripts/run_all_db_files.js`
+  - `DB/README.md`
+  - `Task.md`
+
+### Changes
+- Thay placeholder `$(DatabaseName)` bằng tên cụ thể `DBMS330284` trong các script SQL còn lại để mở và chạy trực tiếp trong SSMS.
+- Cập nhật runner để ánh xạ tên mặc định trong các script sang database demo hoặc rehearsal được truyền vào, giữ nguyên luồng dựng hiện tại.
+- Bổ sung hướng dẫn chạy riêng script thành phần và lưu ý chỉ seed database mới/trống.
+
+### Tests / Verification
+- `node --check backend/scripts/run_all_db_files.js`: PASS.
+- Rà `DB/**/*.sql`: không còn placeholder `$(DatabaseName)`; xác nhận 26 lệnh `USE [DBMS330284]`.
+- Chưa chạy truy vấn SQL Server; kết nối `sqlcmd` trong môi trường này chưa hoạt động.
+
+### Issues
+- None.
+
+### Next Step
+- Có thể mở các file thành phần riêng trong SSMS; với database demo/rehearsal, tiếp tục dùng runner theo README.
+
+## Package standalone SQL Server database build
+
+- Status: DONE
+- Date: 2026-10-21
+- Files changed:
+  - `DB/00_Build_DBMS330284.sql`
+  - `DB/README.md`
+  - `Task.md`
+
+### Changes
+- Added an SSMS-ready all-in-one script that creates `DBMS330284`, applies schema/security/seed scripts, and runs `14_Verify.sql`.
+- Added per-batch progress guards so a populated database is refused and later batches stop if a prior batch fails.
+- Documented the standalone workflow and permissions in `DB/README.md`.
+
+### Tests / Verification
+- Static checks confirmed the standalone script contains 241 guarded SQL batches, embeds the fixed database name, and includes seed and final verification steps.
+- Tried connecting to the local SQL Server Express instance with `sqlcmd`; the installed client could not establish a connection (ODBC Driver 17 reported encryption is unsupported), so execution and database-level verification could not be completed here.
+
+### Issues
+- Database execution verification remains unavailable until a compatible SQL Server client connection is available.
+
+### Next Step
+- Run `DB/00_Build_DBMS330284.sql` in SSMS against an empty SQL Server instance and confirm the final `14_Verify.sql` result is PASS.
+
 ## Verify & Refine spec.md
 
 - Status: DONE
@@ -1770,3 +1867,432 @@
 
 ### Next Step
 - Điều tra lỗi tải học phần đã đăng ký và ma trận quyền các màn hình quản trị; sau đó rà các tab còn lại theo vai trò và kích thước màn hình.
+
+## Phase 33: Hoàn thiện báo cáo theo trạng thái project ngày 21/10/2026
+
+- Status: CONTENT UPDATED — nội dung, số liệu DB, kiểm thử và minh chứng đã được đồng bộ. Render trực quan DOCX chưa hoàn tất do thiếu LibreOffice và Word COM không mở tài liệu trong thời gian chờ.
+- Date: 2026-10-21
+
+### Changes
+- Đối chiếu nội dung báo cáo với schema và script SQL hiện tại, cập nhật ERD, lược đồ quan hệ, từ điển dữ liệu, quy trình nghiệp vụ và đường dẫn script.
+- Cập nhật kết quả trên bản sao QA riêng, phân biệt kết quả lịch sử với lần chạy 21/10/2026.
+- Bổ sung kết quả backup có checksum, RESTORE VERIFYONLY, phục hồi QA, DBCC CHECKDB, kiểm thử quyền GRANT/REVOKE, rollback và tranh chỗ cuối.
+- Cập nhật số lượng đối tượng SQL, dữ liệu, CTĐT, liên kết CTDT_MONHOC, số liệu index và Jest. Nêu các giới hạn còn lại như runtime dbo, phạm vi đo hiệu năng và chưa có browser end-to-end.
+- Giữ trống các ô phân công thành viên trong Phụ lục A.
+- Sửa mục lục đang ghép nhầm nhãn 14 trigger với 20 trigger và bật cập nhật trường khi mở bằng Word.
+
+### Tests / Verification
+- Bản sao DBMS330284_ReportQA_20261021: schema và invariant SQL PASS.
+- Giao dịch minh họa: PASS. Thử nghiệm hai phiên tranh chỗ cuối: một đăng ký thành công, một nhận lỗi 50011, sĩ số bằng sức chứa.
+- Kiểm tra GRANT/REVOKE bằng HAS_PERMS_BY_NAME: PASS, giá trị 1 sau GRANT và 0 sau REVOKE.
+- Đo index trên workload truy vấn MaSV: 338 logical reads khi scan và 3 logical reads khi dùng index.
+- `npm test` trên DB QA: 34 suites, 221 tests PASS.
+- Nội dung DOCX được kiểm tra cấu trúc, bảng, tiêu đề, các chuỗi cũ và ô phân công phụ lục. Render PNG/PDF chưa chạy được vì máy thiếu LibreOffice. Thử Word tự động hóa không xuất được PDF.
+
+### Issues / còn lại
+- Cần mở báo cáo trong Microsoft Word, cập nhật toàn bộ mục lục và danh mục hình/bảng, kiểm tra số trang cùng bố cục ảnh và bảng trước khi nộp.
+- Backend trong lần đo SQL còn dùng `sa`/`dbo`, chưa chạy bằng login runtime least privilege.
+- Chưa chạy browser end-to-end và phép đo hiệu năng rộng ngoài workload đã mô tả.
+
+## Phase 34: Viết lại báo cáo cuối kỳ theo giọng văn nhóm sinh viên
+
+- Status: DONE
+- Date: 2026-10-21
+- Files changed:
+  - `Nhom16_QuanLyHocVuDangKyTinChi_hoanthien.docx`
+  - `Task.md`
+
+### Changes
+- Viết lại 162 đoạn thuyết minh trong sáu chương theo cách trình bày bài toán, lựa chọn thiết kế, kết quả và giới hạn.
+- Thay bảng liệt kê đường dẫn API dài bằng bảng chức năng theo người dùng. Cập nhật bảng phạm vi hoàn thiện và bảng minh chứng theo các tiêu chí đánh giá.
+- Sửa số liệu cũ ở bảng đo chỉ mục và bài thử hai kết nối. Phân biệt kết quả ngày 14/10 với lần kiểm chứng ngày 21/10.
+- Giữ tên bảng, cột, thủ tục và mã nguồn tại phần từ điển dữ liệu, SQL và phụ lục. Giữ trống các ô phân công thành viên.
+- Bật lặp tiêu đề bảng khi sang trang, giữ từng hàng không tách đôi, cập nhật mục lục và danh mục hình/bảng bằng Microsoft Word.
+- File gốc đang bị Word giữ khóa nên bản hoàn thiện được lưu thành file mới để không làm mất chỉnh sửa đang mở.
+
+### Tests / Verification
+- Đối chiếu nội dung với `docs/spec.md`, `docs/verification-2026-10-21.md` và các bài thử liên quan đến đăng ký, điểm, thanh toán, quản trị và phản hồi giao diện.
+- Kiểm tra DOCX: 51 bảng, 20 hình, bảng phân công còn trống, không còn tiêu đề cũ 14 trigger hoặc bảng liệt kê API, không có gạch nối dài hay gạch đôi trong nội dung.
+- Microsoft Word xuất PDF thành công: 93 trang gồm bìa, mục lục và phụ lục. Đã rà toàn bộ trang qua ảnh xem trước, kiểm tra riêng các trang ERD, bảng dài, chương ứng dụng và kết luận.
+- Không chạy lại Jest vì công việc chỉ thay đổi báo cáo. Báo cáo dùng kết quả kiểm chứng đã ghi nhận trước đó trên DB thử nghiệm.
+
+### Issues
+- File gốc `Nhom16_QuanLyHocVuDangKyTinChi_suabia.docx` vẫn đang bị Word giữ khóa. Bản giao là `Nhom16_QuanLyHocVuDangKyTinChi_hoanthien.docx`.
+
+### Next Step
+- Nhóm bổ sung phân công công việc trong Phụ lục A trước khi nộp.
+
+## Phase 35: Đổi tên các mục chi tiết bảng trong Chương 2
+
+- Status: DONE
+- Date: 2026-10-21
+- Files changed:
+  - `Nhom16_QuanLyHocVuDangKyTinChi_hoanthien.docx`
+  - `Task.md`
+
+### Changes
+- Đổi 19 tiêu đề từ `2.9.1` đến `2.9.19` từ "Từ điển dữ liệu bảng" thành "Chi tiết bảng" ngay trên tài liệu đang mở trong Word.
+- Cập nhật mục lục và lưu tài liệu, giữ nguyên các chỉnh sửa hiện có của người dùng.
+
+### Tests / Verification
+- Kiểm tra DOCX: 19 tiêu đề nội dung và 19 mục lục đã đổi, không còn cụm tiêu đề cũ.
+- Word xuất bản xem trước 89 trang. Đã xem mục lục và trang đầu của phần 2.9, không thấy lỗi bố cục do đổi tiêu đề.
+- Số bảng và hình giữ nguyên. Phần phân công công việc vẫn để trống.
+
+### Issues
+- None.
+
+### Next Step
+- Bổ sung phân công công việc trong phụ lục trước khi nộp.
+## Phase 36: Bổ sung README hướng dẫn chạy project
+
+- Status: DONE
+- Date: 2026-10-21
+- Files changed:
+  - `README.md`
+  - `Task.md`
+
+### Changes
+- Thêm hướng dẫn chuẩn bị Node.js/SQL Server, cấu hình `backend/.env`, dựng database demo riêng, khởi động website, kiểm tra health endpoint và đăng nhập bằng tài khoản demo.
+- Thêm liên kết tới đặc tả, hướng dẫn SQL, thiết kế database, sơ đồ ERD và danh sách tài khoản.
+- Thêm các bước xử lý lỗi kết nối, cấu hình và cổng chạy phổ biến.
+
+### Tests / Verification
+- Đối chiếu lệnh và cấu hình với `backend/package.json`, `.env.example`, `backend/src/server.js`, `backend/scripts/run_all_db_files.js` và `DB/README.md`.
+- Kiểm tra tài khoản demo với các nút đăng nhập nhanh trong `frontend/index.html`.
+- Không chạy test vì chỉ cập nhật tài liệu hướng dẫn.
+
+### Issues
+- Người chạy cần tự cấu hình SQL Server và thông tin đăng nhập trong `backend/.env` trên máy của mình.
+
+### Next Step
+- Mở project theo README, dựng database demo riêng rồi khởi động backend.
+
+## Phase 37: Cho phép dựng lại DBMS330284 từ file all-in-one
+
+- Status: DONE
+- Date: 2026-10-22
+- Files changed:
+  - `DB/00_Build_DBMS330284.sql`
+  - `DB/README.md`
+  - `Nhom16_QuanLiHocVuVaDangKyTinChi/Database/00_Build_DBMS330284.sql`
+  - `Nhom16_QuanLiHocVuVaDangKyTinChi/Database/README.md`
+  - `Nhom16_QuanLiHocVuVaDangKyTinChi/MaNguon_Nhom16.zip`
+  - `Task.md`
+
+### Changes
+- File all-in-one xóa và tạo lại `DBMS330284` nếu database đã tồn tại; cảnh báo mất toàn bộ dữ liệu được ghi trong SQL và README.
+- Đồng bộ hai bản script và cập nhật README trong ZIP.
+
+### Tests / Verification
+- Xác nhận hai bản SQL có cùng SHA-256.
+- Đối chiếu dòng cảnh báo trong README thư mục Database và README bên trong ZIP.
+- Không chạy SQL trên instance người dùng; không chạy test.
+
+### Issues
+- Chạy lại file sẽ xóa dữ liệu cũ trong `DBMS330284`.
+
+### Next Step
+- Chạy toàn bộ `00_Build_DBMS330284.sql` trong SSMS để dựng lại database.
+
+## Phase 38: Sửa lỗi tạo procedure SP_ khi có trùng tên trong master
+
+- Status: DONE
+- Date: 2026-10-22
+- Files changed:
+  - `DB/00_Build_DBMS330284.sql`
+  - `DB/08_StoredProcedures.sql`
+  - `Nhom16_QuanLiHocVuVaDangKyTinChi/Database/00_Build_DBMS330284.sql`
+  - `Nhom16_QuanLiHocVuVaDangKyTinChi/Database/08_StoredProcedures.sql`
+  - `Task.md`
+
+### Changes
+- All-in-one builder dùng `CREATE PROCEDURE` cho 9 procedure trên database mới, tránh lỗi `CREATE OR ALTER` khi SQL Server đã có procedure `SP_` trùng tên trong `master`.
+- File thành phần 08 drop procedure cùng tên trong database đích trước khi tạo lại.
+
+### Tests / Verification
+- Xác nhận hai bản builder giống nhau, hai bản file 08 giống nhau; mỗi bản chứa đủ 9 procedure.
+- Không chạy SQL trên instance người dùng.
+
+### Issues
+- Chưa xác minh trực tiếp trên máy gặp lỗi; người chạy cần xóa DB dựng dở rồi chạy lại toàn bộ file 00 đã cập nhật.
+
+### Next Step
+- Dựng lại trên máy gặp lỗi và chạy file verify.
+
+## Phase 39: Cập nhật kịch bản demo sau nâng cấp database
+
+- Status: IN PROGRESS
+- Date: 2026-10-22
+- Files changed:
+  - `KichBanThuyetTrinh_Demo_Nhom16_DBMS330284_3PhanMoiSlide.docx`
+  - `Task.md`
+
+### Changes
+- Chuyển cấu trúc từ bảng tổng hợp sang từng slide, mỗi slide có đúng ba phần: lời nói trước lớp, code SQL chạy thử, giải thích khi SQL chạy.
+- Đặt phần tiền kiểm tra và code transaction đăng ký/hủy ngay trong slide tương ứng; thao tác ghi dùng mã lấy từ seed, có guard, rollback và đối chiếu trước/sau.
+- Giữ hướng dẫn không chạy build, seed, reset hoặc migration trên DB hiện tại; không tạo bản ghi demo.
+- Nêu số liệu schema và giới hạn kiểm chứng theo báo cáo 21/10; không tuyên bố đã có HTTP test tranh chấp chỗ cuối.
+
+### Tests / Verification
+- DOCX mở được; có 15 slide và mỗi nhãn trong form xuất hiện đúng 15 lần.
+- Accessibility audit: 0 findings. Kiểm tra nội dung không thấy mã fixture hoặc kết quả hiệu năng cũ.
+- Chưa chạy SQL/test database.
+- Render trang chưa hoàn tất: bundled Python hoạt động nhưng thiếu LibreOffice `soffice.exe`; chưa thể rà ảnh từng trang.
+
+### Issues
+- Cần render PNG và kiểm tra trực quan từng trang khi có renderer LibreOffice hoạt động.
+
+### Next Step
+- Mở file DOCX mới và kiểm tra hình thức; hoàn tất kiểm tra trực quan từng trang sau khi renderer khả dụng.
+
+## Tạo tài liệu ôn vấn đáp SQL cho phần CTĐT và danh mục
+
+- Status: DONE
+- Date: 2026-10-22
+- Files changed:
+  - `On_tap_SQL_phan_viec.docx`
+  - `Task.md`
+
+### Changes
+- Tạo tài liệu Word tiếng Việt bám schema SQL Server 2022 của project cho 7 bảng KHOA, NGANH, CHUONGTRINHDAOTAO, MONHOC, CTDT_MONHOC, MONHOCTIENQUYET và LOP.
+- Thêm đoạn code viết tay cho bảng, khóa/ràng buộc, trigger chống chu trình, trigger liên kết sinh viên-lớp-CTĐT, view, function kiểm tra tiên quyết, index, truy vấn và câu hỏi vấn đáp.
+
+### Tests / Verification
+- Mở lại DOCX bằng python-docx và xác nhận file ZIP OOXML không lỗi, có đủ phần code/hỏi đáp dự kiến.
+- Đã thử render bằng `render_docx.py`; không render được vì môi trường không có `soffice.exe`. Không thể kiểm tra PNG trực quan trong phiên này.
+- Không chạy test dự án hoặc thực thi SQL Server.
+
+### Issues
+- Chưa xác minh trực quan từng trang do thiếu LibreOffice/soffice.exe trong môi trường.
+
+### Next Step
+- Có thể mở file DOCX trong Word để xem trước và luyện viết lại các đoạn SQL.
+
+## Chẩn đoán và sửa lỗi tải học phần đã đăng ký
+
+- Status: DONE
+- Date: 2026-10-22
+- Files changed:
+  - `backend/src/middlewares/auth.middleware.js`
+  - `backend/tests/registration-middleware.test.js`
+  - `Task.md`
+
+### Changes
+- Tái hiện API GET `/api/registrations/my-courses` trả 500 do `authorizeMyStudentId` đọc `req.body.maSV` khi Express để `req.body` là `undefined` cho request GET.
+- Sửa điều kiện thành `req.body?.maSV` để kiểm tra payload nếu có mà vẫn cho phép GET không có body.
+- Thêm test hồi quy cho request sinh viên GET không có request body.
+- Lỗi `@HasCycle` trong ảnh SSMS là lỗi riêng của batch SQL người dùng chạy; file `DB/05_Triggers.sql` hiện đã có khai báo biến trong trigger.
+
+### Tests / Verification
+- Test hồi quy trước sửa: FAIL với đúng `TypeError: Cannot read properties of undefined (reading 'maSV')`.
+- Test hồi quy sau sửa: PASS (1 suite, 1 test).
+- Chạy request GET thực tế qua Express/Supertest tới database `DBMS330284`: HTTP 200, `isSuccess=true`, trả 6 kết quả. Request chỉ đọc; không sửa dữ liệu.
+- `git diff --check` trên file middleware: PASS.
+
+### Issues
+- None for the API error shown in the student page.
+
+### Next Step
+- Tải lại trang sinh viên; không cần thay đổi trigger môn tiên quyết để sửa lỗi tải danh sách này.
+
+
+
+
+## Chỉnh tài liệu ôn SQL theo hướng truy vấn demo
+
+- Status: DONE (bản chỉnh sửa lưu thành file thay thế do bản nguồn đang bị khóa)
+- Date: 2026-10-23
+- Files changed:
+  - `On_tap_SQL_phan_viec_demo.docx`
+  - `Task.md`
+
+### Changes
+- Chuyển tài liệu từ các đoạn dựng CREATE/ALTER sang truy vấn kiểm tra đối tượng đang có, quan hệ giữa các bảng, khóa/ràng buộc, view, function, trigger và index.
+- Thêm demo chu trình môn tiên quyết tự chọn 3 môn độc lập, bắt lỗi mong đợi 51001, in kết quả và rollback toàn bộ transaction.
+- Bổ sung giải thích ngắn, kết quả mong đợi, câu hỏi vấn đáp và bài nói tóm tắt.
+- Không ghi đè `On_tap_SQL_phan_viec.docx` vì Windows từ chối ghi file và thư mục có file khóa Word; bản nguồn được giữ nguyên.
+
+### Tests / Verification
+- Chạy 8 khối SQL trong tài liệu bằng `sqlcmd` trên `DBMS330284`: PASS.
+- Demo trigger bắt đúng lỗi 51001; số dòng `MONHOCTIENQUYET` trước/sau đều là 36 sau rollback.
+- DOCX mở lại bằng python-docx, OOXML ZIP hợp lệ, đủ nội dung và 8 khối code.
+- Đã thử `render_docx.py`; môi trường thiếu `soffice.exe` trong runtime đóng gói. Word COM bị từ chối quyền nên chưa tạo được PNG để kiểm tra trực quan.
+
+### Issues
+- File nguồn còn khóa; bản chỉnh sửa hiện ở `On_tap_SQL_phan_viec_demo.docx`.
+- Chưa thể xác minh bố cục bằng ảnh trang do renderer không khả dụng trong môi trường.
+
+### Next Step
+- Mở bản demo để sử dụng; khi đóng file nguồn đang mở, có thể thay bản nguồn bằng bản demo nếu cần giữ nguyên tên file.
+# Tra cứu chương trình đào tạo theo vai trò
+
+- Status: DONE
+- Date: 2026-10-23
+- Files changed:
+  - `backend/src/validators/common.validator.js`
+  - `backend/src/repositories/admin.repository.js`
+  - `backend/src/repositories/student.repository.js`
+  - `backend/src/services/student.service.js`
+  - `backend/src/controllers/admin.controller.js`
+  - `backend/src/controllers/student.controller.js`
+  - `backend/src/routes/admin.routes.js`
+  - `backend/src/routes/student.routes.js`
+  - `frontend/portal-admin.html`
+  - `frontend/portal-student.html`
+  - `frontend/js/admin.js`
+  - `frontend/js/student.js`
+  - `docs/spec.md`
+  - `backend/tests/student-curriculum-api.test.js`
+  - `backend/tests/student-curriculum-service.test.js`
+  - `backend/tests/access-control.test.js`
+  - `Task.md`
+
+### Changes
+- Thêm màn hình tra cứu CTĐT cho cán bộ Đào tạo với bộ lọc khoa, năm tuyển sinh, CTĐT và kỳ dự kiến; truy vấn bao gồm chương trình/kỳ chưa có môn và bỏ giới hạn TOP 200.
+- Thêm màn hình cho sinh viên xem CTĐT cá nhân theo từng kỳ dự kiến, hiển thị kỳ rỗng và trạng thái CTĐT; API kiểm tra quyền hồ sơ trước khi trả dữ liệu.
+- Cập nhật tài liệu API/giao diện và bổ sung kiểm thử lọc, phân nhóm kỳ và truy cập hồ sơ.
+
+### Tests / Verification
+- `node --check` các file JavaScript đã sửa: PASS.
+- `npm test -- --runTestsByPath tests/student-curriculum-service.test.js tests/frontend-dom.test.js`: PASS (2 suite, 12 test).
+- `npm test`: PASS (36 suite, 229 test).
+
+### Issues
+- None.
+
+### Next Step
+- Tải lại cổng Đào tạo và cổng Sinh viên để dùng mục tra cứu CTĐT.
+
+## Bổ sung cột môn tiên quyết trong bảng CTĐT
+
+- Status: DONE
+- Date: 2026-10-23
+- Files changed:
+  - `backend/src/repositories/admin.repository.js`
+  - `backend/src/repositories/student.repository.js`
+  - `backend/src/services/student.service.js`
+  - `frontend/js/admin.js`
+  - `frontend/js/student.js`
+  - `backend/tests/student-curriculum-api.test.js`
+  - `backend/tests/student-curriculum-service.test.js`
+  - `docs/spec.md`
+  - `Task.md`
+
+### Changes
+- Hai bảng CTĐT hiển thị STT, mã học phần, tên môn học, số tín chỉ và học phần tiên quyết.
+- Lấy mã và tên các môn tiên quyết từ quan hệ `MONHOCTIENQUYET`; nhiều môn tiên quyết hiển thị cùng dòng, môn không có tiên quyết hiển thị dấu gạch ngang.
+
+### Tests / Verification
+- `npm test -- --runTestsByPath tests/student-curriculum-service.test.js tests/student-curriculum-api.test.js`: PASS (2 suite, 9 test).
+
+### Issues
+- None.
+
+### Next Step
+- Tải lại hai cổng để xem các cột và dữ liệu môn tiên quyết.
+
+## Hoàn thiện tài liệu ôn SQL theo phạm vi phụ trách
+
+- Status: DONE
+- Date: 2026-10-23
+- Files changed:
+  - `On_tap_SQL_phan_viec_ban_day_du.docx`
+  - `Task.md`
+
+### Changes
+- Tạo bản tài liệu demo SQL đầy đủ, giữ nguyên bản tài liệu nguồn và không dựng lại schema.
+- Bổ sung sơ đồ quan hệ, truy vấn catalog cho PK/FK/CHECK/trạng thái trigger/view/function/index, truy vấn view, hàm tiên quyết, kiểm tra liên kết và giải thích vấn đáp.
+- Thêm demo riêng cho đủ 11 CHECK hiện có; ghi rõ SoTinChi = 0 dùng để kích hoạt CHECK, còn -1 bị kiểu TINYINT chặn trước CHECK. Nêu trạng thái CK_LOP_NamNhapHoc chưa xuất hiện trong catalog DB và DEFAULT/BIT không đồng nghĩa CHECK.
+- Thêm demo trigger chu trình (51001) và liên kết sinh viên (51008), đều rollback; không chạy migration hay thay đổi schema.
+
+### Tests / Verification
+- Chạy 23 khối truy vấn/demo trong tài liệu bằng `sqlcmd` trên DBMS330284; 11/11 CHECK trả lỗi 547 đúng tên constraint.
+- Trigger chu trình trả 51001; số dòng MONHOCTIENQUYET trước/sau rollback là 36/36.
+- Trigger liên kết trả 51008; dữ liệu sinh viên trở lại khoa cũ sau rollback.
+- Hàm FN_KiemTraTienQuyet trả 1 cho (MaSV=1, ANHVAN1) và 0 cho (MaSV=1, ANHVAN2); view và metadata truy vấn được.
+- Kiểm tra DOCX bằng python-docx: đủ mục và 11 constraint; không có DDL CREATE/ALTER trong các khối demo.
+- Không render/kiểm tra ảnh được vì renderer đóng gói không tìm thấy `soffice.exe`; renderer báo thiếu LibreOffice.
+
+### Issues
+- Bố cục trực quan từng trang chưa được xác nhận do thiếu renderer LibreOffice được hỗ trợ trong môi trường.
+
+### Next Step
+- Mở bản DOCX trong Word để trình bày; kiểm tra trang nhanh trước khi in/chia sẻ.
+
+## Làm gọn tài liệu ôn SQL theo kiểu demo trực tiếp
+
+- Status: DONE
+- Date: 2026-10-24
+- Files changed:
+  - `On_tap_SQL_phan_viec_ban_day_du.docx`
+  - `Task.md`
+
+### Changes
+- Rút gọn tài liệu theo phạm vi 7 bảng, các PK/FK, 11 CHECK hiện có, 5 trigger cần nắm, view, function và 6 index.
+- Thay ví dụ CHECK dài bằng các câu UPDATE/INSERT ngắn; thêm demo trigger chu trình và liên kết sinh viên gọn có transaction rollback.
+- Ghi chú CK_LOP_NamNhapHoc chưa có trong catalog, trạng thái BIT/DEFAULT không phải CHECK, và SoTinChi âm bị kiểu TINYINT chặn trước CHECK.
+- Bổ sung SELECT gọi view/function, kiểm tra liên kết và cách xem index qua Actual Execution Plan.
+
+### Tests / Verification
+- Chạy 11 câu demo CHECK trên DBMS330284; tất cả trả lỗi 547 đúng tên constraint.
+- Trigger chu trình trả 51001; trigger liên kết trả 51008; số dòng MONHOCTIENQUYET vẫn 36 và MaSV=1001 vẫn giữ khoa KTPM sau rollback.
+- Hàm trả 1 cho (1001, NMLT) và 0 cho (1001, TTNT); view trả 480 dòng; cả 6 index tìm thấy trong catalog.
+- Kiểm tra cấu trúc DOCX và đối chiếu các tên object với SQL project.
+- Renderer DOCX không chạy được vì thiếu `soffice.exe`; chưa kiểm tra ảnh từng trang.
+
+### Issues
+- Kiểm tra bố cục trực quan từng trang còn chờ môi trường có renderer phù hợp.
+
+### Next Step
+- Mở DOCX trong Word để xem nhanh bố cục khi ôn/trình bày.
+
+## Làm gọn khối thông tin CTĐT sinh viên
+
+- Status: DONE
+- Date: 2026-10-23
+- Files changed:
+  - `frontend/portal-student.html`
+  - `frontend/js/student.js`
+  - `frontend/css/styles.css`
+  - `backend/tests/frontend-dom.test.js`
+  - `Task.md`
+
+### Changes
+- Tách tên chương trình, mã CTĐT, ngành, khoa, khóa học và hai chỉ số tín chỉ/thời gian thành các vùng thông tin có nhãn rõ ràng.
+- Dùng khóa học làm giá trị hiển thị, loại bỏ năm tuyển sinh lặp; thêm bố cục thích ứng cho màn hình nhỏ.
+- Giữ nguyên huy hiệu trạng thái, bộ chọn học kỳ và bảng môn học.
+
+### Tests / Verification
+- `npm test -- --runTestsByPath tests/frontend-dom.test.js`: PASS (1 suite, 11 tests).
+
+### Issues
+- Chưa xác nhận trực quan trên trình duyệt ở viewport 375px.
+
+### Next Step
+- Tải lại cổng Sinh viên để xem khối thông tin CTĐT mới.
+
+## Thống nhất số học kỳ tiến độ sinh viên
+
+- Status: DONE
+- Date: 2026-10-23
+- Files changed:
+  - `frontend/js/student.js`
+  - `frontend/js/registration.js`
+  - `frontend/portal-student.html`
+  - `Task.md`
+
+### Changes
+- Bảng điểm và bộ lọc kỳ hiển thị số kỳ liên tục 1–8 theo năm bắt đầu khóa CTĐT; ví dụ Học kỳ 1 năm học tiếp theo thành Học kỳ 3.
+- Đồng bộ nhãn kỳ hiện tại ở dashboard và thời khóa biểu với số kỳ tiến độ; thay nội dung cố định HK7 bằng kỳ hiện tại.
+- Giữ tên năm học và học kỳ thực tế trong các màn hình hóa đơn/báo cáo để đối chiếu thời điểm thu và mở lớp.
+
+### Tests / Verification
+- Kiểm tra cú pháp JavaScript bằng `node --check` cho các tệp frontend thay đổi.
+- Rà `frontend` để tìm nhãn kỳ cố định 1–8 và HK7.
+
+### Issues
+- None.
+
+### Next Step
+- Tải lại cổng Sinh viên để xem số kỳ tiến độ đã thống nhất.

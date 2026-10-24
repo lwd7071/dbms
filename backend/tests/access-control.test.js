@@ -111,6 +111,16 @@ describe('Protected academic API access', () => {
     expect(response.body.isSuccess).toBe(false);
   });
 
+  it('prevents a student from viewing another student curriculum plan', async () => {
+    const studentToken = token({ maTaiKhoan: 30, vaiTro: 'SINH_VIEN', maSV: 1 });
+    const response = await request(app)
+      .get('/api/students/2/curriculum')
+      .set('Authorization', `Bearer ${studentToken}`);
+
+    expect(response.status).toBe(403);
+    expect(response.body.isSuccess).toBe(false);
+  });
+
   it('requires a lecturer session before exposing class students and grades', async () => {
     const response = await request(app).get('/api/lecturers/classes/LHP_HK7_DEVOPS_01/students');
 

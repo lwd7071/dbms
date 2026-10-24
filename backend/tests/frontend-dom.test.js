@@ -59,6 +59,29 @@ function loadScript(file, elements = {}) {
 }
 
 describe('frontend DOM feedback and untrusted text', () => {
+  test('student curriculum summary separates the title, program code, labeled facts, and metrics', () => {
+    const { window, context } = loadScript('student.js');
+    context.escapeHtml = value => String(value ?? '');
+    const summary = window.renderStudentCurriculumSummary({
+      tenCTDT: 'Kỹ thuật Phần mềm Chuẩn',
+      maCTDT: 'CTDT_KTPM_CQ',
+      nganh: 'Kỹ thuật phần mềm',
+      tenKhoa: 'Khoa Kỹ thuật Phần mềm',
+      khoaHoc: '2023-2027',
+      namTuyenSinh: 2023,
+      tongTinChiYeuCau: 135,
+      thoiGianDaoTao: 4
+    });
+
+    expect(summary).toContain('<h3 class="curriculum-program-name">Kỹ thuật Phần mềm Chuẩn</h3>');
+    expect(summary).toContain('<span>Mã CTĐT</span><code>CTDT_KTPM_CQ</code>');
+    expect(summary).toContain('<dt>Khóa học</dt><dd>2023-2027</dd>');
+    expect(summary).not.toContain('(2023)');
+    expect(summary).toContain('Tín chỉ yêu cầu');
+    expect(summary).toContain('135');
+    expect(summary).toContain('4 năm');
+  });
+
   test('status and role helpers present localized labels instead of internal codes', () => {
     const { window } = loadScript('api.js');
 
