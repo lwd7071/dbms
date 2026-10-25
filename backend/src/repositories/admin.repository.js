@@ -171,18 +171,26 @@ const getCurriculums = async (filters = {}) => {
   const query = `
     SELECT c.MaCTDT, c.TenCTDT, n.TenNganh AS Nganh, c.KhoaHoc, c.NamTuyenSinh,
       c.TongTinChiYeuCau, c.ThoiGianDaoTao, c.TrangThai AS TrangThaiCTDT,
-      n.MaKhoa, k.TenKhoa, mh.MaMonHoc, mh.TenMonHoc, mh.SoTinChi,
+      n.MaKhoa, k.TenKhoa, mh.MaMonHoc, mh.MaKhoa AS MaKhoaMon, km.TenKhoa AS TenKhoaMon,
+      mh.TenMonHoc, mh.SoTinChi, mh.SoTietLyThuyet, mh.SoTietThucHanh, mh.MoTa,
+      mh.TrangThai AS TrangThaiMon,
       ctm.HocKyDuKien, ctm.LoaiMon, ctm.ThuTu,
       (SELECT STRING_AGG(CONVERT(NVARCHAR(MAX), CONCAT(pre.MaMonHoc, N' - ', pre.TenMonHoc)), N'; ')
        FROM dbo.MONHOCTIENQUYET mtq
        INNER JOIN dbo.MONHOC pre ON pre.MaMonHoc = mtq.MaMonTienQuyet
-       WHERE mtq.MaMonHoc = mh.MaMonHoc) AS HocPhanTienQuyet
+       WHERE mtq.MaMonHoc = mh.MaMonHoc) AS HocPhanTienQuyet,
+      (SELECT mtq.MaMonTienQuyet AS maMonHoc, pre.TenMonHoc AS tenMonHoc, mtq.MucDo AS mucDo
+       FROM dbo.MONHOCTIENQUYET mtq
+       INNER JOIN dbo.MONHOC pre ON pre.MaMonHoc = mtq.MaMonTienQuyet
+       WHERE mtq.MaMonHoc = mh.MaMonHoc
+       FOR JSON PATH) AS HocPhanTienQuyetChiTiet
     FROM dbo.CHUONGTRINHDAOTAO c
     INNER JOIN dbo.NGANH n ON n.MaNganh = c.MaNganh
     INNER JOIN dbo.KHOA k ON k.MaKhoa = n.MaKhoa
     LEFT JOIN dbo.CTDT_MONHOC ctm ON ctm.MaCTDT = c.MaCTDT
       AND (@HocKyDuKien IS NULL OR ctm.HocKyDuKien = @HocKyDuKien)
     LEFT JOIN dbo.MONHOC mh ON mh.MaMonHoc = ctm.MaMonHoc
+    LEFT JOIN dbo.KHOA km ON km.MaKhoa = mh.MaKhoa
     WHERE (@MaKhoa IS NULL OR n.MaKhoa = @MaKhoa)
       AND (@NamTuyenSinh IS NULL OR c.NamTuyenSinh = @NamTuyenSinh)
       AND (@MaCTDT IS NULL OR c.MaCTDT = @MaCTDT)
@@ -201,13 +209,20 @@ const getCurriculums = async (filters = {}) => {
     trangThai: Boolean(r.TrangThaiCTDT),
     maKhoa: r.MaKhoa,
     tenKhoa: r.TenKhoa,
+    maKhoaMon: r.MaKhoaMon,
+    tenKhoaMon: r.TenKhoaMon,
     maMonHoc: r.MaMonHoc,
     tenMonHoc: r.TenMonHoc,
     soTinChi: r.SoTinChi,
+    soTietLyThuyet: r.SoTietLyThuyet,
+    soTietThucHanh: r.SoTietThucHanh,
+    moTa: r.MoTa,
+    trangThaiMon: r.TrangThaiMon === null || r.TrangThaiMon === undefined ? null : Boolean(r.TrangThaiMon),
     hocKyDuKien: r.HocKyDuKien,
     loaiMon: r.LoaiMon,
     thuTu: r.ThuTu,
-    hocPhanTienQuyet: r.HocPhanTienQuyet
+    hocPhanTienQuyet: r.HocPhanTienQuyet,
+    hocPhanTienQuyetChiTiet: r.HocPhanTienQuyetChiTiet ? JSON.parse(r.HocPhanTienQuyetChiTiet) : []
   }));
 };
 

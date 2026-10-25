@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/admin.controller');
+const facultyController = require('../controllers/faculty.controller');
 const { validate } = require('../middlewares/validate.middleware');
 const { tuitionReportQuerySchema } = require('../validators/payment.validator');
 const { createStudentSchema, updateStudentSchema } = require('../validators/student.validator');
@@ -26,6 +27,7 @@ router.patch('/users/:username/status', validate(usernameParamsSchema, 'params')
 
 // Thống kê tổng quan Dashboard
 router.get('/dashboard', adminController.getDashboardStats);
+router.get('/faculties', facultyController.getFacultiesForStaff);
 
 // Quản lý sinh viên (CRUD)
 router.get('/students', validate(adminStudentsQuerySchema, 'query'), adminController.getStudents);

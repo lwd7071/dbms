@@ -83,6 +83,15 @@
             </svg>
             <span>Chương trình đào tạo</span>
           </button>
+          <button class="tab-dropdown-item" onclick="switchAdminTab('faculties', this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M3 21h18"></path>
+              <path d="M5 21V7l8-4v18"></path>
+              <path d="M19 21V11l-6-4"></path>
+              <path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"></path>
+            </svg>
+            <span>Danh sách khoa</span>
+          </button>
           <button class="tab-dropdown-item" onclick="switchAdminTab('classes-sh', this)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
@@ -237,8 +246,23 @@
             <select id="filterCurriculumProgram" class="form-control" aria-label="Lọc theo chương trình đào tạo" onchange="loadAdminCurriculums()"><option value="">-- Tất cả chương trình --</option></select>
             <select id="filterCurriculumTerm" class="form-control" aria-label="Lọc theo học kỳ dự kiến" onchange="loadAdminCurriculums()"><option value="">-- Tất cả học kỳ --</option></select>
           </div>
-          <div id="adminCurriculumContainer" class="table-responsive" style="margin-top: 1rem;">
+          <div id="adminCurriculumContainer" class="curriculum-table-wrap" style="margin-top: 1rem;">
             <div style="text-align:center;padding:1.5rem;">Đang tải chương trình đào tạo...</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- MÀN HÌNH: DANH SÁCH KHOA -->
+    <div id="tab-faculties" class="tab-pane">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">Danh sách khoa</h2>
+          <span id="adminFacultyCount" class="badge badge-info" aria-live="polite">Đang tải...</span>
+        </div>
+        <div class="card-body">
+          <div id="adminFacultiesContainer" class="faculty-directory-container" aria-live="polite">
+            <div class="faculty-directory-message" role="status">Đang tải danh sách khoa...</div>
           </div>
         </div>
       </section>

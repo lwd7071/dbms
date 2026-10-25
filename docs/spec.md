@@ -357,9 +357,10 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `DB/05_Triggers.sql` và `
 - **`GET /api/admin/courses`**, **`POST /api/admin/courses`**, **`PUT /api/admin/courses/:id`**, **`DELETE /api/admin/courses/:id`**: Đọc và CRUD môn học, dành cho `DAO_TAO` và `QUAN_TRI`; thao tác xóa bị SQL Server từ chối nếu còn dữ liệu tham chiếu.
 - **`GET /api/admin/registrations`**: Tra cứu toàn bộ giao dịch đăng ký tín chỉ của sinh viên.
 - **`GET /api/admin/audit-logs`**: Nhật ký kiểm toán bảo mật từ bảng `LOGHOATDONG` (chỉ role `QUAN_TRI`).
-- **`GET /api/admin/curriculums?maKhoa=&namTuyenSinh=&maCTDT=&hocKyDuKien=`**: Danh sách CTĐT và môn theo kỳ, lọc theo khoa, khóa tuyển sinh, chương trình và kỳ dự kiến; giữ cả CTĐT/kỳ chưa có môn.
-- **`GET /api/students/:id/curriculum`**: CTĐT được gán cho sinh viên, nhóm môn theo toàn bộ kỳ dự kiến kèm các môn tiên quyết; kiểm tra quyền bằng `authorizeStudentRecord`.
+- **`GET /api/admin/curriculums?maKhoa=&namTuyenSinh=&maCTDT=&hocKyDuKien=`**: Danh sách CTĐT và môn theo kỳ, lọc theo khoa, khóa tuyển sinh, chương trình và kỳ dự kiến; giữ cả CTĐT/kỳ chưa có môn. Mỗi môn trả khoa phụ trách, tín chỉ, số tiết lý thuyết/thực hành, mô tả, trạng thái, loại môn, thứ tự và tiên quyết kèm mức độ.
+- **`GET /api/students/:id/curriculum`**: CTĐT được gán cho sinh viên, nhóm môn theo toàn bộ kỳ dự kiến với cùng bộ thuộc tính môn và tiên quyết kèm mức độ; kiểm tra quyền bằng `authorizeStudentRecord`.
 - **`GET /api/admin/curriculum-options?maKhoa=&namTuyenSinh=`**: lựa chọn CTĐT đang hoạt động, lọc theo khoa và năm tuyển sinh.
+- **`GET /api/admin/faculties`**: danh sách tất cả khoa gồm mã, tên, email, số điện thoại và trạng thái; chỉ role `DAO_TAO` và `QUAN_TRI`.
 - `POST /api/admin/students` bắt buộc có `maCTDT`; `PUT` nhận `maCTDT` tùy chọn. Backend kiểm tra CTĐT thuộc khoa đã chọn và khóa CTĐT khớp lớp nếu sinh viên đã được phân lớp.
 - **`GET /api/lecturers/:id/schedule`**: Lịch giảng dạy theo tuần của Giảng viên.
 - **`GET /api/lecturers/:id/classes`**: Danh sách các lớp học phần Giảng viên đang phụ trách.

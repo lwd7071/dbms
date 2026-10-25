@@ -2296,3 +2296,116 @@
 
 ### Next Step
 - Tải lại cổng Sinh viên để xem số kỳ tiến độ đã thống nhất.
+
+## Phân công 20 trigger cho 4 thành viên
+
+- Status: DONE
+- Date: 2026-10-25
+- Files changed:
+  - `DB/05_Triggers.sql`
+  - `Nhom16_QuanLiHocVuVaDangKyTinChi/Database/05_Triggers.sql`
+  - `Task.md`
+
+### Changes
+- Thêm comment tên và MSSV người phụ trách ngay trước mỗi trigger; mỗi thành viên nhận 5 trigger.
+- Đồng bộ hai bản SQL, không thay đổi câu lệnh thực thi.
+
+### Tests / Verification
+- Đếm đủ 20 trigger và 20 comment, mỗi MSSV xuất hiện 5 lần.
+- So sánh hai bản SQL sau cập nhật; kết quả trùng nhau.
+
+### Issues
+- None.
+
+### Next Step
+- Dùng file SQL đã ghi chú để phân chia phần trình bày và kiểm thử.
+
+## Sửa bộ lọc tra cứu chương trình đào tạo
+
+- Status: DONE
+- Date: 2026-10-25
+- Files changed:
+  - `frontend/js/admin.js`
+  - `backend/tests/frontend-dom.test.js`
+  - `Task.md`
+
+### Changes
+- Đồng bộ lựa chọn khoa, khóa tuyển sinh, chương trình và học kỳ theo dữ liệu CTĐT phù hợp; tự xóa lựa chọn chương trình khi đổi khóa khiến nó không còn hợp lệ.
+- Hiển thị năm tuyển sinh dưới dạng `Khóa 2024` để người dùng hiểu ý nghĩa bộ lọc.
+
+### Tests / Verification
+- `npm test -- --runTestsByPath tests/frontend-dom.test.js`: PASS (12 tests).
+- `node --check frontend/js/admin.js`: PASS.
+
+### Issues
+- None.
+
+### Next Step
+- Tải lại trang tra cứu CTĐT để dùng bộ lọc đã sửa.
+
+## Hiển thị đầy đủ thuộc tính môn trong CTĐT
+
+- Status: DONE
+- Date: 2026-10-25
+- Files changed:
+  - `backend/src/repositories/admin.repository.js`
+  - `backend/src/repositories/student.repository.js`
+  - `backend/src/services/student.service.js`
+  - `frontend/js/admin.js`
+  - `frontend/js/student.js`
+  - `frontend/css/styles.css`
+  - `frontend/portal-admin.html`
+  - `frontend/portal-student.html`
+  - `backend/tests/curriculum-repository.test.js`
+  - `backend/tests/student-curriculum-service.test.js`
+  - `backend/tests/student-curriculum-api.test.js`
+  - `backend/tests/frontend-dom.test.js`
+  - `docs/spec.md`
+  - `Task.md`
+
+### Changes
+- Bổ sung khoa phụ trách, số tiết lý thuyết/thực hành, mô tả, trạng thái môn và tiên quyết kèm mức độ cho hai API tra cứu CTĐT.
+- Hai cổng hiển thị môn, khối lượng, mô tả, tiên quyết, loại môn, thứ tự và trạng thái; bảng cố định chiều rộng và chuyển sang các dòng nhãn/giá trị ở màn hình hẹp.
+
+### Tests / Verification
+- Repository, service và DOM tests: PASS (3 suites, 20 tests).
+- JavaScript syntax checks: PASS.
+- Hai repository query chạy chỉ đọc trên SQL Server `DBMS330284`; trả đầy đủ các thuộc tính mới và mức tiên quyết `BAT_BUOC`.
+- API integration suite không chạy trong sandbox vì không được mở loopback port (`connect EACCES 127.0.0.1`).
+
+### Issues
+- Endpoint-level API integration chưa xác minh được do giới hạn loopback của sandbox.
+
+### Next Step
+- Tải lại hai cổng để xem đầy đủ thuộc tính môn trong chương trình đào tạo.
+
+## Thêm tab danh sách khoa cho Đào tạo và Quản trị
+
+- Status: DONE
+- Date: 2026-10-25
+- Files changed:
+  - `backend/src/routes/admin.routes.js`
+  - `backend/src/controllers/faculty.controller.js`
+  - `backend/src/repositories/faculty.repository.js`
+  - `backend/tests/admin-faculties.test.js`
+  - `backend/tests/frontend-dom.test.js`
+  - `frontend/js/admin.js`
+  - `frontend/portal-admin.html`
+  - `frontend/css/styles.css`
+  - `docs/spec.md`
+  - `Task.md`
+
+### Changes
+- Thêm API staff-only trả về tất cả khoa, gồm trạng thái và thông tin liên hệ; giữ nguyên API khoa hiện tại.
+- Thêm tab chỉ đọc trong portal, có nhãn trạng thái, dữ liệu trống/rỗng/lỗi và bố cục hàng có nhãn trên màn hình hẹp.
+
+### Tests / Verification
+- `npm test -- --runTestsByPath tests/admin-faculties.test.js tests/faculty.test.js tests/frontend-dom.test.js`: PASS (3 suites, 27 tests).
+- Kiểm tra cú pháp JavaScript frontend/backend: PASS.
+- Mở portal bằng tài khoản Đào tạo và kiểm tra danh sách ở viewport 1280px và 375px; `scrollWidth` không vượt viewport ở cả hai kích thước.
+
+### Issues
+- None.
+
+### Next Step
+- Mở tab “Danh sách khoa” trong portal Quản trị để xác nhận giao diện với vai trò này.

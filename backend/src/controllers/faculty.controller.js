@@ -13,6 +13,16 @@ const getFaculties = async (req, res, next) => {
   }
 };
 
+const getFacultiesForStaff = async (req, res, next) => {
+  try {
+    const faculties = await facultyRepository.getAllFacultiesForStaff();
+    return res.status(200).json(successResponse(faculties));
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
-  getFaculties
+  getFaculties,
+  getFacultiesForStaff
 };

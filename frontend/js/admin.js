@@ -1585,10 +1585,85 @@ async function loadAdminCurriculums() {
       container.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--color-text-muted);">Không tìm thấy chương trình phù hợp.</div>';
       return;
     }
-    container.innerHTML = `<table class="table" style="min-width:1200px"><thead><tr><th>STT</th><th>Chương trình</th><th>Khoa / Ngành</th><th>Khóa tuyển sinh</th><th>Học kỳ</th><th>Mã học phần</th><th>Tên môn học</th><th>Số tín chỉ</th><th>Học phần tiên quyết</th><th>Trạng thái</th></tr></thead><tbody>${rows.map((item, index) => `<tr><td>${index + 1}</td><td><strong>${escapeHtml(item.tenCTDT)}</strong><br><code>${escapeHtml(item.maCTDT)}</code></td><td>${escapeHtml(item.tenKhoa)}<br>${escapeHtml(item.nganh)}</td><td>${escapeHtml(item.namTuyenSinh)} (${escapeHtml(item.khoaHoc)})</td><td>${item.hocKyDuKien ? `HK${item.hocKyDuKien}` : '—'}</td><td>${item.maMonHoc ? `<code>${escapeHtml(item.maMonHoc)}</code>` : '—'}</td><td>${item.tenMonHoc ? escapeHtml(item.tenMonHoc) : '<span style="color:var(--color-text-muted)">Chưa có môn học trong kỳ này</span>'}</td><td>${item.soTinChi ?? '—'}</td><td>${item.hocPhanTienQuyet ? escapeHtml(item.hocPhanTienQuyet) : '—'}</td><td><span class="badge ${item.trangThai ? 'badge-success' : 'badge-warning'}">${item.trangThai ? 'Đang áp dụng' : 'Ngừng áp dụng'}</span></td></tr>`).join('')}</tbody></table>`;
+    const showProgramContext = !filters.maCTDT;
+    const showTermContext = !filters.hocKyDuKien;
+    const columns = [
+      ...(showProgramContext ? [{ label: 'Chương trình', weight: 11 }] : []),
+      ...(showTermContext ? [{ label: 'Học kỳ', weight: 6 }] : []),
+      { label: 'Môn học', weight: 16 }, { label: 'Khoa phụ trách', weight: 9 }, { label: 'Khối lượng', weight: 8 },
+      { label: 'Mô tả', weight: 12 }, { label: 'Học phần tiên quyết', weight: 12 }, { label: 'Loại môn / thứ tự', weight: 8 },
+      { label: 'Trạng thái môn', weight: 6 }, { label: 'Trạng thái CTĐT', weight: 6 }
+    ];
+    const totalWeight = columns.reduce((total, column) => total + column.weight, 0);
+    const prerequisiteContent = item => {
+      const prerequisites = item.hocPhanTienQuyetChiTiet || [];
+      if (!prerequisites.length) return item.hocPhanTienQuyet ? escapeHtml(item.hocPhanTienQuyet) : '—';
+      return `<ul class="curriculum-prerequisite-list">${prerequisites.map(prerequisite => {
+        const level = prerequisite.mucDo === 'BAT_BUOC' ? 'Bắt buộc' : prerequisite.mucDo === 'KHUYEN_NGHI' ? 'Khuyến nghị' : 'Chưa xác định';
+        return `<li><span><code>${escapeHtml(prerequisite.maMonHoc)}</code> · ${escapeHtml(prerequisite.tenMonHoc)}</span><small>${level}</small></li>`;
+      }).join('')}</ul>`;
+    };
+    const emptyRows = rows.filter(item => !item.maMonHoc).map(item => `<tr class="curriculum-empty-row"><td colspan="${columns.length}">CTĐT <strong>${escapeHtml(item.tenCTDT)}</strong>${filters.hocKyDuKien ? ` · Học kỳ ${escapeHtml(filters.hocKyDuKien)}` : ''}: chưa có môn học trong kỳ này.</td></tr>`).join('');
+    const courseRows = rows.filter(item => item.maMonHoc).map(item => {
+      const cells = [
+        ...(showProgramContext ? [{ label: 'Chương trình', value: `<strong>${escapeHtml(item.tenCTDT)}</strong><br><code>${escapeHtml(item.maCTDT)}</code><br><small>${escapeHtml(item.khoaHoc)}</small>` }] : []),
+        ...(showTermContext ? [{ label: 'Học kỳ', value: item.hocKyDuKien ? `Học kỳ ${escapeHtml(item.hocKyDuKien)}` : '—' }] : []),
+        { label: 'Môn học', value: `<code>${escapeHtml(item.maMonHoc)}</code><strong>${escapeHtml(item.tenMonHoc)}</strong>` },
+        { label: 'Khoa phụ trách', value: item.tenKhoaMon ? `${escapeHtml(item.tenKhoaMon)}<br><small>${escapeHtml(item.maKhoaMon)}</small>` : '—' },
+        { label: 'Khối lượng', value: `<strong>${escapeHtml(item.soTinChi ?? '—')} tín chỉ</strong><small>Lý thuyết: ${escapeHtml(item.soTietLyThuyet ?? '—')} tiết<br>Thực hành: ${escapeHtml(item.soTietThucHanh ?? '—')} tiết</small>` },
+        { label: 'Mô tả', value: item.moTa ? escapeHtml(item.moTa) : '—' },
+        { label: 'Học phần tiên quyết', value: prerequisiteContent(item) },
+        { label: 'Loại môn / thứ tự', value: `<span class="badge ${item.loaiMon === 'BAT_BUOC' ? 'badge-info' : 'badge-warning'}">${item.loaiMon === 'BAT_BUOC' ? 'Bắt buộc' : item.loaiMon === 'TU_CHON' ? 'Tự chọn' : '—'}</span><small>Thứ tự: ${escapeHtml(item.thuTu ?? '—')}</small>` },
+        { label: 'Trạng thái môn', value: item.trangThaiMon === null || item.trangThaiMon === undefined ? '—' : `<span class="badge ${item.trangThaiMon ? 'badge-success' : 'badge-warning'}">${item.trangThaiMon ? 'Đang áp dụng' : 'Ngừng áp dụng'}</span>` },
+        { label: 'Trạng thái CTĐT', value: `<span class="badge ${item.trangThai ? 'badge-success' : 'badge-warning'}">${item.trangThai ? 'Đang áp dụng' : 'Ngừng áp dụng'}</span>` }
+      ];
+      return `<tr>${cells.map(cell => `<td data-label="${cell.label}">${cell.value}</td>`).join('')}</tr>`;
+    }).join('');
+    container.innerHTML = `<table class="table curriculum-detail-table"><colgroup>${columns.map(column => `<col style="width:${(column.weight / totalWeight * 100).toFixed(2)}%">`).join('')}</colgroup><thead><tr>${columns.map(column => `<th>${column.label}</th>`).join('')}</tr></thead><tbody>${emptyRows}${courseRows}</tbody></table>`;
   } catch (error) {
     count.textContent = 'Không tải được';
     container.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--color-danger-text);">Không thể tải chương trình đào tạo. ${escapeHtml(error.message)}</div>`;
+  }
+}
+
+async function loadAdminFaculties() {
+  const container = document.getElementById('adminFacultiesContainer');
+  const count = document.getElementById('adminFacultyCount');
+  if (!container) return;
+
+  container.innerHTML = '<div class="faculty-directory-message" role="status">Đang tải danh sách khoa...</div>';
+  if (count) count.textContent = 'Đang tải...';
+
+  try {
+    const faculties = await api.get('/admin/faculties');
+    if (count) count.textContent = `${faculties.length} khoa`;
+
+    if (faculties.length === 0) {
+      container.innerHTML = '<div class="faculty-directory-message" role="status">Chưa có khoa nào trong hệ thống.</div>';
+      return;
+    }
+
+    const rows = faculties.map(faculty => `
+      <tr>
+        <td data-label="Mã khoa"><code>${escapeHtml(faculty.maKhoa)}</code></td>
+        <td data-label="Tên khoa"><strong>${escapeHtml(faculty.tenKhoa)}</strong></td>
+        <td data-label="Email">${faculty.email ? escapeHtml(faculty.email) : '-'}</td>
+        <td data-label="Số điện thoại">${faculty.soDienThoai ? escapeHtml(faculty.soDienThoai) : '-'}</td>
+        <td data-label="Trạng thái"><span class="badge ${faculty.trangThai ? 'badge-success' : 'badge-warning'}">${faculty.trangThai ? 'Đang hoạt động' : 'Ngừng hoạt động'}</span></td>
+      </tr>
+    `).join('');
+
+    container.innerHTML = `
+      <div class="faculty-table-wrap">
+        <table class="table faculty-directory-table">
+          <thead><tr><th>Mã khoa</th><th>Tên khoa</th><th>Email</th><th>Số điện thoại</th><th>Trạng thái</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  } catch (error) {
+    if (count) count.textContent = 'Không tải được';
+    container.innerHTML = `<div class="faculty-directory-message faculty-directory-error" role="alert">Không thể tải danh sách khoa. ${escapeHtml(error.message)}</div>`;
   }
 }
 
@@ -1629,6 +1704,8 @@ function switchAdminTab(tabName, clickedBtn) {
     loadAdminStudents();
   } else if (tabName === 'curriculums') {
     loadAdminCurriculums();
+  } else if (tabName === 'faculties') {
+    loadAdminFaculties();
   } else if (tabName === 'classes-sh') {
     loadAdminAdministrativeClasses();
   } else if (tabName === 'classes') {
@@ -1679,6 +1756,7 @@ window.submitAdminPayment = submitAdminPayment;
 window.loadAdminDashboard = loadAdminDashboard;
 window.loadAdminStudents = loadAdminStudents;
 window.loadAdminCurriculums = loadAdminCurriculums;
+window.loadAdminFaculties = loadAdminFaculties;
 window.viewStudentDetailModal = viewStudentDetailModal;
 window.closeStudentDetailModal = closeStudentDetailModal;
 window.openStudentModal = openStudentModal;

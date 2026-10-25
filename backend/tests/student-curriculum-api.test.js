@@ -12,6 +12,10 @@ describe('student curriculum API contract', () => {
     expect(response.body.data.hocKy.length).toBeGreaterThan(0);
     expect(response.body.data.hocKy[0]).toEqual(expect.objectContaining({ hocKyDuKien: 1, monHoc: expect.any(Array) }));
     expect(response.body.data.hocKy[0].monHoc[0]).toHaveProperty('hocPhanTienQuyet');
+    expect(response.body.data.hocKy[0].monHoc[0]).toEqual(expect.objectContaining({
+      maKhoaMon: expect.any(String), tenKhoaMon: expect.any(String), soTietLyThuyet: expect.any(Number),
+      soTietThucHanh: expect.any(Number), trangThaiMon: expect.any(Boolean), hocPhanTienQuyetChiTiet: expect.any(Array)
+    }));
   });
 
   test('filters curriculum options by faculty and intake year', async () => {
@@ -30,6 +34,10 @@ describe('student curriculum API contract', () => {
     expect(response.body.data.every(item => item.maKhoa === 'CNTT' && item.namTuyenSinh === 2024 && item.maCTDT === 'CTDT_CNTT_CQ_24'))
       .toBe(true);
     expect(response.body.data.every(item => Object.hasOwn(item, 'hocPhanTienQuyet'))).toBe(true);
+    expect(response.body.data.every(item => Object.hasOwn(item, 'maKhoaMon')
+      && Object.hasOwn(item, 'soTietLyThuyet') && Object.hasOwn(item, 'soTietThucHanh')
+      && Object.hasOwn(item, 'moTa') && Object.hasOwn(item, 'trangThaiMon')
+      && Array.isArray(item.hocPhanTienQuyetChiTiet))).toBe(true);
   });
 
   test('does not truncate the complete curriculum catalog at 200 course rows', async () => {

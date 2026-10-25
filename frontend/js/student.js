@@ -428,7 +428,24 @@ function renderStudentCurriculumTerm() {
     courses.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--color-text-muted);">Học kỳ này chưa có môn học trong chương trình.</div>';
     return;
   }
-  courses.innerHTML = `<table class="table" style="min-width:850px"><thead><tr><th>STT</th><th>Mã học phần</th><th>Tên môn học</th><th>Số tín chỉ</th><th>Học phần tiên quyết</th></tr></thead><tbody>${term.monHoc.map((course, index) => `<tr><td>${index + 1}</td><td><code>${escapeHtml(course.maMonHoc)}</code></td><td>${escapeHtml(course.tenMonHoc)}</td><td>${course.soTinChi}</td><td>${course.hocPhanTienQuyet ? escapeHtml(course.hocPhanTienQuyet) : '—'}</td></tr>`).join('')}</tbody></table>`;
+  const prerequisites = course => {
+    const items = course.hocPhanTienQuyetChiTiet || [];
+    if (!items.length) return course.hocPhanTienQuyet ? escapeHtml(course.hocPhanTienQuyet) : '—';
+    return `<ul class="curriculum-prerequisite-list">${items.map(item => {
+      const level = item.mucDo === 'BAT_BUOC' ? 'Bắt buộc' : item.mucDo === 'KHUYEN_NGHI' ? 'Khuyến nghị' : 'Chưa xác định';
+      return `<li><span><code>${escapeHtml(item.maMonHoc)}</code> · ${escapeHtml(item.tenMonHoc)}</span><small>${level}</small></li>`;
+    }).join('')}</ul>`;
+  };
+  const courseType = course => course.loaiMon === 'BAT_BUOC' ? 'Bắt buộc' : course.loaiMon === 'TU_CHON' ? 'Tự chọn' : '—';
+  courses.innerHTML = `<table class="table curriculum-detail-table"><thead><tr><th>Môn học</th><th>Khoa phụ trách</th><th>Khối lượng</th><th>Mô tả</th><th>Học phần tiên quyết</th><th>Loại môn / thứ tự</th><th>Trạng thái</th></tr></thead><tbody>${term.monHoc.map(course => `<tr>
+    <td data-label="Môn học"><code>${escapeHtml(course.maMonHoc)}</code><strong>${escapeHtml(course.tenMonHoc)}</strong></td>
+    <td data-label="Khoa phụ trách">${course.tenKhoaMon ? `${escapeHtml(course.tenKhoaMon)}<br><small>${escapeHtml(course.maKhoaMon)}</small>` : '—'}</td>
+    <td data-label="Khối lượng"><strong>${escapeHtml(course.soTinChi ?? '—')} tín chỉ</strong><br><small>Lý thuyết: ${escapeHtml(course.soTietLyThuyet ?? '—')} tiết<br>Thực hành: ${escapeHtml(course.soTietThucHanh ?? '—')} tiết</small></td>
+    <td data-label="Mô tả">${course.moTa ? escapeHtml(course.moTa) : '—'}</td>
+    <td data-label="Học phần tiên quyết">${prerequisites(course)}</td>
+    <td data-label="Loại môn / thứ tự"><span class="badge ${course.loaiMon === 'BAT_BUOC' ? 'badge-info' : 'badge-warning'}">${courseType(course)}</span><br><small>Thứ tự: ${escapeHtml(course.thuTu ?? '—')}</small></td>
+    <td data-label="Trạng thái">${course.trangThaiMon === null || course.trangThaiMon === undefined ? '—' : `<span class="badge ${course.trangThaiMon ? 'badge-success' : 'badge-warning'}">${course.trangThaiMon ? 'Đang áp dụng' : 'Ngừng áp dụng'}</span>`}</td>
+  </tr>`).join('')}</tbody></table>`;
 }
 
 window.loadStudentDashboard = loadStudentDashboard;

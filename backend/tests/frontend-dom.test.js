@@ -59,6 +59,89 @@ function loadScript(file, elements = {}) {
 }
 
 describe('frontend DOM feedback and untrusted text', () => {
+  test('admin faculty directory renders all fields and handles optional contact details', async () => {
+    const elements = Object.fromEntries(['adminFacultiesContainer', 'adminFacultyCount'].map(id => [id, new FakeElement('div')]));
+    const { context } = loadScript('admin.js', elements);
+    context.escapeHtml = value => String(value ?? '');
+    let requestedPath;
+    context.api = {
+      get: async path => {
+        requestedPath = path;
+        return [
+          { maKhoa: 'CNTT', tenKhoa: 'Khoa Công nghệ Thông tin', email: 'cntt@example.edu.vn', soDienThoai: '0281234567', trangThai: true },
+          { maKhoa: 'TEST', tenKhoa: 'Khoa thử nghiệm', email: null, soDienThoai: null, trangThai: false }
+        ];
+      }
+    };
+
+    await context.loadAdminFaculties();
+
+    expect(requestedPath).toBe('/admin/faculties');
+    expect(elements.adminFacultyCount.textContent).toBe('2 khoa');
+    expect(elements.adminFacultiesContainer.innerHTML).toContain('CNTT');
+    expect(elements.adminFacultiesContainer.innerHTML).toContain('Khoa Công nghệ Thông tin');
+    expect(elements.adminFacultiesContainer.innerHTML).toContain('cntt@example.edu.vn');
+    expect(elements.adminFacultiesContainer.innerHTML).toContain('0281234567');
+    expect(elements.adminFacultiesContainer.innerHTML).toContain('Đang hoạt động');
+    expect(elements.adminFacultiesContainer.innerHTML).toContain('Ngừng hoạt động');
+    expect(elements.adminFacultiesContainer.innerHTML).toContain('>-</td>');
+  });
+
+  test('admin faculty directory keeps a clear empty state', async () => {
+    const elements = Object.fromEntries(['adminFacultiesContainer', 'adminFacultyCount'].map(id => [id, new FakeElement('div')]));
+    const { context } = loadScript('admin.js', elements);
+    context.escapeHtml = value => String(value ?? '');
+    context.api = { get: async () => [] };
+
+    await context.loadAdminFaculties();
+
+    expect(elements.adminFacultyCount.textContent).toBe('0 khoa');
+    expect(elements.adminFacultiesContainer.innerHTML).toContain('Chưa có khoa nào trong hệ thống.');
+  });
+
+  test('admin faculty directory shows a useful error state when loading fails', async () => {
+    const elements = Object.fromEntries(['adminFacultiesContainer', 'adminFacultyCount'].map(id => [id, new FakeElement('div')]));
+    const { context } = loadScript('admin.js', elements);
+    context.escapeHtml = value => String(value ?? '');
+    context.api = { get: async () => { throw new Error('Không kết nối được'); } };
+
+    await context.loadAdminFaculties();
+
+    expect(elements.adminFacultyCount.textContent).toBe('Không tải được');
+    expect(elements.adminFacultiesContainer.innerHTML).toContain('role="alert"');
+    expect(elements.adminFacultiesContainer.innerHTML).toContain('Không kết nối được');
+  });
+
+  test('admin faculty tab opens the directory and is inside the staff-only portal', () => {
+    const pane = new FakeElement('section');
+    const { context } = loadScript('admin.js', {
+      'tab-faculties': pane,
+      adminFacultiesContainer: new FakeElement('div'),
+      adminFacultyCount: new FakeElement('span')
+    });
+    let requestedPath;
+    context.api = { get: path => { requestedPath = path; return Promise.resolve([]); } };
+    const portal = fs.readFileSync(path.join(__dirname, '../../frontend/portal-admin.html'), 'utf8');
+
+    context.switchAdminTab('faculties');
+
+    expect(pane.classList.contains('active')).toBe(true);
+    expect(requestedPath).toBe('/admin/faculties');
+    expect(portal).toContain("switchAdminTab('faculties', this)");
+    expect(portal).toContain("requireAuth(['QUAN_TRI', 'DAO_TAO'])");
+  });
+
+  test('faculty directory switches to labeled rows on narrow screens', () => {
+    const css = fs.readFileSync(path.join(__dirname, '../../frontend/css/styles.css'), 'utf8');
+
+    expect(css).toMatch(/\.faculty-directory-table\s*\{[^}]*table-layout:\s*fixed/s);
+    expect(css).toContain('@media (max-width: 768px)');
+    expect(css).toContain('.faculty-directory-table td::before');
+    expect(css).toContain('content: attr(data-label)');
+    expect(css).toContain('grid-template-columns: minmax(6.5rem, 0.38fr) minmax(0, 1fr)');
+    expect(css).toMatch(/\.faculty-directory-table td:first-child,\s*\.faculty-directory-table td:last-child\s*\{\s*width:\s*100%;/s);
+  });
+
   test('curriculum program choices follow the selected intake year', async () => {
     const ids = ['adminCurriculumContainer', 'curriculumResultCount', 'filterCurriculumFaculty', 'filterCurriculumYear', 'filterCurriculumProgram', 'filterCurriculumTerm'];
     const elements = Object.fromEntries(ids.map(id => [id, new FakeElement(id.startsWith('filter') ? 'select' : 'div')]));
@@ -85,6 +168,84 @@ describe('frontend DOM feedback and untrusted text', () => {
     await context.loadAdminCurriculums();
     expect(elements.filterCurriculumProgram.value).toBe('');
     expect(elements.curriculumResultCount.textContent).toBe('1 chương trình');
+  });
+
+  test('admin curriculum rows show the complete subject details and prerequisite level', async () => {
+    const ids = ['adminCurriculumContainer', 'curriculumResultCount', 'filterCurriculumFaculty', 'filterCurriculumYear', 'filterCurriculumProgram', 'filterCurriculumTerm'];
+    const elements = Object.fromEntries(ids.map(id => [id, new FakeElement(id.startsWith('filter') ? 'select' : 'div')]));
+    const { context } = loadScript('admin.js', elements);
+    context.escapeHtml = value => String(value ?? '');
+    context.api = { get: async () => [{
+      maKhoa: 'CNTT', tenKhoa: 'Công nghệ thông tin', maKhoaMon: 'CNTT', tenKhoaMon: 'Công nghệ thông tin',
+      maCTDT: 'CTDT1', tenCTDT: 'Chương trình mẫu', khoaHoc: '2024-2028', namTuyenSinh: 2024, nganh: 'Kỹ thuật phần mềm',
+      maMonHoc: 'CS101', tenMonHoc: 'Nhập môn lập trình', soTinChi: 3, soTietLyThuyet: 30, soTietThucHanh: 15,
+      moTa: 'Môn học nhập môn', trangThaiMon: true, trangThai: true, hocKyDuKien: 1,
+      loaiMon: 'TU_CHON', thuTu: 2, hocPhanTienQuyet: null,
+      hocPhanTienQuyetChiTiet: [{ maMonHoc: 'CS001', tenMonHoc: 'Cơ sở máy tính', mucDo: 'KHUYEN_NGHI' }]
+    }] };
+
+    await context.loadAdminCurriculums();
+
+    expect(elements.adminCurriculumContainer.innerHTML).toContain('30 tiết');
+    expect(elements.adminCurriculumContainer.innerHTML).toContain('15 tiết');
+    expect(elements.adminCurriculumContainer.innerHTML).toContain('Môn học nhập môn');
+    expect(elements.adminCurriculumContainer.innerHTML).toContain('Tự chọn');
+    expect(elements.adminCurriculumContainer.innerHTML).toContain('Thứ tự: 2');
+    expect(elements.adminCurriculumContainer.innerHTML).toContain('Khuyến nghị');
+    expect(elements.adminCurriculumContainer.innerHTML).toContain('Trạng thái môn');
+  });
+
+  test('student semester view renders all course attributes and handles missing optional details', async () => {
+    const elements = Object.fromEntries(['studentCurriculumStatus', 'studentCurriculumSummary', 'studentCurriculumTerm', 'studentCurriculumCourses'].map(id => [id, new FakeElement(id === 'studentCurriculumTerm' ? 'select' : 'div')]));
+    const { context, window } = loadScript('student.js', elements);
+    context.escapeHtml = value => String(value ?? '');
+    context.api = {
+      getCurrentUser: () => ({ maSV: 7 }),
+      get: async () => ({
+        trangThai: true,
+        hocKy: [{ hocKyDuKien: 1, monHoc: [
+          { maMonHoc: 'CS101', tenMonHoc: 'Nhập môn lập trình', maKhoaMon: 'CNTT', tenKhoaMon: 'Công nghệ thông tin', soTinChi: 3, soTietLyThuyet: 30, soTietThucHanh: 15, moTa: 'Môn học nhập môn', trangThaiMon: true, loaiMon: 'BAT_BUOC', thuTu: 1, hocPhanTienQuyetChiTiet: [{ maMonHoc: 'CS001', tenMonHoc: 'Cơ sở máy tính', mucDo: 'BAT_BUOC' }] },
+          { maMonHoc: 'CS102', tenMonHoc: 'Nhập môn tự chọn', soTinChi: 2, loaiMon: 'TU_CHON', thuTu: 2, hocPhanTienQuyetChiTiet: [{ maMonHoc: 'CS002', tenMonHoc: 'Đại cương', mucDo: 'KHUYEN_NGHI' }] }
+        ] }]
+      })
+    };
+
+    await window.loadStudentCurriculum();
+    elements.studentCurriculumTerm.value = '1';
+    window.renderStudentCurriculumTerm();
+
+    expect(elements.studentCurriculumCourses.innerHTML).toContain('Khoa phụ trách');
+    expect(elements.studentCurriculumCourses.innerHTML).toContain('Lý thuyết: 30 tiết');
+    expect(elements.studentCurriculumCourses.innerHTML).toContain('Thực hành: 15 tiết');
+    expect(elements.studentCurriculumCourses.innerHTML).toContain('Môn học nhập môn');
+    expect(elements.studentCurriculumCourses.innerHTML).toContain('Bắt buộc');
+    expect(elements.studentCurriculumCourses.innerHTML).toContain('Tự chọn');
+    expect(elements.studentCurriculumCourses.innerHTML).toContain('Khuyến nghị');
+    expect(elements.studentCurriculumCourses.innerHTML).toContain('Thứ tự: 2');
+    expect(elements.studentCurriculumCourses.innerHTML).toContain('—');
+    expect(elements.studentCurriculumCourses.innerHTML).not.toContain('undefined');
+  });
+
+  test('empty curriculum semester keeps its empty-state message', async () => {
+    const elements = Object.fromEntries(['studentCurriculumStatus', 'studentCurriculumSummary', 'studentCurriculumTerm', 'studentCurriculumCourses'].map(id => [id, new FakeElement(id === 'studentCurriculumTerm' ? 'select' : 'div')]));
+    const { context, window } = loadScript('student.js', elements);
+    context.escapeHtml = value => String(value ?? '');
+    context.api = { getCurrentUser: () => ({ maSV: 7 }), get: async () => ({ trangThai: true, hocKy: [{ hocKyDuKien: 2, monHoc: [] }] }) };
+
+    await window.loadStudentCurriculum();
+    elements.studentCurriculumTerm.value = '2';
+    window.renderStudentCurriculumTerm();
+
+    expect(elements.studentCurriculumCourses.innerHTML).toContain('Học kỳ này chưa có môn học trong chương trình.');
+  });
+
+  test('curriculum details fit the viewport and stack as labeled values on narrow screens', () => {
+    const css = fs.readFileSync(path.join(__dirname, '../../frontend/css/styles.css'), 'utf8');
+    expect(css).toMatch(/\.curriculum-table-wrap\s*\{[^}]*overflow:\s*hidden/s);
+    expect(css).toMatch(/\.curriculum-detail-table\s*\{[^}]*table-layout:\s*fixed/s);
+    expect(css).toContain('@media (max-width: 900px)');
+    expect(css).toContain('content: attr(data-label)');
+    expect(css).toContain('grid-template-columns: minmax(0, 1fr)');
   });
 
   test('student curriculum summary separates the title, program code, labeled facts, and metrics', () => {

@@ -3,12 +3,12 @@ const { getPool } = require('../config/db');
 /**
  * Repository tra cứu danh mục Khoa
  */
-const getAllFaculties = async () => {
+const getFaculties = async ({ activeOnly }) => {
   const pool = await getPool();
   const result = await pool.request().query(`
     SELECT MaKhoa, TenKhoa, Email, SoDienThoai, TrangThai
     FROM dbo.KHOA
-    WHERE TrangThai = 1
+    ${activeOnly ? 'WHERE TrangThai = 1' : ''}
     ORDER BY TenKhoa ASC
   `);
 
@@ -21,6 +21,10 @@ const getAllFaculties = async () => {
   }));
 };
 
+const getAllFaculties = () => getFaculties({ activeOnly: true });
+const getAllFacultiesForStaff = () => getFaculties({ activeOnly: false });
+
 module.exports = {
-  getAllFaculties
+  getAllFaculties,
+  getAllFacultiesForStaff
 };

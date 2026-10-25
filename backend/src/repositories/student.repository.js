@@ -260,18 +260,26 @@ const getStudentCurriculum = async (maSV) => {
     SELECT sv.MaSV, c.MaCTDT, c.TenCTDT, c.KhoaHoc, c.NamTuyenSinh,
       c.TongTinChiYeuCau, c.ThoiGianDaoTao, c.TrangThai AS TrangThaiCTDT,
       n.MaKhoa, k.TenKhoa, n.TenNganh AS Nganh,
-      mh.MaMonHoc, mh.TenMonHoc, mh.SoTinChi,
+      mh.MaMonHoc, mh.MaKhoa AS MaKhoaMon, km.TenKhoa AS TenKhoaMon,
+      mh.TenMonHoc, mh.SoTinChi, mh.SoTietLyThuyet, mh.SoTietThucHanh, mh.MoTa,
+      mh.TrangThai AS TrangThaiMon,
       ctm.HocKyDuKien, ctm.LoaiMon, ctm.ThuTu,
       (SELECT STRING_AGG(CONVERT(NVARCHAR(MAX), CONCAT(pre.MaMonHoc, N' - ', pre.TenMonHoc)), N'; ')
        FROM dbo.MONHOCTIENQUYET mtq
        INNER JOIN dbo.MONHOC pre ON pre.MaMonHoc = mtq.MaMonTienQuyet
-       WHERE mtq.MaMonHoc = mh.MaMonHoc) AS HocPhanTienQuyet
+       WHERE mtq.MaMonHoc = mh.MaMonHoc) AS HocPhanTienQuyet,
+      (SELECT mtq.MaMonTienQuyet AS maMonHoc, pre.TenMonHoc AS tenMonHoc, mtq.MucDo AS mucDo
+       FROM dbo.MONHOCTIENQUYET mtq
+       INNER JOIN dbo.MONHOC pre ON pre.MaMonHoc = mtq.MaMonTienQuyet
+       WHERE mtq.MaMonHoc = mh.MaMonHoc
+       FOR JSON PATH) AS HocPhanTienQuyetChiTiet
     FROM dbo.SINHVIEN sv
     LEFT JOIN dbo.CHUONGTRINHDAOTAO c ON c.MaCTDT = sv.MaCTDT
     LEFT JOIN dbo.NGANH n ON n.MaNganh = c.MaNganh
     LEFT JOIN dbo.KHOA k ON k.MaKhoa = n.MaKhoa
     LEFT JOIN dbo.CTDT_MONHOC ctm ON ctm.MaCTDT = c.MaCTDT
     LEFT JOIN dbo.MONHOC mh ON mh.MaMonHoc = ctm.MaMonHoc
+    LEFT JOIN dbo.KHOA km ON km.MaKhoa = mh.MaKhoa
     WHERE sv.MaSV = @MaSV
     ORDER BY ctm.HocKyDuKien, ctm.ThuTu, mh.MaMonHoc;
   `);

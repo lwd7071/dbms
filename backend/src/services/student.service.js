@@ -132,10 +132,17 @@ const getStudentCurriculum = async (maSV) => {
     if (term) term.monHoc.push({
       maMonHoc: row.MaMonHoc,
       tenMonHoc: row.TenMonHoc,
+      maKhoaMon: row.MaKhoaMon,
+      tenKhoaMon: row.TenKhoaMon,
       soTinChi: row.SoTinChi,
+      soTietLyThuyet: row.SoTietLyThuyet,
+      soTietThucHanh: row.SoTietThucHanh,
+      moTa: row.MoTa,
+      trangThaiMon: row.TrangThaiMon === null || row.TrangThaiMon === undefined ? null : Boolean(row.TrangThaiMon),
       loaiMon: row.LoaiMon,
       thuTu: row.ThuTu,
-      hocPhanTienQuyet: row.HocPhanTienQuyet
+      hocPhanTienQuyet: row.HocPhanTienQuyet,
+      hocPhanTienQuyetChiTiet: row.HocPhanTienQuyetChiTiet ? JSON.parse(row.HocPhanTienQuyetChiTiet) : []
     });
   });
 
