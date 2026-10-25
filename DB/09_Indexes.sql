@@ -14,6 +14,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.CTDT_MONHOC')
 )
 BEGIN
+    -- Phụ trách: Lương Viết Vĩ Đông
     CREATE NONCLUSTERED INDEX IX_CTDT_MONHOC_MaCTDT
     ON dbo.CTDT_MONHOC (MaCTDT, MaMonHoc)
     INCLUDE (HocKyDuKien, LoaiMon, ThuTu);
@@ -27,6 +28,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.MONHOCTIENQUYET')
 )
 BEGIN
+    -- Phụ trách: Lương Viết Vĩ Đông
     CREATE NONCLUSTERED INDEX IX_MONHOCTIENQUYET_MaMonTienQuyet
     ON dbo.MONHOCTIENQUYET (MaMonTienQuyet, MaMonHoc)
     INCLUDE (MucDo);
@@ -40,6 +42,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.MONHOC')
 )
 BEGIN
+    -- Phụ trách: Lương Viết Vĩ Đông
     CREATE NONCLUSTERED INDEX IX_MONHOC_MaKhoa
     ON dbo.MONHOC (MaKhoa, TrangThai)
     INCLUDE (TenMonHoc, SoTinChi);
@@ -53,6 +56,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.SINHVIEN')
 )
 BEGIN
+    -- Phụ trách: Lê Trung Đông
     CREATE NONCLUSTERED INDEX IX_SINHVIEN_MaKhoa_TrangThai
     ON dbo.SINHVIEN (MaKhoa, TrangThai)
     INCLUDE (MaSinhVien, HoTen, Email);
@@ -66,6 +70,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.GIANGVIEN')
 )
 BEGIN
+    -- Phụ trách: Lê Trung Đông
     CREATE NONCLUSTERED INDEX IX_GIANGVIEN_MaKhoa_TrangThai
     ON dbo.GIANGVIEN (MaKhoa, TrangThai)
     INCLUDE (MaGiangVien, HoTen, Email);
@@ -79,6 +84,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.TAIKHOAN')
 )
 BEGIN
+    -- Phụ trách: Lê Trung Đông
     CREATE NONCLUSTERED INDEX IX_TAIKHOAN_VaiTro_TrangThai
     ON dbo.TAIKHOAN (VaiTro, TrangThai)
     INCLUDE (Username, MaSV, MaGV, LanDangNhapCuoi);
@@ -92,6 +98,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.HOCKY')
 )
 BEGIN
+    -- Phụ trách: Lê Trung Đông
     CREATE NONCLUSTERED INDEX IX_HOCKY_TrangThai_NgayMoDangKy
     ON dbo.HOCKY (TrangThai, NgayMoDangKy)
     INCLUDE (NgayDongDangKy, NamHoc, TenHocKy);
@@ -105,6 +112,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.DANGKYTINCHI')
 )
 BEGIN
+    -- Phụ trách: Trần Biểu Hương
     CREATE NONCLUSTERED INDEX IX_DANGKYTINCHI_MaSV_MaLHP
     ON dbo.DANGKYTINCHI (MaSV, MaLHP)
     INCLUDE (TrangThai, NgayDangKy);
@@ -118,6 +126,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.DANGKYTINCHI')
 )
 BEGIN
+    -- Phụ trách: Trần Biểu Hương
     CREATE NONCLUSTERED INDEX IX_DANGKYTINCHI_MaLHP_TrangThai
     ON dbo.DANGKYTINCHI (MaLHP, TrangThai)
     INCLUDE (MaSV, NgayDangKy);
@@ -131,6 +140,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.LOPHOCPHAN')
 )
 BEGIN
+    -- Phụ trách: Trần Biểu Hương
     CREATE NONCLUSTERED INDEX IX_LOPHOCPHAN_MaHocKy_MaMonHoc
     ON dbo.LOPHOCPHAN (MaHocKy, MaMonHoc)
     INCLUDE (MaLHP, MaGiangVien, SoLuongToiDa, TrangThai);
@@ -144,6 +154,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.LICHHOC')
 )
 BEGIN
+    -- Phụ trách: Trần Biểu Hương
     CREATE NONCLUSTERED INDEX IX_LICHHOC_MaLHP_Thu_Tiet
     ON dbo.LICHHOC (MaLHP, Thu, TietBatDau)
     INCLUDE (SoTiet, PhongHoc);
@@ -157,6 +168,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.HOCPHI')
 )
 BEGIN
+    -- Phụ trách: Âu Quốc Khánh
     CREATE NONCLUSTERED INDEX IX_HOCPHI_MaSV_MaHocKy
     ON dbo.HOCPHI (MaSV, MaHocKy);
 END;
@@ -169,6 +181,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.HOCPHI')
 )
 BEGIN
+    -- Phụ trách: Âu Quốc Khánh
     CREATE NONCLUSTERED INDEX IX_HOCPHI_MaHocKy_TrangThai
     ON dbo.HOCPHI (MaHocKy, TrangThai);
 END;
@@ -181,6 +194,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.LOGHOATDONG')
 )
 BEGIN
+    -- Phụ trách: Âu Quốc Khánh
     CREATE NONCLUSTERED INDEX IX_LOGHOATDONG_ThoiGian
     ON dbo.LOGHOATDONG (ThoiGian);
 END;
@@ -193,6 +207,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.LOGHOATDONG')
 )
 BEGIN
+    -- Phụ trách: Âu Quốc Khánh
     CREATE NONCLUSTERED INDEX IX_LOGHOATDONG_MaTaiKhoan_ThoiGian
     ON dbo.LOGHOATDONG (MaTaiKhoan, ThoiGian);
 END;
@@ -205,6 +220,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.NGANH')
 )
 BEGIN
+    -- Phụ trách: Lương Viết Vĩ Đông
     CREATE NONCLUSTERED INDEX IX_NGANH_MaKhoa
     ON dbo.NGANH (MaKhoa);
 END;
@@ -217,6 +233,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.CHUONGTRINHDAOTAO')
 )
 BEGIN
+    -- Phụ trách: Lương Viết Vĩ Đông
     CREATE NONCLUSTERED INDEX IX_CHUONGTRINHDAOTAO_MaNganh
     ON dbo.CHUONGTRINHDAOTAO (MaNganh);
 END;
@@ -229,6 +246,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.SINHVIEN')
 )
 BEGIN
+    -- Phụ trách: Lê Trung Đông
     CREATE NONCLUSTERED INDEX IX_SINHVIEN_MaLop
     ON dbo.SINHVIEN (MaLop)
     INCLUDE (HoTen, Email, TrangThai);
@@ -242,6 +260,7 @@ IF NOT EXISTS
       AND object_id = OBJECT_ID('dbo.LOP')
 )
 BEGIN
+    -- Phụ trách: Lê Trung Đông
     CREATE NONCLUSTERED INDEX IX_LOP_MaKhoa_NamNhapHoc
     ON dbo.LOP (MaKhoa, NamNhapHoc)
     INCLUDE (TenLop, KhoaHoc, TrangThai);

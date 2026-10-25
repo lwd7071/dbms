@@ -9,6 +9,7 @@ GO
 IF OBJECT_ID(N'dbo.SP_TaoTaiKhoan', N'P') IS NOT NULL
     DROP PROCEDURE [dbo].[SP_TaoTaiKhoan];
 GO
+-- Phụ trách: Lê Trung Đông
 CREATE PROCEDURE [dbo].[SP_TaoTaiKhoan]
     @Username       VARCHAR(50),
     @PasswordHash   VARCHAR(255),
@@ -161,6 +162,7 @@ GO
 IF OBJECT_ID(N'dbo.SP_KhoaTaiKhoan', N'P') IS NOT NULL
     DROP PROCEDURE [dbo].[SP_KhoaTaiKhoan];
 GO
+-- Phụ trách: Lê Trung Đông
 CREATE PROCEDURE [dbo].[SP_KhoaTaiKhoan]
     @MaTaiKhoan INT,
     @MaTaiKhoanNguoiThaoTac INT = NULL
@@ -263,6 +265,7 @@ GO
 IF OBJECT_ID(N'dbo.SP_DangKyTinChi', N'P') IS NOT NULL
     DROP PROCEDURE [dbo].[SP_DangKyTinChi];
 GO
+-- Phụ trách: Trần Biểu Hương
 CREATE PROCEDURE [dbo].[SP_DangKyTinChi]
     @MaSV INT,
     @MaLHP VARCHAR(20)
@@ -419,6 +422,7 @@ GO
 IF OBJECT_ID(N'dbo.SP_HuyDangKy', N'P') IS NOT NULL
     DROP PROCEDURE [dbo].[SP_HuyDangKy];
 GO
+-- Phụ trách: Trần Biểu Hương
 CREATE PROCEDURE [dbo].[SP_HuyDangKy]
     @MaSV INT,
     @MaLHP VARCHAR(20)
@@ -492,6 +496,7 @@ GO
 IF OBJECT_ID(N'dbo.SP_TinhHocPhiSinhVien', N'P') IS NOT NULL
     DROP PROCEDURE [dbo].[SP_TinhHocPhiSinhVien];
 GO
+-- Phụ trách: Âu Quốc Khánh
 CREATE PROCEDURE [dbo].[SP_TinhHocPhiSinhVien]
     @MaSV INT,
     @MaHocKy INT
@@ -636,6 +641,7 @@ GO
 IF OBJECT_ID(N'dbo.SP_ThongKeHocPhi', N'P') IS NOT NULL
     DROP PROCEDURE [dbo].[SP_ThongKeHocPhi];
 GO
+-- Phụ trách: Âu Quốc Khánh
 CREATE PROCEDURE [dbo].[SP_ThongKeHocPhi]
     @MaHocKy INT = NULL,
     @TrangThai VARCHAR(20) = NULL
@@ -685,6 +691,7 @@ GO
 IF OBJECT_ID(N'dbo.SP_ThongKeHocPhiTheoLop', N'P') IS NOT NULL
     DROP PROCEDURE [dbo].[SP_ThongKeHocPhiTheoLop];
 GO
+-- Phụ trách: Âu Quốc Khánh
 CREATE PROCEDURE [dbo].[SP_ThongKeHocPhiTheoLop]
     @MaLop VARCHAR(20),
     @MaHocKy INT = NULL
@@ -741,6 +748,7 @@ GO
 IF OBJECT_ID(N'dbo.SP_XacNhanThanhToan', N'P') IS NOT NULL
     DROP PROCEDURE [dbo].[SP_XacNhanThanhToan];
 GO
+-- Phụ trách: Âu Quốc Khánh
 CREATE PROCEDURE dbo.SP_XacNhanThanhToan
     @MaThanhToan BIGINT,
     @MaTaiKhoanXacNhan INT
@@ -842,6 +850,7 @@ GO
 IF OBJECT_ID(N'dbo.SP_TuChoiThanhToan', N'P') IS NOT NULL
     DROP PROCEDURE [dbo].[SP_TuChoiThanhToan];
 GO
+-- Phụ trách: Âu Quốc Khánh
 CREATE PROCEDURE dbo.SP_TuChoiThanhToan
     @MaThanhToan BIGINT,
     @MaTaiKhoanXacNhan INT

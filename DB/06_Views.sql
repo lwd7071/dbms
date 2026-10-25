@@ -6,6 +6,7 @@ SET ANSI_NULLS ON;
 GO
 SET QUOTED_IDENTIFIER ON;
 GO
+-- Phụ trách: Lương Viết Vĩ Đông
 CREATE OR ALTER VIEW [dbo].[V_CauTrucChuongTrinhDaoTao]
 AS
 SELECT
@@ -31,6 +32,7 @@ INNER JOIN dbo.CTDT_MONHOC ctm
 INNER JOIN dbo.MONHOC mh
     ON mh.MaMonHoc = ctm.MaMonHoc;
 GO
+-- Phụ trách: Lê Trung Đông
 CREATE OR ALTER VIEW [dbo].[V_TaiKhoanNguoiDung]
 AS
 SELECT
@@ -58,6 +60,7 @@ LEFT JOIN dbo.LOP l
 LEFT JOIN dbo.GIANGVIEN gv
     ON gv.MaGV = tk.MaGV;
 GO
+-- Phụ trách: Trần Biểu Hương
 CREATE OR ALTER VIEW [dbo].[V_ThoiKhoaBieuSinhVien]
 AS
 SELECT
@@ -94,6 +97,7 @@ LEFT JOIN dbo.GIANGVIEN gv
 INNER JOIN dbo.LICHHOC lh
     ON lh.MaLHP = lhp.MaLHP;
 GO
+-- Phụ trách: Trần Biểu Hương
 CREATE OR ALTER VIEW [dbo].[V_BangDiemChiTiet]
 AS
 SELECT
@@ -167,6 +171,7 @@ LEFT JOIN dbo.DIEMSO ds
     ON ds.MaDangKy = dk.MaDangKy
 WHERE dk.TrangThai = 'REGISTERED';
 GO
+-- Phụ trách: Âu Quốc Khánh
 CREATE OR ALTER VIEW [dbo].[V_HocPhiSinhVien]
 AS
 SELECT
@@ -197,6 +202,7 @@ INNER JOIN dbo.HOCKY hk
 GO
 
 -- 6. View danh sách lớp sinh hoạt kèm sĩ số thực tế
+-- Phụ trách: Lê Trung Đông
 CREATE OR ALTER VIEW [dbo].[V_DanhSachLopSinhHoat]
 AS
 SELECT
