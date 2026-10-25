@@ -7,6 +7,7 @@ GO
 SET QUOTED_IDENTIFIER ON;
 GO
 
+-- Phụ trách: Lương Viết Vĩ Đông
 CREATE OR ALTER FUNCTION [dbo].[FN_KiemTraTienQuyet]
 (
     @MaSV INT,
@@ -50,6 +51,7 @@ BEGIN
 END;
 GO
 
+-- Phụ trách: Trần Biểu Hương
 CREATE OR ALTER FUNCTION [dbo].[FN_KiemTraThoiGianDangKy]
 (
     @MaHocKy INT,
@@ -77,6 +79,7 @@ BEGIN
 END;
 GO
 
+-- Phụ trách: Trần Biểu Hương
 CREATE OR ALTER FUNCTION [dbo].[FN_TongTinChiDangKy]
 (
     @MaSV INT,
@@ -102,6 +105,7 @@ BEGIN
 END;
 GO
 
+-- Phụ trách: Trần Biểu Hương
 CREATE OR ALTER FUNCTION [dbo].[FN_TinhDiemTongKet]
 (
     @DiemQuaTrinh DECIMAL(4,2),
@@ -124,6 +128,7 @@ BEGIN
 END;
 GO
 
+-- Phụ trách: Lê Trung Đông
 CREATE OR ALTER FUNCTION [dbo].[FN_KiemTraTaiKhoanDangHoatDong]
 (
     @MaTaiKhoan INT
@@ -148,6 +153,7 @@ BEGIN
 END;
 GO
 
+-- Phụ trách: Âu Quốc Khánh
 CREATE OR ALTER FUNCTION [dbo].[FN_LayDonGiaTinChi]
 (
     @MaHocKy INT,
@@ -177,6 +183,7 @@ END;
 GO
 
 -- 7. Hàm đếm sĩ số sinh viên của lớp sinh hoạt
+-- Phụ trách: Lê Trung Đông
 CREATE OR ALTER FUNCTION [dbo].[FN_DemSiSoLopSinhHoat]
 (
     @MaLop VARCHAR(20)
