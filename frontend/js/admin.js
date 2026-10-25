@@ -1552,20 +1552,26 @@ async function loadAdminCurriculums() {
   try {
     if (!adminCurriculumCatalog) {
       adminCurriculumCatalog = await api.get('/admin/curriculums');
-      const faculties = [...new Map(adminCurriculumCatalog.map(item => [item.maKhoa, item])).values()];
-      const facultySelect = document.getElementById('filterCurriculumFaculty');
-      facultySelect.innerHTML = '<option value="">-- Tất cả khoa --</option>' + faculties.map(item => `<option value="${escapeHtml(item.maKhoa)}">${escapeHtml(item.tenKhoa)} (${escapeHtml(item.maKhoa)})</option>`).join('');
-      const years = [...new Set(adminCurriculumCatalog.map(item => item.namTuyenSinh))].sort((a, b) => b - a);
-      const yearSelect = document.getElementById('filterCurriculumYear');
-      yearSelect.innerHTML = '<option value="">-- Tất cả khóa tuyển sinh --</option>' + years.map(year => `<option value="${year}">${year}</option>`).join('');
-      const programs = [...new Map(adminCurriculumCatalog.map(item => [item.maCTDT, item])).values()];
-      const programSelect = document.getElementById('filterCurriculumProgram');
-      programSelect.innerHTML = '<option value="">-- Tất cả chương trình --</option>' + programs.map(item => `<option value="${escapeHtml(item.maCTDT)}">${escapeHtml(item.tenCTDT)} (${escapeHtml(item.khoaHoc)})</option>`).join('');
-      const maxTerms = Math.max(0, ...adminCurriculumCatalog.map(item => Number(item.thoiGianDaoTao) || 0)) * 2;
-      const terms = Array.from({ length: maxTerms }, (_, index) => index + 1);
-      const termSelect = document.getElementById('filterCurriculumTerm');
-      termSelect.innerHTML = '<option value="">-- Tất cả học kỳ --</option>' + terms.map(term => `<option value="${term}">Học kỳ ${term}</option>`).join('');
     }
+    const setOptions = (id, label, options) => {
+      const select = document.getElementById(id);
+      const selected = select.value;
+      select.innerHTML = `<option value="">${label}</option>` + options.map(({ value, text }) => `<option value="${escapeHtml(value)}">${escapeHtml(text)}</option>`).join('');
+      select.value = options.some(option => String(option.value) === selected) ? selected : '';
+      return select.value;
+    };
+    const faculties = [...new Map(adminCurriculumCatalog.map(item => [item.maKhoa, item])).values()];
+    const maKhoa = setOptions('filterCurriculumFaculty', '-- Tất cả khoa --', faculties.map(item => ({ value: item.maKhoa, text: `${item.tenKhoa} (${item.maKhoa})` })));
+    const facultyRows = adminCurriculumCatalog.filter(item => !maKhoa || item.maKhoa === maKhoa);
+    const years = [...new Set(facultyRows.map(item => item.namTuyenSinh))].sort((a, b) => b - a);
+    const namTuyenSinh = setOptions('filterCurriculumYear', '-- Tất cả khóa tuyển sinh --', years.map(year => ({ value: year, text: `Khóa ${year}` })));
+    const yearRows = facultyRows.filter(item => !namTuyenSinh || String(item.namTuyenSinh) === namTuyenSinh);
+    const programs = [...new Map(yearRows.map(item => [item.maCTDT, item])).values()];
+    const maCTDT = setOptions('filterCurriculumProgram', '-- Tất cả chương trình --', programs.map(item => ({ value: item.maCTDT, text: `${item.tenCTDT} (${item.khoaHoc})` })));
+    const programRows = yearRows.filter(item => !maCTDT || item.maCTDT === maCTDT);
+    const maxTerms = Math.max(0, ...programRows.map(item => Number(item.thoiGianDaoTao) || 0)) * 2;
+    const terms = Array.from({ length: maxTerms }, (_, index) => index + 1);
+    setOptions('filterCurriculumTerm', '-- Tất cả học kỳ --', terms.map(term => ({ value: term, text: `Học kỳ ${term}` })));
     const filters = {
       maKhoa: document.getElementById('filterCurriculumFaculty').value,
       namTuyenSinh: document.getElementById('filterCurriculumYear').value,
@@ -1573,8 +1579,8 @@ async function loadAdminCurriculums() {
       hocKyDuKien: document.getElementById('filterCurriculumTerm').value
     };
     const rows = Object.values(filters).some(Boolean) ? await api.get('/admin/curriculums', filters) : adminCurriculumCatalog;
-    const programs = new Set(rows.map(item => item.maCTDT));
-    count.textContent = `${programs.size} chương trình`;
+    const resultPrograms = new Set(rows.map(item => item.maCTDT));
+    count.textContent = `${resultPrograms.size} chương trình`;
     if (!rows.length) {
       container.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--color-text-muted);">Không tìm thấy chương trình phù hợp.</div>';
       return;

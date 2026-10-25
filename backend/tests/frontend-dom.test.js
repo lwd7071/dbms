@@ -59,6 +59,34 @@ function loadScript(file, elements = {}) {
 }
 
 describe('frontend DOM feedback and untrusted text', () => {
+  test('curriculum program choices follow the selected intake year', async () => {
+    const ids = ['adminCurriculumContainer', 'curriculumResultCount', 'filterCurriculumFaculty', 'filterCurriculumYear', 'filterCurriculumProgram', 'filterCurriculumTerm'];
+    const elements = Object.fromEntries(ids.map(id => [id, new FakeElement(id.startsWith('filter') ? 'select' : 'div')]));
+    const { context } = loadScript('admin.js', elements);
+    const catalog = [
+      { maKhoa: 'CNTT', tenKhoa: 'Khoa Công nghệ Thông tin', namTuyenSinh: 2023, maCTDT: 'CTDT_MMT_23', tenCTDT: 'Mạng Máy tính Chuẩn', khoaHoc: '2023-2027', thoiGianDaoTao: 4, hocKyDuKien: 1 },
+      { maKhoa: 'CNTT', tenKhoa: 'Khoa Công nghệ Thông tin', namTuyenSinh: 2024, maCTDT: 'CTDT_MMT_24', tenCTDT: 'Mạng Máy tính Chuẩn', khoaHoc: '2024-2028', thoiGianDaoTao: 4, hocKyDuKien: 1 }
+    ];
+    context.api = { get: async (_path, filters = {}) => catalog.filter(item => Object.entries(filters).every(([key, value]) => !value || String(item[key]) === String(value))) };
+    context.escapeHtml = value => String(value ?? '');
+
+    await context.loadAdminCurriculums();
+    elements.filterCurriculumFaculty.value = 'CNTT';
+    elements.filterCurriculumYear.value = '2024';
+    await context.loadAdminCurriculums();
+
+    expect(elements.filterCurriculumProgram.innerHTML).toContain('CTDT_MMT_24');
+    expect(elements.filterCurriculumProgram.innerHTML).not.toContain('CTDT_MMT_23');
+
+    elements.filterCurriculumYear.value = '2023';
+    await context.loadAdminCurriculums();
+    elements.filterCurriculumProgram.value = 'CTDT_MMT_23';
+    elements.filterCurriculumYear.value = '2024';
+    await context.loadAdminCurriculums();
+    expect(elements.filterCurriculumProgram.value).toBe('');
+    expect(elements.curriculumResultCount.textContent).toBe('1 chương trình');
+  });
+
   test('student curriculum summary separates the title, program code, labeled facts, and metrics', () => {
     const { window, context } = loadScript('student.js');
     context.escapeHtml = value => String(value ?? '');
