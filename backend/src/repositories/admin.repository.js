@@ -163,13 +163,27 @@ const updateUserStatus = async (username, status, actor) => {
 const getCurriculums = async (filters = {}) => {
   const pool = await getPool();
   const request = pool.request();
-  const { maKhoa, namTuyenSinh, maCTDT, hocKyDuKien } = typeof filters === 'string' ? { maKhoa: filters } : filters;
-  request.input('MaKhoa', sql.VarChar(10), maKhoa || null)
-    .input('NamTuyenSinh', sql.SmallInt, namTuyenSinh || null)
-    .input('MaCTDT', sql.VarChar(24), maCTDT || null)
-    .input('HocKyDuKien', sql.TinyInt, hocKyDuKien || null);
+  const { maKhoa, maNganh, maMonTienQuyet, tuKhoaMonHoc, namTuyenSinh, maCTDT, hocKyDuKien } = typeof filters === 'string' ? { maKhoa: filters } : filters;
+  const predicates = [];
+  if (maKhoa) { request.input('MaKhoa', sql.VarChar(10), maKhoa); predicates.push('n.MaKhoa = @MaKhoa'); }
+  if (maNganh) { request.input('MaNganh', sql.VarChar(10), maNganh); predicates.push('c.MaNganh = @MaNganh'); }
+  if (namTuyenSinh) { request.input('NamTuyenSinh', sql.SmallInt, namTuyenSinh); predicates.push('c.NamTuyenSinh = @NamTuyenSinh'); }
+  if (maCTDT) { request.input('MaCTDT', sql.VarChar(24), maCTDT); predicates.push('c.MaCTDT = @MaCTDT'); }
+  if (tuKhoaMonHoc) {
+    request.input('TuKhoaMonHoc', sql.NVarChar(100), `%${tuKhoaMonHoc}%`);
+    predicates.push('(mh.MaMonHoc LIKE @TuKhoaMonHoc OR mh.TenMonHoc LIKE @TuKhoaMonHoc)');
+  }
+  if (hocKyDuKien) request.input('HocKyDuKien', sql.TinyInt, hocKyDuKien);
+  if (maMonTienQuyet) request.input('MaMonTienQuyet', sql.VarChar(15), maMonTienQuyet);
+  if (maMonTienQuyet) predicates.push(`EXISTS (
+    SELECT 1 FROM dbo.MONHOCTIENQUYET filterMtq
+    WHERE filterMtq.MaMonTienQuyet = @MaMonTienQuyet
+      AND EXISTS (SELECT 1 FROM dbo.CTDT_MONHOC filterCtm
+        WHERE filterCtm.MaCTDT = c.MaCTDT AND filterCtm.MaMonHoc = filterMtq.MaMonHoc
+          ${hocKyDuKien ? 'AND filterCtm.HocKyDuKien = @HocKyDuKien' : ''})
+  )`);
   const query = `
-    SELECT c.MaCTDT, c.TenCTDT, n.TenNganh AS Nganh, c.KhoaHoc, c.NamTuyenSinh,
+    SELECT c.MaCTDT, c.TenCTDT, n.MaNganh, n.TenNganh AS Nganh, c.KhoaHoc, c.NamTuyenSinh,
       c.TongTinChiYeuCau, c.ThoiGianDaoTao, c.TrangThai AS TrangThaiCTDT,
       n.MaKhoa, k.TenKhoa, mh.MaMonHoc, mh.MaKhoa AS MaKhoaMon, km.TenKhoa AS TenKhoaMon,
       mh.TenMonHoc, mh.SoTinChi, mh.SoTietLyThuyet, mh.SoTietThucHanh, mh.MoTa,
@@ -188,12 +202,14 @@ const getCurriculums = async (filters = {}) => {
     INNER JOIN dbo.NGANH n ON n.MaNganh = c.MaNganh
     INNER JOIN dbo.KHOA k ON k.MaKhoa = n.MaKhoa
     LEFT JOIN dbo.CTDT_MONHOC ctm ON ctm.MaCTDT = c.MaCTDT
-      AND (@HocKyDuKien IS NULL OR ctm.HocKyDuKien = @HocKyDuKien)
+      ${hocKyDuKien ? 'AND ctm.HocKyDuKien = @HocKyDuKien' : ''}
+      ${maMonTienQuyet ? 'AND EXISTS (' : ''}
+      ${maMonTienQuyet ? `SELECT 1 FROM dbo.MONHOCTIENQUYET rowMtq
+        WHERE rowMtq.MaMonTienQuyet = @MaMonTienQuyet AND rowMtq.MaMonHoc = ctm.MaMonHoc
+      )` : ''}
     LEFT JOIN dbo.MONHOC mh ON mh.MaMonHoc = ctm.MaMonHoc
     LEFT JOIN dbo.KHOA km ON km.MaKhoa = mh.MaKhoa
-    WHERE (@MaKhoa IS NULL OR n.MaKhoa = @MaKhoa)
-      AND (@NamTuyenSinh IS NULL OR c.NamTuyenSinh = @NamTuyenSinh)
-      AND (@MaCTDT IS NULL OR c.MaCTDT = @MaCTDT)
+    WHERE ${predicates.length ? predicates.join('\n      AND ') : '1=1'}
     ORDER BY c.MaCTDT, ctm.HocKyDuKien, ctm.ThuTu, mh.MaMonHoc;
   `;
   const result = await request.query(query);
@@ -201,6 +217,7 @@ const getCurriculums = async (filters = {}) => {
   return result.recordset.map(r => ({
     maCTDT: r.MaCTDT,
     tenCTDT: r.TenCTDT,
+    maNganh: r.MaNganh,
     nganh: r.Nganh,
     khoaHoc: r.KhoaHoc,
     namTuyenSinh: r.NamTuyenSinh,
@@ -242,6 +259,138 @@ const getCurriculumOptions = async ({ maKhoa, namTuyenSinh } = {}) => {
   return result.recordset.map(r => ({ maCTDT: r.MaCTDT, tenCTDT: r.TenCTDT, khoaHoc: r.KhoaHoc, namTuyenSinh: r.NamTuyenSinh, maKhoa: r.MaKhoa }));
 };
 
+const getCurriculumPrograms = async () => {
+  const pool = await getPool();
+  const result = await pool.request().query(`
+    SELECT c.MaCTDT, c.MaNganh, n.TenNganh, n.MaKhoa, k.TenKhoa,
+      c.TenCTDT, c.KhoaHoc, c.NamTuyenSinh, c.TongTinChiYeuCau,
+      c.ThoiGianDaoTao, c.TrangThai
+    FROM dbo.CHUONGTRINHDAOTAO c
+    INNER JOIN dbo.NGANH n ON n.MaNganh = c.MaNganh
+    INNER JOIN dbo.KHOA k ON k.MaKhoa = n.MaKhoa
+    ORDER BY k.TenKhoa, n.TenNganh, c.NamTuyenSinh DESC, c.MaCTDT;
+  `);
+  return result.recordset.map(row => ({
+    maCTDT: row.MaCTDT, maNganh: row.MaNganh, nganh: row.TenNganh,
+    maKhoa: row.MaKhoa, tenKhoa: row.TenKhoa, tenCTDT: row.TenCTDT,
+    khoaHoc: row.KhoaHoc, namTuyenSinh: row.NamTuyenSinh,
+    tongTinChiYeuCau: row.TongTinChiYeuCau, thoiGianDaoTao: row.ThoiGianDaoTao,
+    trangThai: Boolean(row.TrangThai)
+  }));
+};
+
+const curriculumProgramSelect = `
+  SELECT c.MaCTDT, c.MaNganh, n.TenNganh, n.MaKhoa, k.TenKhoa,
+    c.TenCTDT, c.KhoaHoc, c.NamTuyenSinh, c.TongTinChiYeuCau,
+    c.ThoiGianDaoTao, c.TrangThai
+  FROM dbo.CHUONGTRINHDAOTAO c
+  INNER JOIN dbo.NGANH n ON n.MaNganh = c.MaNganh
+  INNER JOIN dbo.KHOA k ON k.MaKhoa = n.MaKhoa
+`;
+
+const mapCurriculumProgram = row => row ? ({
+  maCTDT: row.MaCTDT, maNganh: row.MaNganh, nganh: row.TenNganh,
+  maKhoa: row.MaKhoa, tenKhoa: row.TenKhoa, tenCTDT: row.TenCTDT,
+  khoaHoc: row.KhoaHoc, namTuyenSinh: row.NamTuyenSinh,
+  tongTinChiYeuCau: row.TongTinChiYeuCau, thoiGianDaoTao: row.ThoiGianDaoTao,
+  trangThai: Boolean(row.TrangThai)
+}) : null;
+
+const getCurriculumProgramRow = async (executor, maCTDT) => {
+  const result = await new sql.Request(executor).input('id', sql.VarChar(24), maCTDT)
+    .query(`${curriculumProgramSelect} WHERE c.MaCTDT=@id`);
+  return result.recordset[0] || null;
+};
+
+const formatCurriculumCohort = (startYear, duration) => `${startYear}-${Number(startYear) + Number(duration)}`;
+
+const createCurriculumProgram = async data => {
+  const pool = await getPool();
+  await pool.request().input('id', sql.VarChar(24), data.maCTDT)
+    .input('major', sql.VarChar(10), data.maNganh).input('name', sql.NVarChar(150), data.tenCTDT)
+    .input('cohort', sql.VarChar(20), formatCurriculumCohort(data.namTuyenSinh, data.thoiGianDaoTao))
+    .input('year', sql.SmallInt, data.namTuyenSinh).input('credits', sql.Int, data.tongTinChiYeuCau)
+    .input('duration', sql.Int, data.thoiGianDaoTao).input('active', sql.Bit, data.trangThai ?? true)
+    .query(`INSERT dbo.CHUONGTRINHDAOTAO
+      (MaCTDT, MaNganh, TenCTDT, KhoaHoc, NamTuyenSinh, TongTinChiYeuCau, ThoiGianDaoTao, TrangThai)
+      VALUES (@id, @major, @name, @cohort, @year, @credits, @duration, @active);`);
+  return mapCurriculumProgram(await getCurriculumProgramRow(pool, data.maCTDT));
+};
+
+const updateCurriculumProgram = async (maCTDT, data) => {
+  const pool = await getPool();
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin(sql.ISOLATION_LEVEL.READ_COMMITTED);
+  try {
+    const current = await getCurriculumProgramRow(transaction, maCTDT);
+    if (!current) throw Object.assign(new Error('Không tìm thấy chương trình đào tạo.'), { status: 404, field: 'maCTDT' });
+
+    const updates = [];
+    const request = new sql.Request(transaction);
+    const changedFields = [];
+    if (data.maNganh !== current.MaNganh) {
+      updates.push('MaNganh=@major'); changedFields.push('maNganh');
+      request.input('major', sql.VarChar(10), data.maNganh);
+    }
+    if (Number(data.namTuyenSinh) !== Number(current.NamTuyenSinh)) {
+      updates.push('NamTuyenSinh=@year'); changedFields.push('namTuyenSinh');
+      request.input('year', sql.SmallInt, data.namTuyenSinh);
+    }
+    if (data.tenCTDT !== current.TenCTDT) { updates.push('TenCTDT=@name'); request.input('name', sql.NVarChar(150), data.tenCTDT); }
+    if (Number(data.tongTinChiYeuCau) !== Number(current.TongTinChiYeuCau)) {
+      updates.push('TongTinChiYeuCau=@credits'); request.input('credits', sql.Int, data.tongTinChiYeuCau);
+    }
+    if (Number(data.thoiGianDaoTao) !== Number(current.ThoiGianDaoTao)) {
+      updates.push('ThoiGianDaoTao=@duration'); request.input('duration', sql.Int, data.thoiGianDaoTao);
+    }
+    const status = data.trangThai === undefined ? Boolean(current.TrangThai) : data.trangThai;
+    if (status !== Boolean(current.TrangThai)) { updates.push('TrangThai=@active'); request.input('active', sql.Bit, status); }
+    const nextYear = Number(data.namTuyenSinh);
+    const nextDuration = Number(data.thoiGianDaoTao);
+    if (updates.includes('NamTuyenSinh=@year') || updates.includes('ThoiGianDaoTao=@duration')) {
+      updates.push('KhoaHoc=@cohort');
+      request.input('cohort', sql.VarChar(20), formatCurriculumCohort(nextYear, nextDuration));
+    }
+
+    if (updates.length) {
+      request.input('id', sql.VarChar(24), maCTDT);
+      try { await request.query(`UPDATE dbo.CHUONGTRINHDAOTAO SET ${updates.join(', ')} WHERE MaCTDT=@id;`); }
+      catch (err) {
+        if (err.number === 51008) err.curriculumProgramField = changedFields.includes('maNganh') ? 'maNganh' : 'namTuyenSinh';
+        throw err;
+      }
+    }
+    const updated = mapCurriculumProgram(await getCurriculumProgramRow(transaction, maCTDT));
+    await transaction.commit();
+    return updated;
+  } catch (err) {
+    try { await transaction.rollback(); } catch (_) {}
+    throw err;
+  }
+};
+
+const deleteCurriculumProgram = async maCTDT => {
+  const pool = await getPool();
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin(sql.ISOLATION_LEVEL.READ_COMMITTED);
+  try {
+    const program = await getCurriculumProgramRow(transaction, maCTDT);
+    if (!program) throw Object.assign(new Error('Không tìm thấy chương trình đào tạo.'), { status: 404, field: 'maCTDT' });
+    const students = await new sql.Request(transaction).input('id', sql.VarChar(24), maCTDT)
+      .query('SELECT TOP (1) 1 AS found FROM dbo.SINHVIEN WHERE MaCTDT=@id;');
+    if (students.recordset.length) {
+      throw Object.assign(new Error('Không thể xóa CTĐT vì còn hồ sơ sinh viên liên kết. Hãy ngừng áp dụng chương trình nếu không tiếp tục tuyển sinh.'), { status: 409, field: 'maCTDT' });
+    }
+    await new sql.Request(transaction).input('id', sql.VarChar(24), maCTDT)
+      .query('DELETE dbo.CTDT_MONHOC WHERE MaCTDT=@id; DELETE dbo.CHUONGTRINHDAOTAO WHERE MaCTDT=@id;');
+    await transaction.commit();
+    return { maCTDT, deleted: true };
+  } catch (err) {
+    try { await transaction.rollback(); } catch (_) {}
+    throw err;
+  }
+};
+
 // 1. Lấy chỉ số tổng quan cho Dashboard
 const getDashboardStats = async () => {
   const pool = await getPool();
@@ -275,6 +424,19 @@ const getStudentsList = async (filters = {}) => {
   const pageSize = Math.min(100, Math.max(1, parseInt(filters.pageSize) || 10));
   const { search, maKhoa, maLop, trangThai } = filters;
   const request = pool.request();
+
+  if (maKhoa && maLop) {
+    const classCheck = await pool.request()
+      .input('MaKhoaCheck', sql.VarChar(10), maKhoa)
+      .input('MaLopCheck', sql.VarChar(20), maLop)
+      .query('SELECT TOP (1) 1 AS IsMatch FROM dbo.LOP WHERE MaKhoa = @MaKhoaCheck AND MaLop = @MaLopCheck;');
+    if (!classCheck.recordset.length) {
+      const error = new Error('Lớp sinh hoạt không thuộc khoa đã chọn.');
+      error.status = 400;
+      error.field = 'maLop';
+      throw error;
+    }
+  }
 
   request.input('Offset', sql.Int, (page - 1) * pageSize);
   request.input('PageSize', sql.Int, pageSize);
@@ -412,6 +574,9 @@ const getAllClasses = async (filters = {}) => {
       lhp.SoLuongToiDa,
       lhp.TrangThai,
       (SELECT COUNT(*) FROM dbo.DANGKYTINCHI dk WHERE dk.MaLHP = lhp.MaLHP AND dk.TrangThai = 'REGISTERED') AS SiSoHienTai,
+      JSON_QUERY((SELECT lh.MaLichHoc AS maLichHoc, lh.Thu AS thu, lh.TietBatDau AS tietBatDau,
+        lh.SoTiet AS soTiet, lh.PhongHoc AS phongHoc FROM dbo.LICHHOC lh
+        WHERE lh.MaLHP = lhp.MaLHP ORDER BY lh.Thu, lh.TietBatDau FOR JSON PATH)) AS Schedules,
       lh.Thu,
       lh.TietBatDau,
       lh.SoTiet,
@@ -420,7 +585,8 @@ const getAllClasses = async (filters = {}) => {
     INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc = mh.MaMonHoc
     INNER JOIN dbo.HOCKY hk ON lhp.MaHocKy = hk.MaHocKy
     LEFT JOIN dbo.GIANGVIEN gv ON lhp.MaGiangVien = gv.MaGV
-    LEFT JOIN dbo.LICHHOC lh ON lhp.MaLHP = lh.MaLHP
+    OUTER APPLY (SELECT TOP (1) lh.Thu, lh.TietBatDau, lh.SoTiet, lh.PhongHoc
+      FROM dbo.LICHHOC lh WHERE lh.MaLHP = lhp.MaLHP ORDER BY lh.Thu, lh.TietBatDau) lh
     ${whereClause}
     ORDER BY lhp.MaLHP ASC
     OFFSET @Offset ROWS
@@ -444,7 +610,8 @@ const getAllClasses = async (filters = {}) => {
     thu: r.Thu,
     tietBatDau: r.TietBatDau,
     soTiet: r.SoTiet,
-    phongHoc: r.PhongHoc
+    phongHoc: r.PhongHoc,
+    schedules: r.Schedules ? JSON.parse(r.Schedules) : []
   }));
 
   return {
@@ -461,7 +628,7 @@ const getRegistrationsList = async (filters = {}) => {
   const pool = await getPool();
   const page = Math.max(1, parseInt(filters.page) || 1);
   const pageSize = Math.min(100, Math.max(1, parseInt(filters.pageSize) || 10));
-  const { maSV, maLHP, maLop, trangThai, search } = filters;
+  const { maSV, maSinhVien, maLHP, maLop, trangThai, search } = filters;
   const request = pool.request();
 
   request.input('Offset', sql.Int, (page - 1) * pageSize);
@@ -472,6 +639,11 @@ const getRegistrationsList = async (filters = {}) => {
   if (maSV) {
     whereClause += ` AND dk.MaSV = @MaSV `;
     request.input('MaSV', sql.Int, maSV);
+  }
+
+  if (maSinhVien) {
+    whereClause += ` AND sv.MaSinhVien = @MaSinhVien `;
+    request.input('MaSinhVien', sql.VarChar(20), maSinhVien);
   }
 
   if (maLHP) {
@@ -562,11 +734,17 @@ const getAuditLogs = async (filters = {}) => {
   const pageSize = Math.min(100, Math.max(1, parseInt(filters.pageSize || filters.limit) || 10));
   const request = pool.request();
 
+  const { maTaiKhoan, tuNgay, denNgay } = filters;
+  let whereClause = ' WHERE 1=1 ';
+  if (maTaiKhoan) { whereClause += ' AND lg.MaTaiKhoan = @MaTaiKhoan'; request.input('MaTaiKhoan', sql.Int, maTaiKhoan); }
+  if (tuNgay) { whereClause += ' AND lg.ThoiGian >= @TuNgay'; request.input('TuNgay', sql.Date, tuNgay); }
+  if (denNgay) { whereClause += ' AND lg.ThoiGian < DATEADD(day, 1, @DenNgay)'; request.input('DenNgay', sql.Date, denNgay); }
+
   request.input('Offset', sql.Int, (page - 1) * pageSize);
   request.input('PageSize', sql.Int, pageSize);
 
   // Đếm tổng số logs
-  const countResult = await request.query(`SELECT COUNT(*) AS TotalItems FROM dbo.LOGHOATDONG`);
+  const countResult = await request.query(`SELECT COUNT(*) AS TotalItems FROM dbo.LOGHOATDONG lg ${whereClause}`);
   const totalItems = countResult.recordset[0]?.TotalItems || 0;
 
   // Lấy dữ liệu trang
@@ -584,6 +762,7 @@ const getAuditLogs = async (filters = {}) => {
       lg.NoiDungMoi
     FROM dbo.LOGHOATDONG lg
     LEFT JOIN dbo.TAIKHOAN tk ON lg.MaTaiKhoan = tk.MaTaiKhoan
+    ${whereClause}
     ORDER BY lg.MaLog DESC
     OFFSET @Offset ROWS
     FETCH NEXT @PageSize ROWS ONLY;
@@ -896,32 +1075,234 @@ const deleteCourse = async (id) => {
   return { maMonHoc: id, deleted: true };
 };
 
+const insertPrerequisites = async (transaction, courseId, prerequisites) => {
+  for (const prerequisite of prerequisites) {
+    await new sql.Request(transaction).input('courseId', sql.VarChar(15), courseId)
+      .input('prerequisiteId', sql.VarChar(15), prerequisite.maMonTienQuyet)
+      .input('level', sql.VarChar(20), prerequisite.mucDo)
+      .query('INSERT dbo.MONHOCTIENQUYET (MaMonHoc, MaMonTienQuyet, MucDo) VALUES (@courseId, @prerequisiteId, @level)');
+  }
+};
+
+const createCurriculumCourse = async (maCTDT, { course, placement, prerequisites = [] }) => {
+  const pool = await getPool();
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin(sql.ISOLATION_LEVEL.READ_COMMITTED);
+  try {
+    await new sql.Request(transaction)
+      .input('id', sql.VarChar(15), course.maMonHoc)
+      .input('faculty', sql.VarChar(10), course.maKhoa)
+      .input('name', sql.NVarChar(150), course.tenMonHoc)
+      .input('credits', sql.TinyInt, course.soTinChi)
+      .input('lecture', sql.SmallInt, course.soTietLyThuyet)
+      .input('practice', sql.SmallInt, course.soTietThucHanh)
+      .input('description', sql.NVarChar(500), course.moTa || null)
+      .input('active', sql.Bit, course.trangThai ?? true)
+      .query(`INSERT dbo.MONHOC (MaMonHoc, MaKhoa, TenMonHoc, SoTinChi, SoTietLyThuyet, SoTietThucHanh, MoTa, TrangThai)
+        VALUES (@id, @faculty, @name, @credits, @lecture, @practice, @description, @active)`);
+    await new sql.Request(transaction)
+      .input('curriculum', sql.VarChar(24), maCTDT)
+      .input('course', sql.VarChar(15), course.maMonHoc)
+      .input('term', sql.TinyInt, placement.hocKyDuKien)
+      .input('type', sql.VarChar(20), placement.loaiMon)
+      .input('order', sql.SmallInt, placement.thuTu ?? null)
+      .query('INSERT dbo.CTDT_MONHOC (MaCTDT, MaMonHoc, HocKyDuKien, LoaiMon, ThuTu) VALUES (@curriculum, @course, @term, @type, @order)');
+    await insertPrerequisites(transaction, course.maMonHoc, prerequisites);
+    await transaction.commit();
+    return { maCTDT, ...course, ...placement, prerequisites };
+  } catch (err) {
+    try { await transaction.rollback(); } catch (_) {}
+    throw err;
+  }
+};
+
+const updateCurriculumCourse = async (maCTDT, maMonHoc, { course, placement, prerequisites = [] }) => {
+  const pool = await getPool();
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin(sql.ISOLATION_LEVEL.READ_COMMITTED);
+  try {
+    const exists = await new sql.Request(transaction)
+      .input('curriculum', sql.VarChar(24), maCTDT)
+      .input('course', sql.VarChar(15), maMonHoc)
+      .query('SELECT 1 AS found FROM dbo.CTDT_MONHOC WHERE MaCTDT=@curriculum AND MaMonHoc=@course');
+    if (!exists.recordset.length) throw Object.assign(new Error('Không tìm thấy môn trong chương trình đào tạo.'), { status: 404 });
+
+    await new sql.Request(transaction)
+      .input('id', sql.VarChar(15), maMonHoc)
+      .input('faculty', sql.VarChar(10), course.maKhoa)
+      .input('name', sql.NVarChar(150), course.tenMonHoc)
+      .input('credits', sql.TinyInt, course.soTinChi)
+      .input('lecture', sql.SmallInt, course.soTietLyThuyet)
+      .input('practice', sql.SmallInt, course.soTietThucHanh)
+      .input('description', sql.NVarChar(500), course.moTa || null)
+      .input('active', sql.Bit, course.trangThai ?? true)
+      .query(`UPDATE dbo.MONHOC SET MaKhoa=@faculty, TenMonHoc=@name, SoTinChi=@credits,
+        SoTietLyThuyet=@lecture, SoTietThucHanh=@practice, MoTa=@description, TrangThai=@active WHERE MaMonHoc=@id`);
+    await new sql.Request(transaction)
+      .input('curriculum', sql.VarChar(24), maCTDT)
+      .input('course', sql.VarChar(15), maMonHoc)
+      .input('term', sql.TinyInt, placement.hocKyDuKien)
+      .input('type', sql.VarChar(20), placement.loaiMon)
+      .input('order', sql.SmallInt, placement.thuTu ?? null)
+      .query('UPDATE dbo.CTDT_MONHOC SET HocKyDuKien=@term, LoaiMon=@type, ThuTu=@order WHERE MaCTDT=@curriculum AND MaMonHoc=@course');
+    await new sql.Request(transaction).input('course', sql.VarChar(15), maMonHoc)
+      .query('DELETE dbo.MONHOCTIENQUYET WHERE MaMonHoc=@course');
+    await insertPrerequisites(transaction, maMonHoc, prerequisites);
+    await transaction.commit();
+    return { maCTDT, maMonHoc, ...course, ...placement, prerequisites };
+  } catch (err) {
+    try { await transaction.rollback(); } catch (_) {}
+    throw err;
+  }
+};
+
+const deleteCurriculumCourse = async (maCTDT, maMonHoc) => {
+  const pool = await getPool();
+  const result = await pool.request().input('curriculum', sql.VarChar(24), maCTDT)
+    .input('course', sql.VarChar(15), maMonHoc)
+    .query('DELETE dbo.CTDT_MONHOC WHERE MaCTDT=@curriculum AND MaMonHoc=@course; SELECT @@ROWCOUNT AS changed;');
+  if (!result.recordset[0].changed) throw Object.assign(new Error('Không tìm thấy môn trong chương trình đào tạo.'), { status: 404 });
+  return { maCTDT, maMonHoc, removedFromCurriculum: true };
+};
+
 const createClass = async (d) => {
   const pool = await getPool();
-  await pool.request().input('id', sql.VarChar(20), d.maLHP).input('course', sql.VarChar(15), d.maMonHoc)
-    .input('semester', sql.Int, d.maHocKy).input('lecturer', sql.Int, d.maGiangVien ?? null)
-    .input('name', sql.NVarChar(100), d.tenLHP).input('capacity', sql.Int, d.soLuongToiDa)
-    .input('status', sql.VarChar(20), d.trangThai || 'DA_KHOA')
-    .query('INSERT dbo.LOPHOCPHAN (MaLHP,MaMonHoc,MaHocKy,MaGiangVien,TenLHP,SoLuongToiDa,TrangThai) VALUES (@id,@course,@semester,@lecturer,@name,@capacity,@status)');
-  return { ...d };
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin(sql.ISOLATION_LEVEL.READ_COMMITTED);
+  try {
+    await new sql.Request(transaction).input('id', sql.VarChar(20), d.maLHP).input('course', sql.VarChar(15), d.maMonHoc)
+      .input('semester', sql.Int, d.maHocKy).input('lecturer', sql.Int, d.maGiangVien ?? null)
+      .input('name', sql.NVarChar(100), d.tenLHP).input('capacity', sql.Int, d.soLuongToiDa)
+      .query("INSERT dbo.LOPHOCPHAN (MaLHP,MaMonHoc,MaHocKy,MaGiangVien,TenLHP,SoLuongToiDa,TrangThai) VALUES (@id,@course,@semester,@lecturer,@name,@capacity,'DA_KHOA')");
+    for (const schedule of d.schedules || []) await insertClassScheduleRow(transaction, d.maLHP, schedule);
+    const status = d.trangThai || 'DA_KHOA';
+    if (status !== 'DA_KHOA') await new sql.Request(transaction).input('id', sql.VarChar(20), d.maLHP)
+      .input('status', sql.VarChar(20), status).query('UPDATE dbo.LOPHOCPHAN SET TrangThai=@status WHERE MaLHP=@id');
+    await transaction.commit();
+    return { ...d, trangThai: status };
+  } catch (err) {
+    try { await transaction.rollback(); } catch (_) {}
+    throw err;
+  }
 };
 
 const updateClass = async (id, d) => {
   const pool = await getPool();
-  const r = await pool.request().input('id', sql.VarChar(20), id).input('course', sql.VarChar(15), d.maMonHoc)
-    .input('semester', sql.Int, d.maHocKy).input('lecturer', sql.Int, d.maGiangVien ?? null)
-    .input('name', sql.NVarChar(100), d.tenLHP).input('capacity', sql.Int, d.soLuongToiDa)
-    .input('status', sql.VarChar(20), d.trangThai || null)
-    .query(`UPDATE dbo.LOPHOCPHAN SET MaMonHoc=@course, MaHocKy=@semester, MaGiangVien=@lecturer, TenLHP=@name, SoLuongToiDa=@capacity, TrangThai=COALESCE(@status, TrangThai) WHERE MaLHP=@id; SELECT @@ROWCOUNT AS changed;`);
-  if (!r.recordset[0].changed) throw Object.assign(new Error('Không tìm thấy lớp học phần.'), { status: 404 });
-  return { maLHP: id, ...d };
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin(sql.ISOLATION_LEVEL.READ_COMMITTED);
+  try {
+    const existing = await new sql.Request(transaction).input('id', sql.VarChar(20), id)
+      .query('SELECT TrangThai FROM dbo.LOPHOCPHAN WHERE MaLHP=@id');
+    if (!existing.recordset.length) throw Object.assign(new Error('Không tìm thấy lớp học phần.'), { status: 404 });
+    await new sql.Request(transaction).input('id', sql.VarChar(20), id).input('course', sql.VarChar(15), d.maMonHoc)
+      .input('semester', sql.Int, d.maHocKy).input('lecturer', sql.Int, d.maGiangVien ?? null)
+      .input('name', sql.NVarChar(100), d.tenLHP).input('capacity', sql.Int, d.soLuongToiDa)
+      .query("UPDATE dbo.LOPHOCPHAN SET MaMonHoc=@course, MaHocKy=@semester, MaGiangVien=@lecturer, TenLHP=@name, SoLuongToiDa=@capacity, TrangThai='DA_KHOA' WHERE MaLHP=@id");
+    if (Array.isArray(d.schedules)) {
+      await new sql.Request(transaction).input('id', sql.VarChar(20), id).query('DELETE dbo.LICHHOC WHERE MaLHP=@id');
+      for (const schedule of d.schedules) await insertClassScheduleRow(transaction, id, schedule);
+    }
+    const status = d.trangThai || existing.recordset[0].TrangThai;
+    if (status !== 'DA_KHOA') await new sql.Request(transaction).input('id', sql.VarChar(20), id)
+      .input('status', sql.VarChar(20), status).query('UPDATE dbo.LOPHOCPHAN SET TrangThai=@status WHERE MaLHP=@id');
+    await transaction.commit();
+    return { maLHP: id, ...d, trangThai: status };
+  } catch (err) {
+    try { await transaction.rollback(); } catch (_) {}
+    throw err;
+  }
 };
 
 const deleteClass = async (id) => {
   const pool = await getPool();
-  const r = await pool.request().input('id', sql.VarChar(20), id).query('DELETE dbo.LOPHOCPHAN WHERE MaLHP=@id; SELECT @@ROWCOUNT AS changed;');
-  if (!r.recordset[0].changed) throw Object.assign(new Error('Không tìm thấy lớp học phần.'), { status: 404 });
-  return { maLHP: id, deleted: true };
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin(sql.ISOLATION_LEVEL.READ_COMMITTED);
+  try {
+    const registrations = await new sql.Request(transaction).input('id', sql.VarChar(20), id)
+      .query('SELECT TOP (1) 1 AS found FROM dbo.DANGKYTINCHI WHERE MaLHP=@id');
+    if (registrations.recordset.length) {
+      throw Object.assign(new Error('Không thể xóa lớp đã có lịch sử đăng ký tín chỉ.'), { status: 409, field: 'maLHP' });
+    }
+    const exists = await new sql.Request(transaction).input('id', sql.VarChar(20), id)
+      .query('SELECT 1 AS found FROM dbo.LOPHOCPHAN WHERE MaLHP=@id');
+    if (!exists.recordset.length) throw Object.assign(new Error('Không tìm thấy lớp học phần.'), { status: 404 });
+    await new sql.Request(transaction).input('id', sql.VarChar(20), id)
+      .query("UPDATE dbo.LOPHOCPHAN SET TrangThai='DA_KHOA' WHERE MaLHP=@id");
+    await new sql.Request(transaction).input('id', sql.VarChar(20), id)
+      .query('DELETE dbo.LICHHOC WHERE MaLHP=@id');
+    await new sql.Request(transaction).input('id', sql.VarChar(20), id)
+      .query('DELETE dbo.LOPHOCPHAN WHERE MaLHP=@id');
+    await transaction.commit();
+    return { maLHP: id, deleted: true };
+  } catch (err) {
+    try { await transaction.rollback(); } catch (_) {}
+    throw err;
+  }
+};
+
+const getClassSection = async (id) => {
+  const pool = await getPool();
+  const result = await pool.request().input('id', sql.VarChar(20), id).query(`
+    SELECT lhp.MaLHP AS maLHP, lhp.MaMonHoc AS maMonHoc, lhp.MaHocKy AS maHocKy,
+      lhp.MaGiangVien AS maGiangVien, lhp.TenLHP AS tenLHP,
+      lhp.SoLuongToiDa AS soLuongToiDa, lhp.TrangThai AS trangThai,
+      (SELECT lh.MaLichHoc AS maLichHoc, lh.Thu AS thu, lh.TietBatDau AS tietBatDau,
+        lh.SoTiet AS soTiet, lh.PhongHoc AS phongHoc
+       FROM dbo.LICHHOC lh WHERE lh.MaLHP=lhp.MaLHP ORDER BY lh.Thu, lh.TietBatDau FOR JSON PATH) AS schedules
+    FROM dbo.LOPHOCPHAN lhp WHERE lhp.MaLHP=@id;
+  `);
+  if (!result.recordset.length) throw Object.assign(new Error('Không tìm thấy lớp học phần.'), { status: 404 });
+  const row = result.recordset[0];
+  return { ...row, schedules: row.schedules ? JSON.parse(row.schedules) : [] };
+};
+
+const insertClassScheduleRow = async (transaction, classId, data) => new sql.Request(transaction)
+  .input('classId', sql.VarChar(20), classId).input('day', sql.TinyInt, data.thu)
+  .input('start', sql.TinyInt, data.tietBatDau).input('count', sql.TinyInt, data.soTiet)
+  .input('room', sql.VarChar(20), data.phongHoc)
+  .query(`DECLARE @Created TABLE (MaLichHoc INT);
+    INSERT dbo.LICHHOC (MaLHP, Thu, TietBatDau, SoTiet, PhongHoc)
+    OUTPUT INSERTED.MaLichHoc INTO @Created VALUES (@classId, @day, @start, @count, @room);
+    SELECT MaLichHoc FROM @Created`);
+
+const getLecturerOptions = async ({ maKhoa, trangThai } = {}) => {
+  const pool = await getPool();
+  const request = pool.request();
+  let whereClause = 'WHERE 1=1';
+  if (maKhoa) { whereClause += ' AND MaKhoa = @MaKhoa'; request.input('MaKhoa', sql.VarChar(10), maKhoa); }
+  if (trangThai !== undefined && trangThai !== '') { whereClause += ' AND TrangThai = @TrangThai'; request.input('TrangThai', sql.VarChar(20), trangThai); }
+  const result = await request.query(`
+    SELECT MaGV AS maGV, HoTen AS hoTen, MaKhoa AS maKhoa, TrangThai AS trangThai
+    FROM dbo.GIANGVIEN ${whereClause} ORDER BY HoTen, MaGV;
+  `);
+  return result.recordset;
+};
+
+const createClassSchedule = async (classId, data) => {
+  const pool = await getPool();
+  const result = await insertClassScheduleRow(pool, classId, data);
+  return { maLichHoc: result.recordset[0].MaLichHoc, maLHP: classId, ...data };
+};
+
+const updateClassSchedule = async (classId, scheduleId, data) => {
+  const pool = await getPool();
+  const result = await pool.request().input('classId', sql.VarChar(20), classId)
+    .input('scheduleId', sql.Int, Number(scheduleId)).input('day', sql.TinyInt, data.thu)
+    .input('start', sql.TinyInt, data.tietBatDau).input('count', sql.TinyInt, data.soTiet)
+    .input('room', sql.VarChar(20), data.phongHoc)
+    .query(`UPDATE dbo.LICHHOC SET Thu=@day, TietBatDau=@start, SoTiet=@count, PhongHoc=@room
+      WHERE MaLichHoc=@scheduleId AND MaLHP=@classId; SELECT @@ROWCOUNT AS changed;`);
+  if (!result.recordset[0].changed) throw Object.assign(new Error('Không tìm thấy lịch học của lớp.'), { status: 404 });
+  return { maLichHoc: Number(scheduleId), maLHP: classId, ...data };
+};
+
+const deleteClassSchedule = async (classId, scheduleId) => {
+  const pool = await getPool();
+  const result = await pool.request().input('classId', sql.VarChar(20), classId)
+    .input('scheduleId', sql.Int, Number(scheduleId))
+    .query('DELETE dbo.LICHHOC WHERE MaLichHoc=@scheduleId AND MaLHP=@classId; SELECT @@ROWCOUNT AS changed;');
+  if (!result.recordset[0].changed) throw Object.assign(new Error('Không tìm thấy lịch học của lớp.'), { status: 404 });
+  return { maLichHoc: Number(scheduleId), maLHP: classId, deleted: true };
 };
 
 module.exports = {
@@ -929,11 +1310,14 @@ module.exports = {
   updateUserStatus,
   getCurriculums,
   getCurriculumOptions,
+  getCurriculumPrograms,
+  createCurriculumProgram, updateCurriculumProgram, deleteCurriculumProgram,
   getDashboardStats,
   getStudentsList,
-  getAllClasses,
+  getAllClasses, getClassSection, getLecturerOptions,
   getCourses, createCourse, updateCourse, deleteCourse,
-  createClass, updateClass, deleteClass,
+  createCurriculumCourse, updateCurriculumCourse, deleteCurriculumCourse,
+  createClass, updateClass, deleteClass, createClassSchedule, updateClassSchedule, deleteClassSchedule,
   getRegistrationsList,
   getAuditLogs,
   createStudent,

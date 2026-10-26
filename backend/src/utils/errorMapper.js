@@ -82,6 +82,20 @@ const mapSqlError = (error, context = '') => {
     };
   }
 
+  if (errorNumber === 51008 && context === 'MAJOR') {
+    return { status: 409, field: 'maKhoa', message: 'Không thể chuyển ngành sang khoa khác vì CTĐT hiện có sinh viên không còn khớp.' };
+  }
+  if (errorNumber === 51008 && context === 'HOMEROOM_CLASS') {
+    return { status: 409, field: 'maKhoa', message: 'Không thể đổi khoa hoặc khóa nhập học vì sinh viên hiện tại không còn khớp với CTĐT.' };
+  }
+  if (errorNumber === 51008 && context === 'CURRICULUM_PROGRAM') {
+    return {
+      status: 409,
+      field: error.curriculumProgramField || 'maNganh',
+      message: 'Không thể đổi ngành hoặc năm tuyển sinh vì hồ sơ sinh viên thuộc CTĐT sẽ không còn khớp với khoa hoặc năm lớp.'
+    };
+  }
+
   // Tra cứu bảng map chuẩn
   if (SQL_ERROR_MAP[errorNumber]) {
     return SQL_ERROR_MAP[errorNumber];
@@ -96,6 +110,12 @@ const mapSqlError = (error, context = '') => {
         message: 'Tổng số tiền thanh toán không được vượt quá số dư học phí còn lại.'
       };
     }
+    if (context === 'FACULTY_DELETE') return { status: 409, field: 'maKhoa', message: 'Không thể xóa khoa vì vẫn còn ngành, môn học, lớp, sinh viên hoặc giảng viên đang tham chiếu.' };
+    if (context === 'MAJOR_DELETE') return { status: 409, field: 'maNganh', message: 'Không thể xóa ngành vì vẫn còn chương trình đào tạo đang tham chiếu.' };
+    if (context === 'CURRICULUM_PROGRAM_DELETE') return { status: 409, field: 'maCTDT', message: 'Không thể xóa CTĐT vì còn hồ sơ đang tham chiếu. Hãy ngừng áp dụng chương trình nếu không tiếp tục tuyển sinh.' };
+    if (context === 'MAJOR') return { status: 409, field: 'maKhoa', message: 'Khoa được chọn không tồn tại.' };
+    if (context === 'CURRICULUM_PROGRAM') return { status: 409, field: 'maNganh', message: 'Ngành được chọn không tồn tại.' };
+    if (context === 'HOMEROOM_CLASS') return { status: 409, field: 'maKhoa', message: 'Khoa được chọn không tồn tại.' };
     return {
       status: 409,
       field: 'foreignKey',
@@ -105,6 +125,10 @@ const mapSqlError = (error, context = '') => {
 
   // Lỗi trùng lặp khóa chính / UNIQUE (Unique constraint violation)
   if (errorNumber === 2627 || errorNumber === 2601) {
+    if (context === 'FACULTY') return { status: 409, field: 'tenKhoa', message: 'Mã khoa hoặc tên khoa đã được sử dụng.' };
+    if (context === 'MAJOR') return { status: 409, field: 'tenNganh', message: 'Mã ngành hoặc tên ngành đã được sử dụng.' };
+    if (context === 'HOMEROOM_CLASS') return { status: 409, field: 'maLop', message: 'Mã lớp sinh hoạt đã được sử dụng.' };
+    if (context === 'CURRICULUM_PROGRAM') return { status: 409, field: 'maCTDT', message: 'Mã CTĐT đã được sử dụng.' };
     return {
       status: 409,
       field: 'unique',

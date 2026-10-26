@@ -1,9 +1,38 @@
 ﻿const { getPool } = require('../config/db');
 
+const sql = require('../config/db').sql;
+
 /**
  * Repository thao tác bảng LOP và sinh viên trực thuộc
  */
 const classRepository = {
+  async createHomeroomClass(d) {
+    const pool = await getPool();
+    await pool.request().input('id', sql.VarChar(20), d.maLop).input('name', sql.NVarChar(100), d.tenLop)
+      .input('faculty', sql.VarChar(10), d.maKhoa).input('cohort', sql.VarChar(20), d.khoaHoc)
+      .input('year', sql.Int, d.namNhapHoc).input('status', sql.Bit, d.trangThai ?? true)
+      .query('INSERT dbo.LOP (MaLop,TenLop,MaKhoa,KhoaHoc,NamNhapHoc,TrangThai) VALUES (@id,@name,@faculty,@cohort,@year,@status)');
+    return { ...d, trangThai: d.trangThai ?? true };
+  },
+
+  async updateHomeroomClass(id, d) {
+    const pool = await getPool();
+    const result = await pool.request().input('id', sql.VarChar(20), id).input('name', sql.NVarChar(100), d.tenLop)
+      .input('faculty', sql.VarChar(10), d.maKhoa).input('cohort', sql.VarChar(20), d.khoaHoc)
+      .input('year', sql.Int, d.namNhapHoc).input('status', sql.Bit, d.trangThai ?? true)
+      .query('UPDATE dbo.LOP SET TenLop=@name,MaKhoa=@faculty,KhoaHoc=@cohort,NamNhapHoc=@year,TrangThai=@status WHERE MaLop=@id; SELECT @@ROWCOUNT AS affected;');
+    if (!result.recordset[0].affected) throw Object.assign(new Error('Không tìm thấy lớp sinh hoạt.'), { status: 404, field: 'maLop' });
+    return { maLop: id, ...d, trangThai: d.trangThai ?? true };
+  },
+
+  async deleteHomeroomClass(id) {
+    const pool = await getPool();
+    const result = await pool.request().input('id', sql.VarChar(20), id)
+      .query('DELETE dbo.LOP WHERE MaLop=@id; SELECT @@ROWCOUNT AS affected;');
+    if (!result.recordset[0].affected) throw Object.assign(new Error('Không tìm thấy lớp sinh hoạt.'), { status: 404, field: 'maLop' });
+    return { maLop: id, deleted: true };
+  },
+
   /**
    * Lấy danh sách lớp sinh hoạt kèm sĩ số tính động qua View V_DanhSachLopSinhHoat
    */

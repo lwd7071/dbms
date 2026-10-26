@@ -1,4 +1,5 @@
 const classService = require('../services/class.service');
+const classRepository = require('../repositories/class.repository');
 const { successResponse } = require('../utils/apiResponse');
 
 const classController = {
@@ -31,6 +32,21 @@ const classController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async createHomeroomClass(req, res, next) {
+    try { return res.status(201).json(successResponse(await classRepository.createHomeroomClass(req.body))); }
+    catch (err) { req.context = 'HOMEROOM_CLASS'; next(err); }
+  },
+
+  async updateHomeroomClass(req, res, next) {
+    try { return res.status(200).json(successResponse(await classRepository.updateHomeroomClass(req.params.id, req.body))); }
+    catch (err) { req.context = 'HOMEROOM_CLASS'; next(err); }
+  },
+
+  async deleteHomeroomClass(req, res, next) {
+    try { return res.status(200).json(successResponse(await classRepository.deleteHomeroomClass(req.params.id))); }
+    catch (err) { req.context = 'HOMEROOM_CLASS_DELETE'; next(err); }
   }
 };
 

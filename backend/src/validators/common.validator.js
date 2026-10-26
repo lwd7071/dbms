@@ -38,7 +38,7 @@ const adminStudentsQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
   maKhoa: z.string().trim().max(10).optional(),
   maLop: z.string().trim().max(20).optional(),
-  trangThai: z.enum(['DANG_HOC', 'BAO_LUU', 'TOT_NGHIEP', 'THOI_HOC']).optional()
+  trangThai: optionalQueryEnum(['DANG_HOC', 'BAO_LUU', 'TOT_NGHIEP', 'THOI_HOC'])
 });
 
 const adminClassesQuerySchema = z.object({
@@ -47,9 +47,15 @@ const adminClassesQuerySchema = z.object({
   search: z.string().trim().max(100).optional()
 });
 
+const adminLecturersQuerySchema = z.object({
+  maKhoa: z.preprocess(value => value === '' ? undefined : value, z.string().trim().min(1).max(10).optional()),
+  trangThai: optionalQueryEnum(['DANG_CONG_TAC', 'TAM_NGHI', 'NGHI_VIEC'])
+});
+
 const adminRegistrationsQuerySchema = z.object({
   ...paginationShape,
   maSV: z.preprocess(value => value === undefined || value === '' ? undefined : Number(value), z.number().int().positive().optional()),
+  maSinhVien: z.string().trim().max(20).optional(),
   maLHP: z.string().trim().max(20).optional(),
   maLop: z.string().trim().max(20).optional(),
   trangThai: optionalQueryEnum(['REGISTERED', 'CANCELLED']),
@@ -58,7 +64,12 @@ const adminRegistrationsQuerySchema = z.object({
 
 const adminAuditQuerySchema = z.object({
   ...paginationShape,
-  limit: z.preprocess(value => value === undefined || value === '' ? undefined : Number(value), z.number().int().min(1).max(100).optional())
+  limit: z.preprocess(value => value === undefined || value === '' ? undefined : Number(value), z.number().int().min(1).max(100).optional()),
+  maTaiKhoan: z.preprocess(value => value === undefined || value === '' ? undefined : Number(value), z.number().int().positive().optional()),
+  tuNgay: z.preprocess(value => value === '' ? undefined : value, z.iso.date().optional()),
+  denNgay: z.preprocess(value => value === '' ? undefined : value, z.iso.date().optional())
+}).refine(({ tuNgay, denNgay }) => !tuNgay || !denNgay || tuNgay <= denNgay, {
+  message: 'Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.', path: ['denNgay']
 });
 
 const curriculumOptionsQuerySchema = z.object({
@@ -73,7 +84,15 @@ const curriculumsQuerySchema = z.object({
   maKhoa: z.preprocess(value => value === '' ? undefined : value, z.string().trim().min(1).max(10).optional()),
   namTuyenSinh: z.preprocess(value => value === undefined || value === '' ? undefined : Number(value), z.number().int().min(2000).max(2100).optional()),
   maCTDT: z.preprocess(value => value === '' ? undefined : value, z.string().trim().min(1).max(24).optional()),
+  maNganh: z.preprocess(value => value === '' ? undefined : value, z.string().trim().min(1).max(10).optional()),
+  maMonTienQuyet: z.preprocess(value => value === '' ? undefined : value, z.string().trim().min(1).max(15).optional()),
+  tuKhoaMonHoc: z.string().trim().max(100).optional(),
   hocKyDuKien: z.preprocess(value => value === undefined || value === '' ? undefined : Number(value), z.number().int().min(1).max(20).optional())
+});
+
+const adminMajorsQuerySchema = z.object({
+  maKhoa: z.preprocess(value => value === '' ? undefined : value,
+    z.string().trim().min(1).max(10).regex(/^[\w-]+$/, 'Mã khoa không hợp lệ.').optional())
 });
 
 const pendingPaymentsQuerySchema = z.object({
@@ -87,9 +106,11 @@ module.exports = {
   adminUsersQuerySchema,
   adminStudentsQuerySchema,
   adminClassesQuerySchema,
+  adminLecturersQuerySchema,
   adminRegistrationsQuerySchema,
   adminAuditQuerySchema,
   curriculumOptionsQuerySchema,
   curriculumsQuerySchema,
+  adminMajorsQuerySchema,
   pendingPaymentsQuerySchema
 };

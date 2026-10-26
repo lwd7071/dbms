@@ -60,6 +60,28 @@ const getCurriculumOptions = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const getCurriculumPrograms = async (req, res, next) => {
+  try {
+    return res.status(200).json(successResponse(await adminRepo.getCurriculumPrograms()));
+  } catch (err) { next(err); }
+};
+
+const createCurriculumProgram = async (req, res, next) => {
+  try { return res.status(201).json(successResponse(await adminRepo.createCurriculumProgram(req.body))); }
+  catch (err) { req.context = 'CURRICULUM_PROGRAM'; next(err); }
+};
+
+const updateCurriculumProgram = async (req, res, next) => {
+  try {
+    return res.status(200).json(successResponse(await adminRepo.updateCurriculumProgram(req.params.maCTDT, req.body)));
+  } catch (err) { req.context = 'CURRICULUM_PROGRAM'; next(err); }
+};
+
+const deleteCurriculumProgram = async (req, res, next) => {
+  try { return res.status(200).json(successResponse(await adminRepo.deleteCurriculumProgram(req.params.maCTDT))); }
+  catch (err) { req.context = 'CURRICULUM_PROGRAM_DELETE'; next(err); }
+};
+
 const getDashboardStats = async (req, res, next) => {
   try {
     const stats = await adminRepo.getDashboardStats();
@@ -108,6 +130,16 @@ const getCourses = async (req, res, next) => {
   catch (err) { next(err); }
 };
 
+const getClassSection = async (req, res, next) => {
+  try { return res.status(200).json(successResponse(await adminRepo.getClassSection(req.params.id))); }
+  catch (err) { next(err); }
+};
+
+const getLecturerOptions = async (req, res, next) => {
+  try { return res.status(200).json(successResponse(await adminRepo.getLecturerOptions(req.validated?.query || req.query))); }
+  catch (err) { next(err); }
+};
+
 const createCourse = async (req, res, next) => {
   try { return res.status(201).json(successResponse(await adminRepo.createCourse(req.body))); }
   catch (err) { next(err); }
@@ -121,6 +153,24 @@ const updateCourse = async (req, res, next) => {
 const deleteCourse = async (req, res, next) => {
   try { return res.status(200).json(successResponse(await adminRepo.deleteCourse((req.validated?.params || req.params).id))); }
   catch (err) { next(err); }
+};
+
+const createCurriculumCourse = async (req, res, next) => {
+  try {
+    return res.status(201).json(successResponse(await adminRepo.createCurriculumCourse(req.params.maCTDT, req.body)));
+  } catch (err) { next(err); }
+};
+
+const updateCurriculumCourse = async (req, res, next) => {
+  try {
+    return res.status(200).json(successResponse(await adminRepo.updateCurriculumCourse(req.params.maCTDT, req.params.maMonHoc, req.body)));
+  } catch (err) { next(err); }
+};
+
+const deleteCurriculumCourse = async (req, res, next) => {
+  try {
+    return res.status(200).json(successResponse(await adminRepo.deleteCurriculumCourse(req.params.maCTDT, req.params.maMonHoc)));
+  } catch (err) { next(err); }
 };
 
 const createClass = async (req, res, next) => {
@@ -138,10 +188,25 @@ const deleteClass = async (req, res, next) => {
   catch (err) { next(err); }
 };
 
+const createClassSchedule = async (req, res, next) => {
+  try { return res.status(201).json(successResponse(await adminRepo.createClassSchedule(req.params.id, req.body))); }
+  catch (err) { next(err); }
+};
+
+const updateClassSchedule = async (req, res, next) => {
+  try { return res.status(200).json(successResponse(await adminRepo.updateClassSchedule(req.params.id, req.params.scheduleId, req.body))); }
+  catch (err) { next(err); }
+};
+
+const deleteClassSchedule = async (req, res, next) => {
+  try { return res.status(200).json(successResponse(await adminRepo.deleteClassSchedule(req.params.id, req.params.scheduleId))); }
+  catch (err) { next(err); }
+};
+
 const getRegistrations = async (req, res, next) => {
   try {
-    const { maSV, maLHP, maLop, trangThai, search, page, pageSize } = req.validated?.query || req.query;
-    const result = await adminRepo.getRegistrationsList({ maSV, maLHP, maLop, trangThai, search, page, pageSize });
+    const { maSV, maSinhVien, maLHP, maLop, trangThai, search, page, pageSize } = req.validated?.query || req.query;
+    const result = await adminRepo.getRegistrationsList({ maSV, maSinhVien, maLHP, maLop, trangThai, search, page, pageSize });
     return res.status(200).json(
       successResponse(result.items, {
         page: result.page,
@@ -157,8 +222,8 @@ const getRegistrations = async (req, res, next) => {
 
 const getAuditLogs = async (req, res, next) => {
   try {
-    const { page, pageSize, limit } = req.validated?.query || req.query;
-    const result = await adminRepo.getAuditLogs({ page, pageSize: pageSize || limit });
+    const { page, pageSize, limit, maTaiKhoan, tuNgay, denNgay } = req.validated?.query || req.query;
+    const result = await adminRepo.getAuditLogs({ page, pageSize: pageSize || limit, maTaiKhoan, tuNgay, denNgay });
     return res.status(200).json(
       successResponse(result.items, {
         page: result.page,
@@ -209,11 +274,17 @@ module.exports = {
   updateUserStatus,
   getCurriculums,
   getCurriculumOptions,
+  getCurriculumPrograms,
+  createCurriculumProgram, updateCurriculumProgram, deleteCurriculumProgram,
+  createCurriculumCourse, updateCurriculumCourse, deleteCurriculumCourse,
   getDashboardStats,
   getStudents,
   getAllClasses,
+  getClassSection,
+  getLecturerOptions,
   getCourses, createCourse, updateCourse, deleteCourse,
   createClass, updateClass, deleteClass,
+  createClassSchedule, updateClassSchedule, deleteClassSchedule,
   getRegistrations,
   getAuditLogs,
   createStudent,
