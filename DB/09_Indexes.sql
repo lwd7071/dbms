@@ -15,6 +15,7 @@ IF NOT EXISTS
 )
 BEGIN
     -- Phụ trách: Lương Viết Vĩ Đông
+    -- 3. IX_CTDT_MONHOC_MaCTDT: danh sách môn trong chương trình
     CREATE NONCLUSTERED INDEX IX_CTDT_MONHOC_MaCTDT
     ON dbo.CTDT_MONHOC (MaCTDT, MaMonHoc)
     INCLUDE (HocKyDuKien, LoaiMon, ThuTu);
@@ -29,6 +30,7 @@ IF NOT EXISTS
 )
 BEGIN
     -- Phụ trách: Lương Viết Vĩ Đông
+    -- 4. IX_MONHOCTIENQUYET_MaMonTienQuyet: các môn cần môn xx làm tiên quyết
     CREATE NONCLUSTERED INDEX IX_MONHOCTIENQUYET_MaMonTienQuyet
     ON dbo.MONHOCTIENQUYET (MaMonTienQuyet, MaMonHoc)
     INCLUDE (MucDo);
@@ -43,6 +45,7 @@ IF NOT EXISTS
 )
 BEGIN
     -- Phụ trách: Lương Viết Vĩ Đông
+    -- 5. IX_MONHOC_MaKhoa: môn học theo khoa và trạng thái
     CREATE NONCLUSTERED INDEX IX_MONHOC_MaKhoa
     ON dbo.MONHOC (MaKhoa, TrangThai)
     INCLUDE (TenMonHoc, SoTinChi);
@@ -221,6 +224,7 @@ IF NOT EXISTS
 )
 BEGIN
     -- Phụ trách: Lương Viết Vĩ Đông
+    -- 1. IX_NGANH_MaKhoa: ngành theo khoa
     CREATE NONCLUSTERED INDEX IX_NGANH_MaKhoa
     ON dbo.NGANH (MaKhoa);
 END;
@@ -234,6 +238,7 @@ IF NOT EXISTS
 )
 BEGIN
     -- Phụ trách: Lương Viết Vĩ Đông
+    -- 2. IX_CHUONGTRINHDAOTAO_MaNganh: chương trình theo ngành
     CREATE NONCLUSTERED INDEX IX_CHUONGTRINHDAOTAO_MaNganh
     ON dbo.CHUONGTRINHDAOTAO (MaNganh);
 END;

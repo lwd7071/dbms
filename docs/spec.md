@@ -113,6 +113,7 @@ ProjectDBMS/
 ## 2.1. Mô hình CTĐT theo khóa tuyển sinh
 
 - `CHUONGTRINHDAOTAO.NamTuyenSinh` là năm tuyển sinh dạng `SMALLINT`; `KhoaHoc` là nhãn hiển thị. Mỗi ngành/chương trình có một CTĐT riêng cho các khóa 2023, 2024 và 2025.
+- Quản trị CTĐT qua `/api/admin/curriculum-programs`: mã CTĐT cố định sau khi tạo; `KhoaHoc` được suy ra từ năm tuyển sinh và thời gian đào tạo. Trigger từ chối đổi ngành/năm nếu hồ sơ sinh viên không còn khớp; xóa chỉ được phép khi không còn sinh viên liên kết, và gỡ các dòng `CTDT_MONHOC` trong cùng transaction.
 - `SINHVIEN.MaCTDT` là FK bắt buộc. Khi có `MaLop`, trigger kiểm tra đồng thời khoa sinh viên, khoa ngành của CTĐT và `NamTuyenSinh = LOP.NamNhapHoc`; các trigger phía `LOP`, `NGANH` và CTĐT ngăn thay đổi làm dữ liệu hiện hữu mất nhất quán.
 - Danh sách CTĐT không phụ thuộc việc chương trình đã có môn hay chưa. API `GET /api/admin/curriculum-options` trả lựa chọn theo `maKhoa` và `namTuyenSinh`; API danh sách khung môn học vẫn có thể không trả CTĐT chưa gắn môn do view chi tiết dùng quan hệ với `CTDT_MONHOC`.
 - Đăng ký có thể chưa có hàng `DIEMSO`; CTĐT có thể chưa có hàng `CTDT_MONHOC`; lớp học phần ở `DA_KHOA` có thể chưa có `LICHHOC`. Chỉ cho phép lớp chuyển sang `MO_DANG_KY`/`DANG_MO` khi có ít nhất một lịch; xóa lịch cuối của lớp đang mở bị từ chối.
@@ -220,7 +221,7 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `DB/05_Triggers.sql` và `
 | **51006** | `TR_CHITIETTHANHTOAN_CapNhatHocPhi`| `409` | `soTien` | Tổng số tiền thanh toán không được vượt quá số dư học phí còn lại. *(Ngữ cảnh: PAYMENT)* |
 | **51006** | `SP_TaoTaiKhoan` | `409` | `username` | Tên đăng nhập đã tồn tại trong hệ thống. *(Ngữ cảnh: CREATE_USER)* |
 | **51007** | `TR_LOP_KiemTraXoa` / `SP_TaoTaiKhoan` | `409` | `maLop` / `maSV` | Không thể xóa lớp sinh hoạt đang có sinh viên trực thuộc / Sinh viên đã được liên kết tài khoản khác. |
-| **51008** | `TR_SINHVIEN_KiemTraKhoaLop` | `422` | `maCTDT` | Khoa sinh viên, khoa ngành CTĐT và khóa tuyển sinh phải khớp lớp. *(Ngữ cảnh: STUDENT_CLASS)* |
+| **51008** | `TR_SINHVIEN_KiemTraKhoaLop`, `TR_LOP_KiemTraSinhVien`, `TR_NGANH_KiemTraSinhVien` | `409` / `422` | `maKhoa` / `maCTDT` | Không thể đổi khoa/khóa lớp hoặc chuyển ngành khi dữ liệu sinh viên không còn khớp; kiểm tra nhất quán sinh viên trả `422` theo ngữ cảnh. |
 | **51311** | `TR_LOPHOCPHAN_MoCanLich` / `TR_LICHHOC_LopMoCanLich` | `409` | `lichHoc` | Lớp chỉ được mở khi có lịch; không thể xóa lịch cuối của lớp đang mở. |
 | **51008** | `SP_TaoTaiKhoan` / `SP_ThongKeHocPhiTheoLop` | `409` / `404` | `maGV` / `maLop` | Giảng viên đã được liên kết với tài khoản khác / Không tìm thấy lớp sinh hoạt được yêu cầu. |
 | **51009** | `SP_KhoaTaiKhoan` | `400` | `maTaiKhoan` | Mã tài khoản không được để trống khi thực hiện khóa tài khoản. |
@@ -348,19 +349,28 @@ Hệ thống bắt chính xác mã lỗi `THROW` từ `DB/05_Triggers.sql` và `
 - **`GET /api/admin/reports/tuition`**: Báo cáo thống kê tài chính học phí theo học kỳ (gọi Stored Procedure `SP_ThongKeHocPhi`).
 - **`GET /api/admin/users`**: Quản lý danh sách tài khoản người dùng từ View `V_TaiKhoanNguoiDung`.
 - **`PATCH /api/admin/users/:username/status`**: Chỉ nhận `ACTIVE` hoặc `LOCKED`; khóa gọi Stored Procedure `SP_KhoaTaiKhoan`, mở khóa cập nhật có điều kiện. Không tìm thấy username trả `404`; DAO_TAO không đổi trạng thái DAO_TAO/QUAN_TRI; tài khoản `DISABLED` không được mở khóa; không thể tự khóa tài khoản đang dùng.
-- **`GET /api/admin/students`**: Danh sách sinh viên toàn trường kèm thông tin Lớp sinh hoạt và Khoa (hỗ trợ phân trang, tìm kiếm MSSV/họ tên/email, lọc khoa, lớp).
+- **`GET /api/admin/students`**: Danh sách sinh viên toàn trường kèm thông tin lớp sinh hoạt và khoa (hỗ trợ phân trang, tìm kiếm MSSV/họ tên/email, lọc khoa, lớp, trạng thái; từ chối cặp khoa/lớp không khớp).
 - **`POST /api/admin/students`**: Thêm hồ sơ sinh viên (validate Zod, bắt buộc `maCTDT`, kiểm tra CTĐT thuộc khoa và năm tuyển sinh khớp lớp; trùng `MaSinhVien` trả `409`, vi phạm nhất quán CTĐT trả `422`). Trả về `201 Created`.
 - **`PUT /api/admin/students/:id`**: Cập nhật hồ sơ (họ tên, ngày sinh, email, SĐT, lớp, CTĐT, trạng thái); `maCTDT` không gửi thì giữ giá trị cũ. Trả `404` nếu không tồn tại, `422` nếu CTĐT không khớp.
 - **`DELETE /api/admin/students/:id`**: Xóa an toàn / soft delete chuyển trạng thái `THOI_HOC` nếu sinh viên đã có lịch sử học tập/công nợ (tránh lỗi khóa ngoại FK). Trả về `200 OK`.
-- **`GET /api/admin/classes`**: Danh sách tất cả lớp học phần đang mở và sĩ số động.
-- **`POST /api/admin/classes`**, **`PUT /api/admin/classes/:id`**, **`DELETE /api/admin/classes/:id`**: CRUD lớp học phần, dành cho `DAO_TAO` và `QUAN_TRI`; dữ liệu được validate bằng Zod và các FK/CHECK của SQL Server vẫn là lớp bảo vệ cuối.
+- **`GET /api/admin/classes`**, **`GET /api/admin/classes/:id`**: Danh sách lớp học phần kèm toàn bộ lịch, và chi tiết một lớp gồm các dòng lịch học.
+- **`POST /api/admin/classes`**, **`PUT /api/admin/classes/:id`**, **`DELETE /api/admin/classes/:id`**: CRUD lớp học phần, dành cho `DAO_TAO` và `QUAN_TRI`; có thể gửi danh sách `schedules` để lưu lớp/lịch cùng transaction. Chỉ mở lớp khi có lịch hợp lệ; không cho giảm sức chứa thấp hơn số đăng ký hoặc xóa lớp đã có lịch sử đăng ký.
+- **`POST /api/admin/classes/:id/schedules`**, **`PUT /api/admin/classes/:id/schedules/:scheduleId`**, **`DELETE /api/admin/classes/:id/schedules/:scheduleId`**: CRUD từng buổi học; SQL Server từ chối trùng giảng viên/phòng (`51310`) và xóa buổi cuối của lớp đang mở (`51311`).
+- **`GET /api/admin/lecturers/options?maKhoa=&trangThai=`**: Danh sách giảng viên cho biểu mẫu phân công lớp, lọc theo khoa và một trong các trạng thái `DANG_CONG_TAC`, `TAM_NGHI`, `NGHI_VIEC`.
 - **`GET /api/admin/courses`**, **`POST /api/admin/courses`**, **`PUT /api/admin/courses/:id`**, **`DELETE /api/admin/courses/:id`**: Đọc và CRUD môn học, dành cho `DAO_TAO` và `QUAN_TRI`; thao tác xóa bị SQL Server từ chối nếu còn dữ liệu tham chiếu.
-- **`GET /api/admin/registrations`**: Tra cứu toàn bộ giao dịch đăng ký tín chỉ của sinh viên.
-- **`GET /api/admin/audit-logs`**: Nhật ký kiểm toán bảo mật từ bảng `LOGHOATDONG` (chỉ role `QUAN_TRI`).
-- **`GET /api/admin/curriculums?maKhoa=&namTuyenSinh=&maCTDT=&hocKyDuKien=`**: Danh sách CTĐT và môn theo kỳ, lọc theo khoa, khóa tuyển sinh, chương trình và kỳ dự kiến; giữ cả CTĐT/kỳ chưa có môn. Mỗi môn trả khoa phụ trách, tín chỉ, số tiết lý thuyết/thực hành, mô tả, trạng thái, loại môn, thứ tự và tiên quyết kèm mức độ.
+- **`GET /api/admin/registrations?maSinhVien=&maLHP=&maLop=&trangThai=`**: Tra cứu giao dịch đăng ký tín chỉ, hỗ trợ mã sinh viên chính xác (MSSV), mã lớp học phần chính xác, lớp sinh hoạt và trạng thái.
+- **`GET /api/admin/audit-logs?maTaiKhoan=&tuNgay=&denNgay=`**: Nhật ký kiểm toán bảo mật từ bảng `LOGHOATDONG` (chỉ role `QUAN_TRI`), lọc mã tài khoản và khoảng ngày bao gồm cả ngày kết thúc.
+- **`GET /api/admin/curriculums?maKhoa=&maNganh=&namTuyenSinh=&maCTDT=&hocKyDuKien=&tuKhoaMonHoc=&maMonTienQuyet=`**: Danh sách CTĐT và môn theo kỳ, lọc theo khoa, ngành, khóa tuyển sinh, chương trình, kỳ dự kiến, mã/tên môn và môn tiên quyết. `maMonTienQuyet` là mã môn được chọn để tìm ngược các môn phụ thuộc vào nó; khi không lọc môn tiên quyết, vẫn giữ CTĐT/kỳ chưa có môn. Mỗi môn trả khoa phụ trách, tín chỉ, số tiết lý thuyết/thực hành, mô tả, trạng thái, loại môn, thứ tự và tiên quyết kèm mức độ.
+- **`POST /api/admin/curriculums/:maCTDT/courses`**, **`PUT /api/admin/curriculums/:maCTDT/courses/:maMonHoc`**: Thêm/cập nhật môn dùng chung, cách xếp trong CTĐT được chọn và danh sách tiên quyết (`BAT_BUOC`/`KHUYEN_NGHI`) trong một transaction. Tiên quyết dùng chung toàn danh mục; trigger từ chối chu trình (`51001`) và transaction hoàn tác toàn bộ thay đổi.
+- **`DELETE /api/admin/curriculums/:maCTDT/courses/:maMonHoc`**: Chỉ gỡ liên kết môn khỏi CTĐT đã chọn; không xóa môn khỏi danh mục hay CTĐT khác.
+- **`GET /api/admin/curriculum-programs`**, **`POST /api/admin/curriculum-programs`**, **`PUT /api/admin/curriculum-programs/:maCTDT`**, **`DELETE /api/admin/curriculum-programs/:maCTDT`**: CRUD thông tin CTĐT cho `DAO_TAO` và `QUAN_TRI`, DTO kèm ngành/khoa. Mã không đổi khi sửa; `KhoaHoc` được tính theo `NamTuyenSinh` và `ThoiGianDaoTao`. UPDATE chỉ đưa ngành/năm vào câu lệnh khi giá trị đổi để tránh kích hoạt trigger không cần thiết; trigger `51008` được giữ nguyên và lỗi được trả về với ngữ cảnh ngành/năm. Xóa bị từ chối nếu còn bất kỳ hồ sơ sinh viên nào; nếu đủ điều kiện, chỉ xóa liên kết môn và CTĐT trong một transaction, không xóa môn trong danh mục.
 - **`GET /api/students/:id/curriculum`**: CTĐT được gán cho sinh viên, nhóm môn theo toàn bộ kỳ dự kiến với cùng bộ thuộc tính môn và tiên quyết kèm mức độ; kiểm tra quyền bằng `authorizeStudentRecord`.
 - **`GET /api/admin/curriculum-options?maKhoa=&namTuyenSinh=`**: lựa chọn CTĐT đang hoạt động, lọc theo khoa và năm tuyển sinh.
 - **`GET /api/admin/faculties`**: danh sách tất cả khoa gồm mã, tên, email, số điện thoại và trạng thái; chỉ role `DAO_TAO` và `QUAN_TRI`.
+- **`GET /api/admin/majors?maKhoa=`**: danh sách ngành gồm mã, tên, mã/tên khoa, mô tả và trạng thái; mặc định gồm ngành đang hoạt động và ngừng hoạt động. Khi có `maKhoa`, truy vấn lọc bằng equality predicate trên `NGANH.MaKhoa`, tương thích với index `IX_NGANH_MaKhoa`; chỉ role `DAO_TAO` và `QUAN_TRI`.
+- **`POST/PUT/DELETE /api/admin/faculties[/:id]`**: quản lý Khoa; mã không đổi khi sửa. Không xóa dây chuyền: FK trả `409` nếu còn Ngành, Môn học, Lớp, Sinh viên hoặc Giảng viên tham chiếu.
+- **`POST/PUT/DELETE /api/admin/majors[/:id]`**: quản lý Ngành; cập nhật khoa có thể bị trigger từ chối (`51008`) nếu CTĐT hiện có sinh viên không còn khớp. Xóa bị từ chối (`409`) khi CTĐT còn tham chiếu.
+- **`POST/PUT/DELETE /api/admin/homeroom-classes[/:id]`**: quản lý lớp sinh hoạt `LOP`, tách biệt với `LOPHOCPHAN`; đổi khoa/năm nhập học bị trigger từ chối (`51008`) nếu sinh viên hiện tại lệch CTĐT, xóa lớp có sinh viên bị từ chối (`51007`). Cả ba nhóm thao tác chỉ dành cho `DAO_TAO` và `QUAN_TRI`.
 - `POST /api/admin/students` bắt buộc có `maCTDT`; `PUT` nhận `maCTDT` tùy chọn. Backend kiểm tra CTĐT thuộc khoa đã chọn và khóa CTĐT khớp lớp nếu sinh viên đã được phân lớp.
 - **`GET /api/lecturers/:id/schedule`**: Lịch giảng dạy theo tuần của Giảng viên.
 - **`GET /api/lecturers/:id/classes`**: Danh sách các lớp học phần Giảng viên đang phụ trách.
@@ -726,5 +736,5 @@ Bao gồm 10 phân hệ màn hình chức năng chính:
 
 ### 11.1. Trạng thái giao diện catalog
 
-CRUD môn học và lớp học phần đã có API và test tích hợp. Giao diện quản trị hiện chưa có form tạo/sửa/xóa hai loại dữ liệu này; không trình bày đây là CRUD UI hoàn chỉnh.
+Portal Đào tạo/Quản trị hỗ trợ thêm, sửa và gỡ môn trong CTĐT; chỉnh sửa thông tin môn dùng chung, cách xếp trong CTĐT và tiên quyết; tạo/sửa/xóa lớp học phần cùng các buổi lịch học. Xóa môn chỉ gỡ khỏi CTĐT hiện chọn. Các form hiển thị cảnh báo tác động dữ liệu môn dùng chung, lỗi API theo trường, trạng thái lưu và xác nhận xóa. Modal co theo màn hình hẹp; phần nội dung cuộn riêng và giữ tiêu đề/nút thao tác trong khung nhìn.
 

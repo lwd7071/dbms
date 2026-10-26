@@ -1,5 +1,146 @@
 # TASK LOG
 
+## Căn thẳng ba ô lọc môn CTĐT
+
+- Status: DONE
+- Date: 2026-10-26
+- Files changed:
+  - `backend/tests/frontend-dom.test.js`
+  - `frontend/css/styles.css`
+  - `Task.md`
+
+### Changes
+- Căn đầu các label và ô nhập trong nhóm lọc để Học kỳ, Tìm môn và Môn tiên quyết bắt đầu cùng hàng.
+- Căn nút “Tìm môn” giữa chiều cao nhóm điều khiển để thẳng với các ô nhập.
+
+### Tests / Verification
+- DOM regression test đỏ trước chỉnh CSS, xanh sau chỉnh.
+- Ba targeted suites PASS: 46 tests; `git diff --check` PASS.
+
+### Issues
+- Chưa mở trình duyệt để xác nhận trực quan.
+
+### Next Step
+- None.
+
+## Sửa bố cục bộ lọc CTĐT
+
+- Status: DONE
+- Date: 2026-10-26
+- Files changed:
+  - `backend/tests/frontend-dom.test.js`
+  - `frontend/portal-admin.html`
+  - `frontend/css/styles.css`
+  - `Task.md`
+
+### Changes
+- Chuyển nút “Thêm môn vào CTĐT” lên vùng tiêu đề cạnh số lượng chương trình để không bị đẩy xuống dưới các select.
+- Sắp bộ lọc khoa/ngành/khóa/chương trình thành lưới hai cột trên màn rộng và một cột trên màn hẹp.
+- Sửa selector CSS từ `#tab-curriculum` sang đúng ID `#tab-curriculums`.
+
+### Tests / Verification
+- Regression DOM test đỏ trước khi sửa do nút nằm dưới vùng tiêu đề; xanh sau khi chuyển nút.
+- `npm test -- --runTestsByPath tests/frontend-dom.test.js tests/curriculum-repository.test.js tests/admin-filter-validation.test.js`: PASS, 46 tests.
+- `node --check frontend/js/admin.js` và `git diff --check`: PASS.
+
+### Issues
+- Chưa mở trình duyệt để kiểm tra trực quan; test xác nhận vị trí vùng thao tác và breakpoint CSS.
+
+### Next Step
+- None.
+
+## Tách bộ tìm kiếm môn và môn tiên quyết trong CTĐT
+
+- Status: DONE
+- Date: 2026-10-26
+- Files changed:
+  - `backend/src/repositories/admin.repository.js`
+  - `backend/src/validators/common.validator.js`
+  - `backend/tests/admin-filter-validation.test.js`
+  - `backend/tests/curriculum-repository.test.js`
+  - `backend/tests/frontend-dom.test.js`
+  - `frontend/portal-admin.html`
+  - `frontend/js/admin.js`
+  - `frontend/css/styles.css`
+  - `docs/spec.md`
+  - `Task.md`
+
+### Changes
+- Gom học kỳ, tìm mã/tên môn và tìm ngược môn tiên quyết thành nhóm “Lọc môn học” ngay trên danh sách CTĐT; giữ phong cách portal và xếp một cột ở màn hình hẹp.
+- Ô tìm môn gửi `tuKhoaMonHoc` để tìm theo mã hoặc tên môn.
+- Ô môn tiên quyết có gợi ý mã/tên, chỉ gợi ý theo chương trình và học kỳ hiện chọn. Chọn một môn sẽ gửi `maMonTienQuyet`; truy vấn tiếp tục lọc theo `MONHOCTIENQUYET.MaMonTienQuyet`, phù hợp với `IX_MONHOCTIENQUYET_MaMonTienQuyet`.
+- Không chấp nhận từ khóa tiên quyết không khớp gợi ý; thông báo nằm trong vùng lọc và kết quả hiện tại được giữ lại.
+
+### Tests / Verification
+- TDD đỏ → xanh: test hợp đồng API/query và DOM ban đầu thất bại vì chưa có tìm mã/tên môn; sau triển khai targeted suites pass.
+- `npm test -- --runTestsByPath tests/frontend-dom.test.js tests/curriculum-repository.test.js tests/admin-filter-validation.test.js`: PASS, 45 tests.
+- Kiểm thử DOM xác nhận gợi ý tiên quyết phụ thuộc chương trình/học kỳ, hai trường gửi tham số riêng, từ khóa sai không gửi truy vấn và layout mobile một cột.
+
+### Issues
+- Chưa kiểm tra trực quan trong trình duyệt; SQL Server không kết nối được để đọc execution plan. Việc chọn index được đánh giá theo predicate trong source, chưa xác nhận optimizer runtime.
+
+### Next Step
+- Mở tab CTĐT ở desktop/mobile và xác nhận datalist hoạt động trên trình duyệt mục tiêu.
+
+## Hoàn thiện bộ lọc toàn hệ thống
+
+- Status: IMPLEMENTED
+- Date: 2026-10-26
+- Files changed:
+  - `backend/src/repositories/admin.repository.js`
+  - `backend/src/controllers/admin.controller.js`
+  - `backend/src/routes/admin.routes.js`
+  - `backend/src/validators/common.validator.js`
+  - `backend/tests/admin-filter-validation.test.js`
+  - `backend/tests/admin-management-validation.test.js`
+  - `backend/tests/curriculum-repository.test.js`
+  - `backend/tests/frontend-dom.test.js`
+  - `frontend/portal-admin.html`
+  - `frontend/js/admin.js`
+  - `frontend/css/styles.css`
+  - `docs/spec.md`
+  - `Task.md`
+
+### Changes
+- Nạp lớp sinh hoạt lại theo khoa; giữ lớp còn hợp lệ, xóa lựa chọn cũ không hợp lệ, khóa danh sách lúc tải, báo riêng lỗi tải và bỏ qua response cũ khi đổi khoa liên tiếp.
+- API sinh viên từ chối cặp khoa/lớp không khớp; thêm lọc trạng thái sinh viên.
+- CTĐT thêm lọc ngành và môn tiên quyết; ngành/khóa/chương trình/học kỳ được cập nhật theo lựa chọn cha và chỉ giữ lựa chọn con còn hợp lệ.
+- Tra cứu đăng ký thêm MSSV và mã lớp học phần chính xác; nhật ký thêm tài khoản và khoảng ngày; danh sách giảng viên trong form lớp thêm lọc khoa/trạng thái.
+- Giữ nguyên schema và định nghĩa index, không dùng index hint.
+
+### Rà soát 19 index (đối chiếu source, chưa xác minh execution plan)
+- `IX_CTDT_MONHOC_MaCTDT`: cấu trúc môn CTĐT ở quản trị và sinh viên, tra theo `MaCTDT`.
+- `IX_MONHOCTIENQUYET_MaMonTienQuyet`: lọc CTĐT theo môn tiên quyết bằng predicate đầu `MaMonTienQuyet`.
+- `IX_MONHOC_MaKhoa`: danh sách môn mở đăng ký lọc theo khoa (`mh.MaKhoa`); tên môn/tín chỉ có trong INCLUDE, truy vấn hiện không lọc trạng thái môn.
+- `IX_SINHVIEN_MaKhoa_TrangThai`: danh sách sinh viên lọc khoa và trạng thái.
+- `IX_GIANGVIEN_MaKhoa_TrangThai`: lựa chọn giảng viên lọc khoa và trạng thái.
+- `IX_TAIKHOAN_VaiTro_TrangThai`: danh sách tài khoản lọc vai trò/trạng thái.
+- `IX_HOCKY_TrangThai_NgayMoDangKy`: tìm học kỳ theo trạng thái trong luồng học kỳ hiện hành/mở đăng ký.
+- `IX_DANGKYTINCHI_MaSV_MaLHP`: tra cứu đăng ký theo sinh viên và lớp học phần.
+- `IX_DANGKYTINCHI_MaLHP_TrangThai`: lấy sĩ số/danh sách đăng ký theo lớp học phần và trạng thái.
+- `IX_LOPHOCPHAN_MaHocKy_MaMonHoc`: danh sách lớp học phần theo học kỳ và môn.
+- `IX_LICHHOC_MaLHP_Thu_Tiet`: lịch học theo lớp học phần, thứ và tiết.
+- `IX_HOCPHI_MaSV_MaHocKy`: hồ sơ học phí theo sinh viên/học kỳ.
+- `IX_HOCPHI_MaHocKy_TrangThai`: báo cáo học phí theo học kỳ/trạng thái.
+- `IX_LOGHOATDONG_ThoiGian`: lọc nhật ký theo thời gian.
+- `IX_LOGHOATDONG_MaTaiKhoan_ThoiGian`: lọc nhật ký theo tài khoản và thời gian.
+- `IX_NGANH_MaKhoa`: ngành theo khoa trong bộ lọc CTĐT và danh sách ngành.
+- `IX_CHUONGTRINHDAOTAO_MaNganh`: chương trình theo ngành trong truy vấn CTĐT.
+- `IX_SINHVIEN_MaLop`: danh sách sinh viên thuộc lớp, hồ sơ lớp và các truy vấn học phí theo lớp.
+- `IX_LOP_MaKhoa_NamNhapHoc`: lọc lớp sinh hoạt theo khoa/năm nhập học.
+
+### Tests / Verification
+- `npm test -- --runTestsByPath tests/frontend-dom.test.js tests/curriculum-repository.test.js tests/admin-filter-validation.test.js`: PASS, 43 tests.
+- `node --check` cho các file JavaScript backend/frontend đã sửa: PASS.
+- Kiểm thử HTTP Supertest bị môi trường sandbox chặn mở loopback (`connect EACCES`); SQL Server/execution plan chưa xác minh được trong lượt này.
+- Chưa chạy xác minh trình duyệt desktop/mobile với DB; DOM tests xác nhận cascade, lỗi, giữ/xóa lựa chọn và tham số lọc.
+
+### Issues
+- Chưa xác minh lựa chọn index bằng execution plan/IO vì kết nối SQL Server không khả dụng.
+
+### Next Step
+- Chạy kiểm thử HTTP và đối chiếu execution plan trên môi trường có SQL Server/loopback.
+
 ## Đồng bộ README thư mục Database bàn giao
 
 - Status: DONE
@@ -2431,3 +2572,194 @@
 
 ### Next Step
 - Dùng file phân quyền đã ghi chú để phân chia phần trình bày.
+
+## Quản trị môn học, CTĐT, lớp học phần và lịch học
+
+- Status: DONE
+- Date: 2026-10-26
+- Files changed:
+  - `backend/src/controllers/admin.controller.js`
+  - `backend/src/repositories/admin.repository.js`
+  - `backend/src/routes/admin.routes.js`
+  - `backend/src/validators/catalog.validator.js`
+  - `backend/tests/admin-class-schedule-crud.test.js`
+  - `backend/tests/admin-curriculum-management.test.js`
+  - `backend/tests/admin-management-validation.test.js`
+  - `backend/tests/frontend-dom.test.js`
+  - `frontend/css/styles.css`
+  - `frontend/js/admin.js`
+  - `frontend/portal-admin.html`
+  - `docs/spec.md`
+  - `Task.md`
+
+### Changes
+- Thêm API giao dịch để thêm/sửa môn trong CTĐT với cách xếp và tiên quyết; gỡ môn chỉ xóa liên kết trong CTĐT hiện chọn.
+- Thêm API tra cứu giảng viên, đọc chi tiết lớp và CRUD lớp/lịch. Ghi lớp và lịch trong cùng transaction; không cho mở lớp thiếu lịch, giảm sức chứa dưới số đăng ký hoặc xóa lớp có lịch sử đăng ký.
+- Bổ sung form quản trị môn/tiên quyết và lớp/lịch; có xác nhận xóa, focus bàn phím, thông báo lỗi tổng hợp và inline.
+- Sửa modal editor để form co theo chiều cao màn hình, vùng nội dung cuộn độc lập, giữ header/footer nhìn thấy và tạo khoảng cách dưới modal trên màn hình hẹp.
+
+### Tests / Verification
+- TDD qua Supertest + SQL Server và DOM harness; các test mới bao gồm rollback chu trình tiên quyết, tự tiên quyết/mức sai, quyền truy cập, xung đột lịch `51310`, thiếu lịch `51311`, sức chứa `51002`, xóa lớp có đăng ký và payload/lỗi form DOM.
+- Toàn bộ Jest backend: PASS (41 suites, 257 tests) trước các test bổ sung cuối.
+- Test DOM và lớp/lịch sau bổ sung: PASS (2 suites, 27 tests). Toàn bộ suite cần chạy lại sau bổ sung cuối.
+- Browser trực tiếp chưa xác minh được trong phiên trước vì công cụ CUA không xác định chắc URL tab; modal được chỉnh theo ảnh người dùng gửi và cấu trúc CSS hiện tại.
+
+### Issues
+- None known. Browser QA thủ công còn cần xác nhận trong portal đang chạy.
+
+### Next Step
+- Tải lại portal quản trị, mở modal môn học và xác nhận vùng tiên quyết cuộn được, nút Lưu/Hủy cùng lề dưới luôn hiện.
+
+## Danh sách ngành và lọc theo khoa
+
+- Status: DONE
+- Date: 2026-10-26
+- Files changed:
+  - `backend/src/validators/common.validator.js`
+  - `backend/src/repositories/faculty.repository.js`
+  - `backend/src/controllers/faculty.controller.js`
+  - `backend/src/routes/admin.routes.js`
+  - `backend/tests/admin-majors.test.js`
+  - `backend/tests/frontend-dom.test.js`
+  - `frontend/portal-admin.html`
+  - `frontend/js/admin.js`
+  - `frontend/css/styles.css`
+  - `docs/spec.md`
+  - `Task.md`
+
+### Changes
+- Thêm API chỉ đọc `/api/admin/majors?maKhoa=` cho Đào tạo và Quản trị, trả thông tin ngành và cả trạng thái ngừng hoạt động; predicate lọc dùng `NGANH.MaKhoa` để optimizer có thể tận dụng `IX_NGANH_MaKhoa`.
+- Thêm bảng ngành dưới danh sách khoa, mặc định liệt kê tất cả ngành. Bộ lọc khoa tải lại bảng; có số lượng, trạng thái đang tải/rỗng/lỗi, nhãn truy cập được và bố cục responsive.
+- Cập nhật đặc tả API.
+
+### Tests / Verification
+- TDD qua Supertest với DB test và DOM harness: test lọc ngành, trường dữ liệu, ngành ngừng hoạt động, danh sách rỗng, vai trò/đăng nhập, query không hợp lệ, bộ lọc UI và trạng thái lỗi/rỗng.
+- `npm test -- --runInBand tests/admin-majors.test.js tests/admin-faculties.test.js tests/frontend-dom.test.js`: PASS (3 suites, 41 tests).
+- Toàn bộ Jest backend: PASS (42 suites, 271 tests).
+- Xác nhận trong SQL Server đang chạy `IX_NGANH_MaKhoa` tồn tại và cột key là `MaKhoa`; query lọc dùng predicate `n.MaKhoa = @MaKhoa`.
+- Browser desktop: tab hiển thị 7 ngành; chọn khoa CNTT chỉ còn ngành N01, bộ đếm cập nhật đúng và bảng khoa vẫn giữ nguyên.
+
+### Issues
+- Chưa rà trực tiếp ở viewport hẹp; CSS tái sử dụng breakpoint responsive hiện có của bảng khoa.
+
+### Next Step
+- Rà thêm bố cục trên viewport 375px.
+
+## Đổi nhãn điều hướng Khoa / Ngành
+
+- Status: DONE
+- Date: 2026-10-26
+- Files changed:
+  - `frontend/portal-admin.html`
+  - `backend/tests/frontend-dom.test.js`
+  - `Task.md`
+
+### Changes
+- Đổi nhãn menu điều hướng từ “Danh sách khoa” thành “Khoa / Ngành”; tiêu đề bảng khoa và bảng ngành vẫn tách riêng.
+
+### Tests / Verification
+- DOM test xác nhận nhãn menu: PASS.
+- `git diff --check`: PASS.
+
+### Issues
+- None.
+
+### Next Step
+- Tải lại portal để thấy nhãn mới trên menu.
+
+## CRUD Khoa, Ngành và lớp sinh hoạt
+
+- Status: DONE
+- Date: 2026-10-26
+- Files changed:
+  - `backend/src/validators/catalog.validator.js`
+  - `backend/src/repositories/faculty.repository.js`
+  - `backend/src/repositories/class.repository.js`
+  - `backend/src/controllers/faculty.controller.js`
+  - `backend/src/controllers/class.controller.js`
+  - `backend/src/routes/admin.routes.js`
+  - `backend/src/utils/errorMapper.js`
+  - `backend/tests/admin-department-crud.test.js`
+  - `backend/tests/admin-management-validation.test.js`
+  - `backend/tests/frontend-dom.test.js`
+  - `frontend/portal-admin.html`
+  - `frontend/js/admin.js`
+  - `frontend/css/styles.css`
+  - `docs/spec.md`
+  - `Task.md`
+
+### Changes
+- Thêm CRUD Khoa, Ngành và lớp sinh hoạt qua API quản trị; API cập nhật không cho đổi mã định danh.
+- Giữ FK và trigger làm lớp bảo vệ cuối; ánh xạ lỗi xóa do tham chiếu thành `409`, lỗi lớp có sinh viên thành `51007`, lỗi không nhất quán khoa/khóa thành `51008` có thông báo theo ngữ cảnh.
+- Thêm form tạo/sửa dùng chung, trạng thái bật/tắt, nút xóa có xác nhận nêu rõ phụ thuộc; danh sách hiển thị hành động sửa/xóa, giữ bộ lọc và trạng thái sĩ số.
+- Bổ sung nhãn form, lỗi tổng hợp có focus, trạng thái đang lưu, focus ring, đóng bằng Escape và lọc controls ẩn khỏi vòng focus modal.
+
+### Tests / Verification
+- TDD theo seam Supertest + SQL test DB và DOM harness. Có kiểm tra CRUD, quyền, dữ liệu sai, FK chặn xóa ngành, trigger chặn sửa/xóa lớp có sinh viên, payload form và nút thao tác trên danh sách.
+- `npm test`: PASS (44 suites, 301 tests), including Supertest/SQL Server and DOM harness.
+- `node --check` các file backend đã sửa: PASS; `git diff --check`: PASS.
+- Browser desktop: đã mở danh sách Khoa/Ngành, kiểm tra modal sửa khoa chỉ hiện trường phù hợp, kiểm tra danh sách lớp và modal thêm lớp; Escape đóng modal và trả focus về nút mở.
+
+### Issues
+- Chưa rà viewport hẹp trên browser.
+
+### Next Step
+- Rà portal ở viewport hẹp 375px; các hành vi API/FK/trigger đã được xác nhận trong test DB.
+
+## Sửa lỗi mở form chỉnh sửa Ngành/Lớp
+
+- Status: DONE
+- Date: 2026-10-26
+- Changes: Dò bản ghi theo mã riêng của từng loại (`maKhoa`, `maNganh`, `maLop`), tránh dùng `maKhoa` trên bản ghi ngành/lớp.
+- Tests: Test DOM mở form sửa ngành sau khi tải theo bộ lọc khoa; `npm test -- --runInBand tests/frontend-dom.test.js` PASS (41 tests); `git diff --check` PASS.
+
+## Sửa nhầm tên khoa thành tên ngành trong form
+
+- Status: DONE
+- Date: 2026-10-26
+- Changes: Form ngành hiển thị `tenNganh` thay vì ưu tiên `tenKhoa`; tra cứu bản ghi khi xóa cũng dùng khóa đúng theo loại danh mục.
+- Tests: Bổ sung assertion DOM phân biệt tên ngành với tên khoa; `npm test -- --runInBand tests/frontend-dom.test.js` PASS (41 tests).
+
+## Giải thích và hướng dẫn thao tác Thêm môn vào CTĐT
+
+- Status: DONE
+- Date: 2026-10-26
+- Changes: Giữ nút thêm môn tắt khi chưa chọn một CTĐT cụ thể; thêm hướng dẫn trạng thái trực tiếp cạnh nút, cập nhật tên CTĐT đang chọn khi nút được bật.
+- Tests: DOM test kiểm tra nút/hướng dẫn trước và sau khi chọn CTĐT; `npm test -- --runInBand tests/frontend-dom.test.js` PASS (42 tests).
+
+## CRUD chương trình đào tạo và kiểm tra trigger sinh viên
+
+- Status: DONE
+- Date: 2026-10-26
+- Files changed:
+  - `backend/src/validators/catalog.validator.js`
+  - `backend/src/routes/admin.routes.js`
+  - `backend/src/controllers/admin.controller.js`
+  - `backend/src/repositories/admin.repository.js`
+  - `backend/src/utils/errorMapper.js`
+  - `backend/tests/admin-curriculum-program-crud.test.js`
+  - `backend/tests/frontend-dom.test.js`
+  - `frontend/portal-admin.html`
+  - `frontend/js/admin.js`
+  - `frontend/js/api.js`
+  - `frontend/css/styles.css`
+  - `docs/spec.md`
+  - `Task.md`
+
+### Changes
+- Thêm CRUD CTĐT riêng khỏi CRUD môn trong CTĐT. Mã CTĐT cố định sau khi tạo; nhãn khóa học tính từ năm tuyển sinh và thời gian đào tạo.
+- Khi cập nhật, chỉ đưa ngành/năm tuyển sinh vào câu UPDATE khi dữ liệu thực sự đổi; lỗi trigger `51008` báo rõ khả năng không khớp hồ sơ sinh viên.
+- Xóa CTĐT bị từ chối nếu còn sinh viên ở bất kỳ trạng thái nào. Nếu đủ điều kiện, xóa liên kết môn và CTĐT trong cùng transaction, giữ nguyên danh mục môn.
+- Bổ sung nút tạo và thao tác sửa/xóa theo CTĐT đang chọn; xác nhận xóa nêu tác động. Form cảnh báo về trigger, có xem trước khóa học, trạng thái lỗi/thành công, hỗ trợ Escape và giữ focus phù hợp.
+
+### Tests / Verification
+- Supertest + SQL test DB: `npm test -- --runInBand tests/admin-curriculum-program-crud.test.js` PASS (6 tests), gồm trigger chặn đổi ngành/năm có sinh viên và rollback, cập nhật tên không kích hoạt thay đổi ngành/năm, xóa an toàn và giữ môn danh mục.
+- DOM harness: `npm test -- --runInBand tests/frontend-dom.test.js` PASS (44 tests).
+- Browser desktop: kiểm tra danh sách CTĐT, thao tác chỉ khi chọn CTĐT, mở form sửa có dữ liệu đúng, bố cục modal và đóng bằng Escape; không ghi vào dữ liệu demo.
+- `node --check` và `git diff --check`: PASS.
+
+### Issues
+- None.
+
+### Next Step
+- Không có.
