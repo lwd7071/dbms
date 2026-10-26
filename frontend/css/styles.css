@@ -394,6 +394,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   color: var(--color-danger-text);
 }
 
+.faculty-major-filter {
+  width: min(100%, 26rem);
+  margin-bottom: 1rem;
+}
+
+.faculty-directory-actions { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
+.faculty-directory-table td:last-child .btn { min-height: 2.25rem; }
+.homeroom-class-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.65rem; }
+.homeroom-class-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
 @media (max-width: 768px) {
   .faculty-table-wrap {
     overflow: visible;
@@ -477,9 +487,45 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 
 /* Curriculum program identity and metadata */
-#tab-curriculum .card-header {
+#tab-curriculums .card-header {
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+.curriculum-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.curriculum-header-actions .btn[hidden] {
+  display: none !important;
+}
+
+.curriculum-course-action-hint {
+  flex-basis: 100%;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.curriculum-program-trigger-note {
+  margin: 0.25rem 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border-left: 3px solid var(--color-warning, #d97706);
+  background: var(--color-warning-bg, #fffbeb);
+  color: var(--color-text, #1f2937);
+  border-radius: 0.25rem;
+}
+
+.curriculum-program-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .curriculum-overview {
@@ -585,10 +631,34 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   margin-bottom: 1.25rem;
 }
 
+#studentClassFilterStatus:empty {
+  display: none;
+}
+
+#studentClassFilterStatus:not(:empty) {
+  margin: -0.5rem 0 1rem;
+  color: var(--color-danger-text);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
 .search-box {
   flex: 1;
   min-width: 240px;
   position: relative;
+}
+
+@media (max-width: 768px) {
+  .toolbar .form-control {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .toolbar > label {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
 }
 
 .form-control {
@@ -743,6 +813,57 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 
 /* Curriculum course attributes stay within the available width. */
+.curriculum-course-filters {
+  margin: 0.75rem 0 1rem;
+  padding: 1rem;
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-md);
+}
+
+.curriculum-course-filters h3 {
+  margin: 0 0 0.75rem;
+  color: var(--color-text-main);
+  font-size: 0.95rem;
+}
+
+.curriculum-course-filter-controls {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.65fr) minmax(200px, 1fr) minmax(260px, 1.25fr) auto;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.curriculum-course-filter-controls label {
+  display: grid;
+  min-width: 0;
+  gap: 0.35rem;
+  color: var(--color-text-main);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.curriculum-course-filter-controls small {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.curriculum-course-filter-controls .btn {
+  align-self: center;
+  min-height: 2.5rem;
+}
+
+.curriculum-filter-feedback:empty {
+  display: none;
+}
+
+.curriculum-filter-feedback:not(:empty) {
+  margin-top: 0.5rem;
+  color: var(--color-danger-text);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
 .curriculum-table-wrap {
   width: 100%;
   min-width: 0;
@@ -801,6 +922,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 
 @media (max-width: 900px) {
+  .curriculum-course-filter-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .curriculum-course-filter-controls .btn {
+    width: 100%;
+  }
+
   .curriculum-detail-table,
   .curriculum-detail-table tbody {
     display: block;
@@ -862,6 +991,28 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 
 @media (max-width: 576px) {
+  .curriculum-header-actions {
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+  }
+
+  .curriculum-course-action-hint {
+    text-align: left;
+  }
+
+  .curriculum-program-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .curriculum-course-filters {
+    padding: 0.75rem;
+  }
+
+  .curriculum-course-filter-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .curriculum-detail-table tr {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1668,4 +1819,39 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .course-search-wrapper .form-control:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.1);
+}
+/* Admin course and class editors */
+.admin-editor-dialog {
+  width: min(960px, 96vw);
+  max-height: min(calc(100vh - 2.5rem), 920px);
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-editor-dialog > form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.admin-editor-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 1.25rem; }
+.admin-editor-dialog .modal-footer { flex: 0 0 auto; background: var(--color-surface); }
+.admin-editor-section { padding: 1rem 0; border-bottom: 1px solid var(--color-border-subtle); }
+.admin-editor-section:last-child { border-bottom: 0; }
+.admin-editor-section h4 { margin: 0 0 0.35rem; font-size: 1rem; }
+.admin-editor-section p, .admin-editor-section small { color: var(--color-text-muted); font-size: 0.8125rem; }
+.admin-editor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem 1rem; margin: 0.8rem 0; }
+.admin-editor-grid label { display: grid; gap: 0.3rem; font-size: 0.875rem; font-weight: 600; }
+.admin-editor-grid [hidden] { display: none !important; }
+.admin-editor-span { grid-column: 1 / -1; }
+.admin-editor-list { list-style: none; margin: 0.65rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
+.admin-editor-list li { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.55rem 0.75rem; border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); }
+.admin-editor-dialog :focus-visible { outline: 3px solid var(--color-primary-light); outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .admin-editor-dialog { width: 100%; max-height: calc(100vh - 2rem); }
+  .admin-editor-body { padding: 0.9rem; }
+  .admin-editor-grid { grid-template-columns: minmax(0, 1fr); }
+  .admin-editor-span { grid-column: auto; }
 }

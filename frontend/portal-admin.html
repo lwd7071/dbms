@@ -90,7 +90,7 @@
               <path d="M19 21V11l-6-4"></path>
               <path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"></path>
             </svg>
-            <span>Danh sách khoa</span>
+            <span>Khoa / Ngành</span>
           </button>
           <button class="tab-dropdown-item" onclick="switchAdminTab('classes-sh', this)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -225,8 +225,15 @@
                 <option value="">-- Tất cả lớp sinh hoạt --</option>
               </select>
             </div>
+            <div style="min-width: 170px;">
+              <select id="filterStudentStatus" class="form-control" onchange="loadAdminStudents()" aria-label="Lọc theo trạng thái sinh viên">
+                <option value="">-- Tất cả trạng thái --</option><option value="DANG_HOC">Đang học</option><option value="BAO_LUU">Bảo lưu</option><option value="TOT_NGHIEP">Tốt nghiệp</option><option value="THOI_HOC">Thôi học</option>
+              </select>
+            </div>
             <button class="btn btn-primary" onclick="loadAdminStudents()">Tìm kiếm</button>
           </div>
+          <div id="studentClassFilterStatus" class="form-feedback" role="status" aria-live="polite"></div>
+          <button id="retryStudentClassesBtn" class="btn btn-secondary btn-sm" type="button" onclick="onStudentKhoaChange()" hidden>Thử tải lại danh sách lớp</button>
           <div id="adminStudentsContainer"></div>
         </div>
       </section>
@@ -237,15 +244,41 @@
       <section class="card">
         <div class="card-header">
           <h2 class="card-title">Tra cứu chương trình đào tạo</h2>
-          <span id="curriculumResultCount" class="badge badge-info">Đang tải...</span>
+          <div class="curriculum-header-actions">
+            <span id="curriculumResultCount" class="badge badge-info">Đang tải...</span>
+            <button id="createCurriculumProgramBtn" class="btn btn-secondary" type="button" onclick="openCurriculumProgramModal({ mode: 'create' })">Tạo CTĐT</button>
+            <button id="editCurriculumProgramBtn" class="btn btn-secondary" type="button" onclick="openSelectedCurriculumProgramEditor()" hidden>Sửa CTĐT</button>
+            <button id="deleteCurriculumProgramBtn" class="btn btn-danger" type="button" onclick="deleteSelectedCurriculumProgram()" hidden>Xóa CTĐT</button>
+            <button id="addCurriculumCourseBtn" class="btn btn-primary" type="button" aria-describedby="addCurriculumCourseHint" onclick="openCurriculumCourseModal({ mode: 'create', maCTDT: document.getElementById('filterCurriculumProgram').value })" disabled>Thêm môn vào CTĐT</button>
+            <small id="addCurriculumCourseHint" class="curriculum-course-action-hint" role="status" aria-live="polite">Chọn một chương trình đào tạo ở bộ lọc bên dưới để bật thao tác thêm môn.</small>
+          </div>
         </div>
         <div class="card-body">
-          <div class="toolbar" style="flex-wrap: wrap;">
+          <div class="curriculum-program-filters" aria-label="Lọc chương trình đào tạo">
             <select id="filterCurriculumFaculty" class="form-control" aria-label="Lọc CTĐT theo khoa" onchange="loadAdminCurriculums()"><option value="">-- Tất cả khoa --</option></select>
+            <select id="filterCurriculumMajor" class="form-control" aria-label="Lọc CTĐT theo ngành" onchange="loadAdminCurriculums()"><option value="">-- Tất cả ngành --</option></select>
             <select id="filterCurriculumYear" class="form-control" aria-label="Lọc CTĐT theo khóa tuyển sinh" onchange="loadAdminCurriculums()"><option value="">-- Tất cả khóa tuyển sinh --</option></select>
             <select id="filterCurriculumProgram" class="form-control" aria-label="Lọc theo chương trình đào tạo" onchange="loadAdminCurriculums()"><option value="">-- Tất cả chương trình --</option></select>
-            <select id="filterCurriculumTerm" class="form-control" aria-label="Lọc theo học kỳ dự kiến" onchange="loadAdminCurriculums()"><option value="">-- Tất cả học kỳ --</option></select>
           </div>
+          <section class="curriculum-course-filters" aria-labelledby="curriculumCourseFiltersTitle">
+            <h3 id="curriculumCourseFiltersTitle">Lọc môn học</h3>
+            <div class="curriculum-course-filter-controls">
+              <label for="filterCurriculumTerm">Học kỳ
+                <select id="filterCurriculumTerm" class="form-control" aria-label="Lọc môn theo học kỳ dự kiến" onchange="loadAdminCurriculums()"><option value="">-- Tất cả học kỳ --</option></select>
+              </label>
+              <label for="filterCurriculumCourseSearch">Tìm môn trong chương trình
+                <input id="filterCurriculumCourseSearch" class="form-control" type="search" maxlength="100" placeholder="Nhập mã hoặc tên môn" aria-describedby="curriculumCourseSearchHint" onkeydown="if(event.key==='Enter') loadAdminCurriculums()">
+                <small id="curriculumCourseSearchHint">Tìm theo mã hoặc tên môn học.</small>
+              </label>
+              <label for="filterCurriculumPrerequisiteSearch">Môn tiên quyết của môn trong danh sách
+                <input id="filterCurriculumPrerequisiteSearch" class="form-control" type="search" list="curriculumPrerequisiteOptions" placeholder="Gõ mã hoặc tên rồi chọn gợi ý" aria-describedby="curriculumPrerequisiteHint curriculumFilterFeedback" oninput="delete this.dataset.selectedCode" onkeydown="if(event.key==='Enter') loadAdminCurriculums()">
+                <datalist id="curriculumPrerequisiteOptions"></datalist>
+                <small id="curriculumPrerequisiteHint">Chọn môn tiên quyết để tìm các môn phụ thuộc vào nó.</small>
+              </label>
+              <button id="searchCurriculumCoursesBtn" class="btn btn-primary" type="button" onclick="loadAdminCurriculums()">Tìm môn</button>
+            </div>
+            <div id="curriculumFilterFeedback" class="curriculum-filter-feedback" role="status" aria-live="polite"></div>
+          </section>
           <div id="adminCurriculumContainer" class="curriculum-table-wrap" style="margin-top: 1rem;">
             <div style="text-align:center;padding:1.5rem;">Đang tải chương trình đào tạo...</div>
           </div>
@@ -258,11 +291,28 @@
       <section class="card">
         <div class="card-header">
           <h2 class="card-title">Danh sách khoa</h2>
-          <span id="adminFacultyCount" class="badge badge-info" aria-live="polite">Đang tải...</span>
+          <div class="faculty-directory-actions"><span id="adminFacultyCount" class="badge badge-info" aria-live="polite">Đang tải...</span><button class="btn btn-primary btn-sm" type="button" onclick="openDepartmentEditor('faculty','create')">Thêm khoa</button></div>
         </div>
         <div class="card-body">
           <div id="adminFacultiesContainer" class="faculty-directory-container" aria-live="polite">
             <div class="faculty-directory-message" role="status">Đang tải danh sách khoa...</div>
+          </div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">Danh sách ngành</h2>
+          <div class="faculty-directory-actions"><span id="adminMajorCount" class="badge badge-info" role="status" aria-live="polite" aria-atomic="true">Đang tải...</span><button class="btn btn-primary btn-sm" type="button" onclick="openDepartmentEditor('major','create')">Thêm ngành</button></div>
+        </div>
+        <div class="card-body">
+          <div class="faculty-major-filter">
+            <label class="form-label" for="adminMajorFacultyFilter">Lọc ngành theo khoa</label>
+            <select id="adminMajorFacultyFilter" class="form-control" aria-controls="adminMajorsContainer">
+              <option value="">Tất cả khoa</option>
+            </select>
+          </div>
+          <div id="adminMajorsContainer" class="faculty-directory-container" aria-busy="false">
+            <div class="faculty-directory-message" role="status">Đang tải danh sách ngành...</div>
           </div>
         </div>
       </section>
@@ -284,6 +334,7 @@
         </div>
         <div class="card-body">
           <div class="toolbar">
+            <button class="btn btn-primary btn-sm" type="button" onclick="openDepartmentEditor('class','create')">Thêm lớp sinh hoạt</button>
             <div style="min-width: 180px;">
               <select id="filterAdminClassShKhoa" class="form-control" onchange="loadAdminAdministrativeClasses()">
                 <option value="">-- Tất cả khoa --</option>
@@ -324,6 +375,7 @@
               <input type="text" id="searchClassInput" class="form-control" placeholder="Tìm theo mã LHP, tên môn học..." onkeydown="if(event.key==='Enter') loadAdminClasses()">
             </div>
             <button class="btn btn-primary" onclick="loadAdminClasses()">Tìm kiếm</button>
+            <button class="btn btn-primary" type="button" onclick="openClassSectionModal('create')">Tạo lớp học phần</button>
           </div>
           <div id="adminClassesContainer"></div>
         </div>
@@ -347,6 +399,8 @@
             <div class="search-box">
               <input type="text" id="searchRegInput" class="form-control" placeholder="Tìm theo MSSV, họ tên, mã LHP..." onkeydown="if(event.key==='Enter') loadAdminRegistrations()">
             </div>
+            <input id="filterRegStudentCode" class="form-control" style="max-width:180px" placeholder="MSSV chính xác" aria-label="Lọc chính xác theo MSSV" onkeydown="if(event.key==='Enter') loadAdminRegistrations()">
+            <input id="filterRegCourseSection" class="form-control" style="max-width:180px" placeholder="Mã LHP chính xác" aria-label="Lọc chính xác theo mã lớp học phần" onkeydown="if(event.key==='Enter') loadAdminRegistrations()">
             <div style="min-width: 180px;">
               <select id="filterRegLop" class="form-control" onchange="loadAdminRegistrations()">
                 <option value="">-- Tất cả lớp sinh hoạt --</option>
@@ -527,7 +581,11 @@
           <span class="badge badge-info">Bảng LOGHOATDONG</span>
         </div>
         <div class="card-body">
-          <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+          <div class="toolbar" style="flex-wrap:wrap; margin-bottom:1rem;">
+            <input id="filterAuditAccount" class="form-control" style="max-width:180px" type="number" min="1" placeholder="Mã tài khoản" aria-label="Lọc nhật ký theo mã tài khoản">
+            <label>Từ ngày <input id="filterAuditFrom" class="form-control" type="date" aria-label="Từ ngày"></label>
+            <label>Đến ngày <input id="filterAuditTo" class="form-control" type="date" aria-label="Đến ngày"></label>
+            <button class="btn btn-primary btn-sm" onclick="loadAdminAuditLogs()">Lọc nhật ký</button>
             <button class="btn btn-secondary btn-sm" onclick="loadAdminAuditLogs()">
               Làm mới nhật ký
             </button>
@@ -694,6 +752,155 @@
     </div>
   </div>
 
+  <div id="adminCurriculumCourseModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-dialog admin-editor-dialog" role="dialog" aria-modal="true" aria-labelledby="curriculumCourseFormTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="curriculumCourseFormTitle">Thêm môn vào CTĐT</h3>
+        <button class="modal-close" type="button" onclick="closeCurriculumCourseModal()" aria-label="Đóng hộp thoại">&times;</button>
+      </div>
+      <form id="adminCurriculumCourseForm" onsubmit="handleSaveCurriculumCourse(event)">
+        <div class="modal-body admin-editor-body">
+          <input type="hidden" id="curriculumCourseMaCTDT">
+          <input type="hidden" id="curriculumCourseOriginalId">
+          <div id="curriculumCourseFormErrors" class="form-error-summary" role="alert" tabindex="-1" hidden>
+            <strong>Không thể lưu môn học. Hãy kiểm tra các mục sau:</strong><ul id="curriculumCourseFormErrorsList"></ul>
+          </div>
+          <section class="admin-editor-section">
+            <h4>Thông tin môn dùng chung</h4>
+            <p>Thay đổi phần này áp dụng cho mọi chương trình có môn học này.</p>
+            <div class="admin-editor-grid">
+              <label>Mã môn học<input id="curriculumCourseMaMonHoc" class="form-control" maxlength="15" required></label>
+              <label>Khoa phụ trách<select id="curriculumCourseMaKhoa" class="form-control" required></select></label>
+              <label class="admin-editor-span">Tên môn học<input id="curriculumCourseTenMonHoc" class="form-control" maxlength="150" required></label>
+              <label>Tín chỉ<input id="curriculumCourseSoTinChi" class="form-control" type="number" min="1" max="255" required></label>
+              <label>Số tiết lý thuyết<input id="curriculumCourseSoTietLyThuyet" class="form-control" type="number" min="0" required></label>
+              <label>Số tiết thực hành<input id="curriculumCourseSoTietThucHanh" class="form-control" type="number" min="0" required></label>
+              <label>Trạng thái<select id="curriculumCourseTrangThai" class="form-control"><option value="true">Đang áp dụng</option><option value="false">Ngừng áp dụng</option></select></label>
+              <label class="admin-editor-span">Mô tả<textarea id="curriculumCourseMoTa" class="form-control" maxlength="500" rows="2"></textarea></label>
+            </div>
+          </section>
+          <section class="admin-editor-section">
+            <h4>Xếp môn trong CTĐT đang chọn</h4>
+            <div class="admin-editor-grid">
+              <label>Học kỳ dự kiến<input id="curriculumCourseHocKy" class="form-control" type="number" min="1" max="20" required></label>
+              <label>Loại môn<select id="curriculumCourseLoaiMon" class="form-control" required><option value="BAT_BUOC">Bắt buộc</option><option value="TU_CHON">Tự chọn</option></select></label>
+              <label>Thứ tự<input id="curriculumCourseThuTu" class="form-control" type="number" min="1"></label>
+            </div>
+          </section>
+          <section class="admin-editor-section">
+            <h4>Môn tiên quyết dùng chung</h4>
+            <div class="admin-editor-grid">
+              <label>Môn tiên quyết<select id="curriculumPrerequisiteSelect" class="form-control"></select></label>
+              <label>Mức độ<select id="curriculumPrerequisiteLevel" class="form-control"><option value="BAT_BUOC">Bắt buộc</option><option value="KHUYEN_NGHI">Khuyến nghị</option></select></label>
+            </div>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="addCurriculumPrerequisite()">Thêm tiên quyết</button>
+            <ul id="curriculumPrerequisiteList" class="admin-editor-list" aria-live="polite"></ul>
+          </section>
+        </div>
+        <div class="modal-footer"><button class="btn btn-secondary" type="button" onclick="closeCurriculumCourseModal()">Hủy</button><button id="btnSaveCurriculumCourse" class="btn btn-primary" type="submit">Lưu môn học</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="adminCurriculumProgramModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-dialog admin-editor-dialog" role="dialog" aria-modal="true" aria-labelledby="curriculumProgramFormTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="curriculumProgramFormTitle">Tạo chương trình đào tạo</h3>
+        <button class="modal-close" type="button" onclick="closeCurriculumProgramModal()" aria-label="Đóng hộp thoại">&times;</button>
+      </div>
+      <form id="adminCurriculumProgramForm" onsubmit="handleSaveCurriculumProgram(event)">
+        <div class="modal-body admin-editor-body">
+          <input type="hidden" id="curriculumProgramOriginalId">
+          <div id="curriculumProgramFormErrors" class="form-error-summary" role="alert" tabindex="-1" hidden>
+            <strong>Không thể lưu chương trình đào tạo.</strong><ul id="curriculumProgramFormErrorsList"></ul>
+          </div>
+          <p class="curriculum-program-trigger-note" role="note">Đổi ngành hoặc năm tuyển sinh có thể bị từ chối nếu hồ sơ sinh viên trong CTĐT không còn khớp với khoa hoặc năm lớp.</p>
+          <section class="admin-editor-section">
+            <h4>Thông tin chương trình</h4>
+            <div class="admin-editor-grid">
+              <label>Mã CTĐT<input id="curriculumProgramMaCTDT" class="form-control" maxlength="24" required></label>
+              <label>Ngành<select id="curriculumProgramMaNganh" class="form-control" required></select></label>
+              <label class="admin-editor-span">Tên chương trình<input id="curriculumProgramTenCTDT" class="form-control" maxlength="150" required></label>
+              <label>Năm tuyển sinh<input id="curriculumProgramNamTuyenSinh" class="form-control" type="number" min="2000" max="2100" required oninput="updateCurriculumCohortPreview()"></label>
+              <label>Thời gian đào tạo (năm)<input id="curriculumProgramThoiGianDaoTao" class="form-control" type="number" min="1" required oninput="updateCurriculumCohortPreview()"></label>
+              <label>Tổng tín chỉ yêu cầu<input id="curriculumProgramTongTinChi" class="form-control" type="number" min="1" required></label>
+              <label>Khóa học (tự tính)<input id="curriculumProgramKhoaHoc" class="form-control" readonly aria-describedby="curriculumProgramCohortHint"></label>
+              <label>Trạng thái<select id="curriculumProgramTrangThai" class="form-control"><option value="true">Đang áp dụng</option><option value="false">Ngừng áp dụng</option></select></label>
+              <small id="curriculumProgramCohortHint" class="admin-editor-span">Nhãn khóa học được tính từ năm tuyển sinh và thời gian đào tạo.</small>
+            </div>
+          </section>
+        </div>
+        <div class="modal-footer"><button class="btn btn-secondary" type="button" onclick="closeCurriculumProgramModal()">Hủy</button><button id="btnSaveCurriculumProgram" class="btn btn-primary" type="submit">Lưu CTĐT</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="adminClassFormModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-dialog admin-editor-dialog" role="dialog" aria-modal="true" aria-labelledby="classFormTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="classFormTitle">Tạo lớp học phần</h3>
+        <button class="modal-close" type="button" onclick="closeClassSectionModal()" aria-label="Đóng hộp thoại">&times;</button>
+      </div>
+      <form id="adminClassForm" onsubmit="handleSaveClassSection(event)">
+        <div class="modal-body admin-editor-body">
+          <input type="hidden" id="classFormOriginalId">
+          <div id="classFormErrors" class="form-error-summary" role="alert" tabindex="-1" hidden><strong>Không thể lưu lớp học phần.</strong><ul id="classFormErrorsList"></ul></div>
+          <section class="admin-editor-section"><h4>Thông tin lớp học phần</h4>
+            <div class="admin-editor-grid">
+              <label>Mã lớp học phần<input id="classFormMaLHP" class="form-control" maxlength="20" required></label>
+              <label>Môn học<select id="classFormMaMonHoc" class="form-control" required></select></label>
+              <label>Học kỳ<select id="classFormMaHocKy" class="form-control" required></select></label>
+              <label>Khoa giảng viên<select id="classFormLecturerFaculty" class="form-control" aria-label="Lọc giảng viên theo khoa" onchange="loadClassLecturerOptions()"><option value="">Tất cả khoa</option></select></label>
+              <label>Trạng thái giảng viên<select id="classFormLecturerStatus" class="form-control" aria-label="Lọc giảng viên theo trạng thái" onchange="loadClassLecturerOptions()"><option value="">Tất cả trạng thái</option><option value="DANG_CONG_TAC">Đang công tác</option><option value="TAM_NGHI">Tạm nghỉ</option><option value="NGHI_VIEC">Nghỉ việc</option></select></label>
+              <label>Giảng viên<select id="classFormMaGiangVien" class="form-control"><option value="">Chưa phân công</option></select></label>
+              <label class="admin-editor-span">Tên lớp<input id="classFormTenLHP" class="form-control" maxlength="100" required></label>
+              <label>Sức chứa<input id="classFormSoLuongToiDa" class="form-control" type="number" min="1" max="1000" required></label>
+              <label>Trạng thái<select id="classFormTrangThai" class="form-control"><option value="DA_KHOA">Đã khóa</option><option value="MO_DANG_KY">Mở đăng ký</option><option value="DANG_MO">Đang mở</option><option value="DA_HUY">Đã hủy</option></select></label>
+            </div>
+          </section>
+          <section class="admin-editor-section"><h4>Lịch học</h4>
+            <div class="admin-editor-grid">
+              <label>Thứ<select id="classScheduleDay" class="form-control"><option value="2">Thứ 2</option><option value="3">Thứ 3</option><option value="4">Thứ 4</option><option value="5">Thứ 5</option><option value="6">Thứ 6</option><option value="7">Thứ 7</option><option value="8">Chủ nhật</option></select></label>
+              <label>Tiết bắt đầu<input id="classScheduleStart" class="form-control" type="number" min="1" max="12" value="1"></label>
+              <label>Số tiết<input id="classScheduleCount" class="form-control" type="number" min="1" max="6" value="2"></label>
+              <label>Phòng học<input id="classScheduleRoom" class="form-control" maxlength="20" required></label>
+            </div>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="addClassScheduleDraft()">Thêm buổi học</button>
+            <ul id="classScheduleDraftList" class="admin-editor-list" aria-live="polite"></ul>
+            <small>Lớp chỉ được mở khi có ít nhất một lịch hợp lệ.</small>
+          </section>
+        </div>
+        <div class="modal-footer"><button class="btn btn-secondary" type="button" onclick="closeClassSectionModal()">Hủy</button><button id="btnSaveClassForm" class="btn btn-primary" type="submit">Lưu lớp</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="adminDepartmentModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-dialog admin-editor-dialog" role="dialog" aria-modal="true" aria-labelledby="adminDepartmentTitle">
+      <div class="modal-header"><h3 id="adminDepartmentTitle" class="modal-title">Quản lý danh mục</h3><button type="button" class="modal-close" onclick="closeDepartmentEditor()" aria-label="Đóng hộp thoại">&times;</button></div>
+      <form id="adminDepartmentForm" onsubmit="handleSaveDepartment(event)">
+        <div class="modal-body admin-editor-body">
+          <input id="adminDepartmentType" type="hidden"><input id="adminDepartmentOriginalId" type="hidden">
+          <div id="adminDepartmentErrors" class="form-error-summary" role="alert" tabindex="-1" hidden><strong>Không thể lưu thông tin.</strong><ul id="adminDepartmentErrorsList"></ul></div>
+          <section class="admin-editor-section"><h4 id="adminDepartmentSectionTitle">Thông tin</h4>
+            <div class="admin-editor-grid">
+              <label id="adminDepartmentCodeLabel">Mã<input id="adminDepartmentCode" class="form-control" maxlength="20" required></label>
+              <label id="adminDepartmentNameLabel">Tên<input id="adminDepartmentName" class="form-control" maxlength="100" required></label>
+              <label id="adminDepartmentFacultyLabel" hidden>Khoa<select id="adminDepartmentFaculty" class="form-control" required></select></label>
+              <label id="adminDepartmentEmailLabel" hidden>Email<input id="adminDepartmentEmail" class="form-control" type="email" maxlength="100"></label>
+              <label id="adminDepartmentPhoneLabel" hidden>Số điện thoại<input id="adminDepartmentPhone" class="form-control" maxlength="15" inputmode="tel"></label>
+              <label id="adminDepartmentDescriptionLabel" class="admin-editor-span" hidden>Mô tả<textarea id="adminDepartmentDescription" class="form-control" maxlength="500" rows="3"></textarea></label>
+              <label id="adminDepartmentCohortLabel" hidden>Khóa học<input id="adminDepartmentCohort" class="form-control" maxlength="20" required></label>
+              <label id="adminDepartmentYearLabel" hidden>Năm nhập học<input id="adminDepartmentYear" class="form-control" type="number" min="1900" max="2100" required></label>
+              <label id="adminDepartmentStatusLabel">Trạng thái<select id="adminDepartmentStatus" class="form-control"><option value="true">Đang hoạt động</option><option value="false">Ngừng hoạt động</option></select></label>
+            </div>
+          </section>
+        </div>
+        <div class="modal-footer"><button class="btn btn-secondary" type="button" onclick="closeDepartmentEditor()">Hủy</button><button id="btnSaveDepartment" class="btn btn-primary" type="submit">Lưu</button></div>
+      </form>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
@@ -713,9 +920,9 @@
       }
 
       // Nạp danh mục khoa, lớp sinh hoạt và học kỳ động
-      populateFaculties('filterStudentKhoa', '-- Tất cả khoa --');
+      await populateFaculties('filterStudentKhoa', '-- Tất cả khoa --');
       populateFaculties('filterAdminClassShKhoa', '-- Tất cả khoa --');
-      populateClasses('filterStudentLop', '-- Tất cả lớp sinh hoạt --');
+      onStudentKhoaChange();
       populateClasses('filterRegLop', '-- Tất cả lớp sinh hoạt --');
       populateClasses('filterPendingLop', '-- Tất cả lớp sinh hoạt --');
       populateClasses('filterUserLop', '-- Tất cả lớp sinh hoạt --');

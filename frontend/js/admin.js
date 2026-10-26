@@ -6,6 +6,8 @@ let pendingPaymentsData = [];
 let studentCurriculumOptions = null;
 let adminNavigationRole = null;
 let adminCurriculumCatalog = null;
+let adminCurriculumPrograms = null;
+let curriculumProgramEditorTrigger = null;
 
 function setAdminNavigationRole(role) {
   adminNavigationRole = role;
@@ -535,6 +537,45 @@ async function loadAdminDashboard() {
 // ==========================================
 // 7. QUẢN LÝ SINH VIÊN
 // ==========================================
+let studentClassOptionsRequest = 0;
+let studentListRequest = 0;
+
+async function onStudentKhoaChange() {
+  const faculty = document.getElementById('filterStudentKhoa');
+  const classSelect = document.getElementById('filterStudentLop');
+  const feedback = document.getElementById('studentClassFilterStatus');
+  const retryButton = document.getElementById('retryStudentClassesBtn');
+  if (!classSelect) return;
+  const requestId = ++studentClassOptionsRequest;
+  const previousClass = classSelect.value;
+  classSelect.disabled = true;
+  classSelect.innerHTML = '<option value="">Đang tải danh sách lớp...</option>';
+  if (feedback) feedback.textContent = '';
+  if (retryButton) retryButton.hidden = true;
+  try {
+    const classes = await api.get('/classes', faculty?.value ? { maKhoa: faculty.value } : {});
+    if (requestId !== studentClassOptionsRequest) return;
+    classSelect.innerHTML = '<option value="">-- Tất cả lớp sinh hoạt --</option>';
+    (classes || []).forEach(item => {
+      const option = document.createElement('option');
+      option.value = item.maLop;
+      option.textContent = `${item.maLop} - ${item.tenLop} (${item.soLuongSV} SV)`;
+      classSelect.appendChild(option);
+    });
+    classSelect.value = (classes || []).some(item => item.maLop === previousClass) ? previousClass : '';
+    classSelect.disabled = false;
+    await loadAdminStudents();
+  } catch (error) {
+    if (requestId !== studentClassOptionsRequest) return;
+    classSelect.innerHTML = '<option value="">-- Không tải được danh sách lớp --</option>';
+    classSelect.value = '';
+    classSelect.disabled = true;
+    if (feedback) feedback.textContent = `Không thể tải danh sách lớp. ${error.message}`;
+    if (retryButton) retryButton.hidden = false;
+    await loadAdminStudents();
+  }
+}
+
 async function loadAdminStudents(page = 1, pageSize = 10) {
   const container = document.getElementById('adminStudentsContainer');
   if (!container) return;
@@ -542,11 +583,14 @@ async function loadAdminStudents(page = 1, pageSize = 10) {
   const search = document.getElementById('searchStudentInput')?.value || '';
   const maKhoa = document.getElementById('filterStudentKhoa')?.value || '';
   const maLop = document.getElementById('filterStudentLop')?.value || '';
+  const trangThai = document.getElementById('filterStudentStatus')?.value || '';
+  const requestId = ++studentListRequest;
 
   container.innerHTML = `<div style="text-align: center; padding: 2rem;">Đang tải danh sách sinh viên...</div>`;
 
   try {
-    const data = await api.get('/admin/students', { search, maKhoa, maLop, page, pageSize });
+    const data = await api.get('/admin/students', { search, maKhoa, maLop, trangThai, page, pageSize });
+    if (requestId !== studentListRequest) return;
     const list = data.items || [];
     if (!list || list.length === 0) {
       container.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--color-text-muted);">Không tìm thấy sinh viên nào.</div>`;
@@ -619,6 +663,7 @@ async function loadAdminStudents(page = 1, pageSize = 10) {
       }
     });
   } catch (err) {
+    if (requestId !== studentListRequest) return;
     container.textContent = `Không thể tải danh sách sinh viên. ${err.message}`;
   }
 }
@@ -940,13 +985,15 @@ async function loadAdminClasses(page = 1, pageSize = 10) {
               <th style="min-width: 180px;">Lịch học & Phòng</th>
               <th style="width: 150px;">Sĩ số / Sức chứa</th>
               <th style="width: 120px; text-align: center;">Trạng thái</th>
+              <th style="width: 150px; text-align: center;">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             ${list.map(c => {
               const percent = Math.min(100, Math.round((c.siSoHienTai / c.soLuongToiDa) * 100));
               const isFull = c.siSoHienTai >= c.soLuongToiDa;
-              const schedule = c.thu ? `Thứ ${escapeHtml(c.thu)}, Tiết ${escapeHtml(c.tietBatDau)}-${escapeHtml(c.tietBatDau + c.soTiet - 1)} (${escapeHtml(c.phongHoc)})` : 'Chưa xếp lịch';
+              const schedules = c.schedules || (c.thu ? [{ thu: c.thu, tietBatDau: c.tietBatDau, soTiet: c.soTiet, phongHoc: c.phongHoc }] : []);
+              const schedule = schedules.length ? schedules.map(item => `Thứ ${escapeHtml(item.thu)}, tiết ${escapeHtml(item.tietBatDau)}-${escapeHtml(item.tietBatDau + item.soTiet - 1)} (${escapeHtml(item.phongHoc)})`).join('<br>') : 'Chưa xếp lịch';
 
               return `
                 <tr>
@@ -968,6 +1015,10 @@ async function loadAdminClasses(page = 1, pageSize = 10) {
                     </div>
                   </td>
                   <td class="cell-nowrap" style="text-align: center;">${renderStatusBadge(c.trangThai)}</td>
+                  <td class="cell-nowrap" style="text-align:center;">
+                    <button type="button" class="btn btn-secondary btn-sm js-edit-class" onclick="openClassSectionModal('edit', '${escapeHtml(c.maLHP)}')" aria-label="Sửa lớp ${escapeHtml(c.maLHP)}">Sửa</button>
+                    <button type="button" class="btn btn-danger btn-sm js-delete-class" onclick="deleteClassSection('${escapeHtml(c.maLHP)}')" aria-label="Xóa lớp ${escapeHtml(c.maLHP)}">Xóa</button>
+                  </td>
                 </tr>
               `;
             }).join('')}
@@ -1003,11 +1054,13 @@ async function loadAdminRegistrations(page = 1, pageSize = 10) {
   const search = document.getElementById('searchRegInput')?.value || '';
   const trangThai = document.getElementById('filterRegStatus')?.value || '';
   const maLop = document.getElementById('filterRegLop')?.value || '';
+  const maSinhVien = document.getElementById('filterRegStudentCode')?.value.trim() || '';
+  const maLHP = document.getElementById('filterRegCourseSection')?.value.trim() || '';
 
   container.innerHTML = `<div style="text-align: center; padding: 2rem;">Đang tải danh sách đăng ký tín chỉ...</div>`;
 
   try {
-    const data = await api.get('/admin/registrations', { search, trangThai, maLop, page, pageSize });
+    const data = await api.get('/admin/registrations', { search, maSinhVien, maLHP, maLop, trangThai, page, pageSize });
     const list = data.items || [];
     if (!list || list.length === 0) {
       container.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--color-text-muted);">Không tìm thấy dữ liệu đăng ký nào.</div>`;
@@ -1186,7 +1239,11 @@ async function loadAdminAuditLogs(page = 1, pageSize = 10) {
   container.innerHTML = `<div style="text-align: center; padding: 2rem;">Đang tải nhật ký hoạt động hệ thống...</div>`;
 
   try {
-    const data = await api.get('/admin/audit-logs', { page, pageSize });
+    const data = await api.get('/admin/audit-logs', {
+      maTaiKhoan: document.getElementById('filterAuditAccount')?.value || '',
+      tuNgay: document.getElementById('filterAuditFrom')?.value || '',
+      denNgay: document.getElementById('filterAuditTo')?.value || '', page, pageSize
+    });
     const list = data.items || [];
     if (!list || list.length === 0) {
       container.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--color-text-muted);">Chưa có nhật ký hoạt động nào.</div>`;
@@ -1306,7 +1363,7 @@ async function loadAdminAdministrativeClasses() {
                 <div>Năm nhập học: <strong>${escapeHtml(c.namNhapHoc)}</strong></div>
               </div>
             </div>
-            <div style="padding: 0.75rem 1.25rem; background: var(--color-surface-hover); border-top: 1px solid var(--color-border-subtle); display: flex; justify-content: space-between; align-items: center;">
+            <div class="homeroom-class-footer" style="padding: 0.75rem 1.25rem; background: var(--color-surface-hover); border-top: 1px solid var(--color-border-subtle);">
               <div style="font-size: 0.8125rem; font-weight: 600; display: flex; align-items: center; gap: 0.35rem;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -1316,9 +1373,11 @@ async function loadAdminAdministrativeClasses() {
                 </svg>
                 <span>${c.soLuongSV ?? c.siSo ?? 0} sinh viên</span>
               </div>
-              <button class="btn btn-secondary btn-sm js-view-admin-class" data-class-id="${escapeHtml(c.maLop)}">
-                Danh sách SV &rarr;
-              </button>
+              <div class="homeroom-class-actions">
+                <button class="btn btn-secondary btn-sm js-view-admin-class" data-class-id="${escapeHtml(c.maLop)}">Danh sách SV</button>
+                <button class="btn btn-secondary btn-sm" type="button" onclick="openDepartmentEditor('class','edit','${escapeHtml(c.maLop)}')" aria-label="Sửa lớp ${escapeHtml(c.maLop)}">Sửa</button>
+                <button class="btn btn-danger btn-sm" type="button" onclick="deleteDepartmentEntity('class','${escapeHtml(c.maLop)}')" aria-label="Xóa lớp ${escapeHtml(c.maLop)}">Xóa</button>
+              </div>
             </div>
           </div>
         `).join('')}
@@ -1544,41 +1603,557 @@ function setTabDropdownOpen(group, isOpen) {
   if (button) button.setAttribute('aria-expanded', String(isOpen));
 }
 
+let adminEditorTrigger = null;
+let curriculumPrerequisiteDrafts = [];
+let classScheduleDrafts = [];
+
+const curriculumCourseFields = {
+  'course.maMonHoc': 'curriculumCourseMaMonHoc',
+  'course.maKhoa': 'curriculumCourseMaKhoa', 'course.tenMonHoc': 'curriculumCourseTenMonHoc',
+  'course.soTinChi': 'curriculumCourseSoTinChi', 'course.soTietLyThuyet': 'curriculumCourseSoTietLyThuyet',
+  'course.soTietThucHanh': 'curriculumCourseSoTietThucHanh', 'placement.hocKyDuKien': 'curriculumCourseHocKy',
+  'placement.loaiMon': 'curriculumCourseLoaiMon', 'placement.thuTu': 'curriculumCourseThuTu',
+  'prerequisites': 'curriculumPrerequisiteSelect', 'chuTrinh': 'curriculumPrerequisiteSelect',
+  'unique': 'curriculumCourseMaMonHoc', 'foreignKey': 'curriculumCourseMaMonHoc'
+};
+
+function showAdminEditorErrors(summaryId, listId, errors, message, fieldMap) {
+  const summary = document.getElementById(summaryId);
+  const list = document.getElementById(listId);
+  if (!summary || !list) return;
+  list.replaceChildren();
+  const entries = errors.length ? errors : [{ field: 'server', message }];
+  for (const error of entries) {
+    const item = document.createElement('li');
+    const field = String(error.field || 'server').split('.').pop();
+    const inputId = fieldMap[error.field] || fieldMap[field];
+    const input = inputId && document.getElementById(inputId);
+    const label = input?.labels?.[0]?.textContent || (field === 'chuTrinh' ? 'Môn tiên quyết' : 'Thông tin');
+    item.textContent = `${label}: ${error.message || message}`;
+    list.appendChild(item);
+    if (input) {
+      input.setAttribute('aria-invalid', 'true');
+      input.setAttribute('aria-describedby', `${inputId}-error`);
+      let inline = document.getElementById(`${inputId}-error`);
+      if (!inline && input.parentElement) {
+        inline = document.createElement('small');
+        inline.id = `${inputId}-error`;
+        inline.className = 'field-error';
+        input.parentElement.appendChild(inline);
+      }
+      if (inline) inline.textContent = error.message || message || 'Dữ liệu không hợp lệ.';
+    }
+  }
+  summary.hidden = false;
+  summary.focus();
+}
+
+function clearAdminEditorErrors(summaryId, listId, fieldMap = {}) {
+  const summary = document.getElementById(summaryId);
+  const list = document.getElementById(listId);
+  if (summary) summary.hidden = true;
+  if (list) list.replaceChildren();
+  [...new Set(Object.values(fieldMap))].forEach(inputId => {
+    const input = document.getElementById(inputId);
+    if (input) { input.removeAttribute('aria-invalid'); input.removeAttribute('aria-describedby'); }
+    const inline = document.getElementById(`${inputId}-error`);
+    if (inline) inline.textContent = '';
+  });
+}
+
+async function openCurriculumCourseModal({ mode = 'create', maCTDT, maMonHoc } = {}) {
+  const modal = document.getElementById('adminCurriculumCourseModal');
+  if (!modal || !maCTDT) return showToast('Hãy chọn một chương trình đào tạo trước.', 'warning');
+  try {
+    const [courses, faculties] = await Promise.all([api.get('/admin/courses'), api.get('/admin/faculties')]);
+    let item = mode === 'edit' ? adminCurriculumCatalog?.find(row => row.maCTDT === maCTDT && row.maMonHoc === maMonHoc) : null;
+    if (mode === 'edit' && !item) item = (await api.get('/admin/curriculums', { maCTDT })).find(row => row.maMonHoc === maMonHoc);
+    if (mode === 'edit' && !item) return showToast('Không tìm thấy môn trong chương trình đào tạo.', 'danger');
+
+    adminEditorTrigger = document.activeElement;
+    document.getElementById('curriculumCourseFormTitle').textContent = mode === 'edit' ? 'Chỉnh sửa môn trong CTĐT' : 'Thêm môn vào CTĐT';
+    document.getElementById('curriculumCourseMaCTDT').value = maCTDT;
+    document.getElementById('curriculumCourseOriginalId').value = item?.maMonHoc || '';
+    const code = document.getElementById('curriculumCourseMaMonHoc');
+    code.value = item?.maMonHoc || '';
+    code.readOnly = mode === 'edit';
+    const faculty = document.getElementById('curriculumCourseMaKhoa');
+    faculty.innerHTML = '<option value="">-- Chọn khoa --</option>' + faculties.map(row => `<option value="${escapeHtml(row.maKhoa)}">${escapeHtml(row.tenKhoa)} (${escapeHtml(row.maKhoa)})</option>`).join('');
+    faculty.value = item?.maKhoaMon || '';
+    document.getElementById('curriculumCourseTenMonHoc').value = item?.tenMonHoc || '';
+    document.getElementById('curriculumCourseSoTinChi').value = item?.soTinChi ?? '';
+    document.getElementById('curriculumCourseSoTietLyThuyet').value = item?.soTietLyThuyet ?? '';
+    document.getElementById('curriculumCourseSoTietThucHanh').value = item?.soTietThucHanh ?? '';
+    document.getElementById('curriculumCourseMoTa').value = item?.moTa || '';
+    document.getElementById('curriculumCourseTrangThai').value = String(item?.trangThaiMon ?? true);
+    document.getElementById('curriculumCourseHocKy').value = item?.hocKyDuKien ?? 1;
+    document.getElementById('curriculumCourseLoaiMon').value = item?.loaiMon || 'BAT_BUOC';
+    document.getElementById('curriculumCourseThuTu').value = item?.thuTu ?? '';
+    const prerequisiteSelect = document.getElementById('curriculumPrerequisiteSelect');
+    prerequisiteSelect.innerHTML = '<option value="">-- Chọn môn --</option>' + courses.filter(row => row.maMonHoc !== maMonHoc).map(row => `<option value="${escapeHtml(row.maMonHoc)}">${escapeHtml(row.maMonHoc)} · ${escapeHtml(row.tenMonHoc)}</option>`).join('');
+    curriculumPrerequisiteDrafts = (item?.hocPhanTienQuyetChiTiet || []).map(row => ({ maMonTienQuyet: row.maMonHoc, tenMonHoc: row.tenMonHoc, mucDo: row.mucDo }));
+    renderCurriculumPrerequisiteDrafts();
+    clearAdminEditorErrors('curriculumCourseFormErrors', 'curriculumCourseFormErrorsList', curriculumCourseFields);
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    code.focus();
+  } catch (error) {
+    showToast(`Không thể mở biểu mẫu môn học. ${error.message}`, 'danger');
+  }
+}
+
+function openCurriculumCourseFromButton(button) {
+  return openCurriculumCourseModal({ mode: 'edit', maCTDT: button.dataset.maCtdt, maMonHoc: button.dataset.maMonHoc });
+}
+
+function renderCurriculumPrerequisiteDrafts() {
+  const list = document.getElementById('curriculumPrerequisiteList');
+  if (!list) return;
+  list.innerHTML = curriculumPrerequisiteDrafts.map((row, index) => `<li><span><code>${escapeHtml(row.maMonTienQuyet)}</code> · ${escapeHtml(row.tenMonHoc || row.maMonTienQuyet)} — ${row.mucDo === 'BAT_BUOC' ? 'Bắt buộc' : 'Khuyến nghị'}</span><button class="btn btn-secondary btn-sm" type="button" onclick="removeCurriculumPrerequisite(${index})" aria-label="Gỡ môn tiên quyết ${escapeHtml(row.maMonTienQuyet)}">Gỡ</button></li>`).join('') || '<li>Chưa có môn tiên quyết.</li>';
+}
+
+function addCurriculumPrerequisite() {
+  const id = document.getElementById('curriculumPrerequisiteSelect')?.value;
+  if (!id) return;
+  const courseId = document.getElementById('curriculumCourseMaMonHoc')?.value.trim();
+  if (id === courseId) return showToast('Môn học không thể tự làm tiên quyết cho chính nó.', 'danger');
+  if (curriculumPrerequisiteDrafts.some(row => row.maMonTienQuyet === id)) return showToast('Môn tiên quyết này đã có trong danh sách.', 'warning');
+  const option = [...document.getElementById('curriculumPrerequisiteSelect').options].find(row => row.value === id);
+  curriculumPrerequisiteDrafts.push({ maMonTienQuyet: id, tenMonHoc: option?.textContent?.split(' · ').slice(1).join(' · ') || id, mucDo: document.getElementById('curriculumPrerequisiteLevel').value });
+  renderCurriculumPrerequisiteDrafts();
+}
+
+function removeCurriculumPrerequisite(index) {
+  curriculumPrerequisiteDrafts.splice(index, 1);
+  renderCurriculumPrerequisiteDrafts();
+}
+
+function closeCurriculumCourseModal() {
+  const modal = document.getElementById('adminCurriculumCourseModal');
+  if (modal) { modal.classList.remove('show'); modal.setAttribute('aria-hidden', 'true'); }
+  adminEditorTrigger?.focus?.();
+  adminEditorTrigger = null;
+}
+
+async function handleSaveCurriculumCourse(event) {
+  event.preventDefault();
+  clearAdminEditorErrors('curriculumCourseFormErrors', 'curriculumCourseFormErrorsList', curriculumCourseFields);
+  const maCTDT = document.getElementById('curriculumCourseMaCTDT').value;
+  const originalId = document.getElementById('curriculumCourseOriginalId').value;
+  const course = {
+    maMonHoc: document.getElementById('curriculumCourseMaMonHoc').value.trim(),
+    maKhoa: document.getElementById('curriculumCourseMaKhoa').value,
+    tenMonHoc: document.getElementById('curriculumCourseTenMonHoc').value.trim(),
+    soTinChi: Number(document.getElementById('curriculumCourseSoTinChi').value),
+    soTietLyThuyet: Number(document.getElementById('curriculumCourseSoTietLyThuyet').value),
+    soTietThucHanh: Number(document.getElementById('curriculumCourseSoTietThucHanh').value),
+    moTa: document.getElementById('curriculumCourseMoTa').value.trim() || null,
+    trangThai: document.getElementById('curriculumCourseTrangThai').value === 'true'
+  };
+  const payload = {
+    course,
+    placement: {
+      hocKyDuKien: Number(document.getElementById('curriculumCourseHocKy').value),
+      loaiMon: document.getElementById('curriculumCourseLoaiMon').value,
+      thuTu: document.getElementById('curriculumCourseThuTu').value ? Number(document.getElementById('curriculumCourseThuTu').value) : null
+    },
+    prerequisites: curriculumPrerequisiteDrafts.map(({ maMonTienQuyet, mucDo }) => ({ maMonTienQuyet, mucDo }))
+  };
+  const button = document.getElementById('btnSaveCurriculumCourse');
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Đang lưu…';
+  try {
+    if (originalId) await api.put(`/admin/curriculums/${maCTDT}/courses/${originalId}`, payload);
+    else await api.post(`/admin/curriculums/${maCTDT}/courses`, payload);
+    adminCurriculumCatalog = null;
+    closeCurriculumCourseModal();
+    showToast('Đã lưu môn học và chương trình đào tạo.', 'success');
+    await loadAdminCurriculums();
+  } catch (error) {
+    showAdminEditorErrors('curriculumCourseFormErrors', 'curriculumCourseFormErrorsList', error.errors || [], error.message, curriculumCourseFields);
+    showToast(`Không thể lưu môn học. ${error.message}`, 'danger');
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+async function removeCurriculumCourse(maCTDT, maMonHoc) {
+  if (!window.confirm(`Gỡ môn ${maMonHoc} khỏi CTĐT này? Môn vẫn còn trong danh mục và CTĐT khác.`)) return;
+  try {
+    await api.delete(`/admin/curriculums/${maCTDT}/courses/${maMonHoc}`);
+    adminCurriculumCatalog = null;
+    showToast('Đã gỡ môn khỏi chương trình đào tạo.', 'success');
+    await loadAdminCurriculums();
+  } catch (error) { showToast(`Không thể gỡ môn. ${error.message}`, 'danger'); }
+}
+
+const curriculumProgramFields = {
+  maCTDT: 'curriculumProgramMaCTDT', maNganh: 'curriculumProgramMaNganh',
+  tenCTDT: 'curriculumProgramTenCTDT', namTuyenSinh: 'curriculumProgramNamTuyenSinh',
+  tongTinChiYeuCau: 'curriculumProgramTongTinChi', thoiGianDaoTao: 'curriculumProgramThoiGianDaoTao'
+};
+
+async function openCurriculumProgramModal({ mode = 'create', maCTDT = '' } = {}) {
+  const modal = document.getElementById('adminCurriculumProgramModal');
+  if (!modal) return;
+  try {
+    let item = null;
+    if (mode === 'edit') {
+      if (!adminCurriculumPrograms) adminCurriculumPrograms = await api.get('/admin/curriculum-programs');
+      item = adminCurriculumPrograms.find(program => program.maCTDT === maCTDT);
+      if (!item) return showToast('Không tìm thấy chương trình đào tạo. Hãy tải lại danh sách.', 'danger');
+    }
+    adminDepartmentMajors = await api.get('/admin/majors');
+    const majorSelect = document.getElementById('curriculumProgramMaNganh');
+    majorSelect.innerHTML = '<option value="">-- Chọn ngành --</option>' + adminDepartmentMajors.map(major =>
+      `<option value="${escapeHtml(major.maNganh)}">${escapeHtml(major.tenNganh)} · ${escapeHtml(major.tenKhoa)}${major.trangThai ? '' : ' (Ngừng hoạt động)'}</option>`
+    ).join('');
+    document.getElementById('curriculumProgramFormTitle').textContent = mode === 'edit' ? 'Chỉnh sửa CTĐT' : 'Tạo CTĐT';
+    document.getElementById('curriculumProgramOriginalId').value = item?.maCTDT || '';
+    const code = document.getElementById('curriculumProgramMaCTDT');
+    code.value = item?.maCTDT || '';
+    code.readOnly = mode === 'edit';
+    majorSelect.value = item?.maNganh || '';
+    document.getElementById('curriculumProgramTenCTDT').value = item?.tenCTDT || '';
+    document.getElementById('curriculumProgramNamTuyenSinh').value = item?.namTuyenSinh ?? '';
+    document.getElementById('curriculumProgramTongTinChi').value = item?.tongTinChiYeuCau ?? '';
+    document.getElementById('curriculumProgramThoiGianDaoTao').value = item?.thoiGianDaoTao ?? '';
+    document.getElementById('curriculumProgramTrangThai').value = String(item?.trangThai ?? true);
+    updateCurriculumCohortPreview();
+    clearAdminEditorErrors('curriculumProgramFormErrors', 'curriculumProgramFormErrorsList', curriculumProgramFields);
+    curriculumProgramEditorTrigger = document.activeElement;
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    (mode === 'edit' ? document.getElementById('curriculumProgramTenCTDT') : code).focus();
+  } catch (error) {
+    showToast(`Không thể mở biểu mẫu CTĐT. ${error.message}`, 'danger');
+  }
+}
+
+function updateCurriculumCohortPreview() {
+  const year = Number(document.getElementById('curriculumProgramNamTuyenSinh')?.value);
+  const duration = Number(document.getElementById('curriculumProgramThoiGianDaoTao')?.value);
+  const preview = document.getElementById('curriculumProgramKhoaHoc');
+  if (preview) preview.value = year >= 2000 && duration > 0 ? `${year}-${year + duration}` : '';
+}
+
+function openSelectedCurriculumProgramEditor() {
+  const maCTDT = document.getElementById('filterCurriculumProgram')?.value;
+  return openCurriculumProgramModal({ mode: 'edit', maCTDT });
+}
+
+function closeCurriculumProgramModal() {
+  const modal = document.getElementById('adminCurriculumProgramModal');
+  if (modal) { modal.classList.remove('show'); modal.setAttribute('aria-hidden', 'true'); }
+  curriculumProgramEditorTrigger?.focus?.();
+  curriculumProgramEditorTrigger = null;
+}
+
+function resetCurriculumProgramFilters(selectedId = '') {
+  ['filterCurriculumFaculty', 'filterCurriculumMajor', 'filterCurriculumYear', 'filterCurriculumTerm',
+    'filterCurriculumCourseSearch', 'filterCurriculumPrerequisiteSearch'].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) input.value = '';
+  });
+  const program = document.getElementById('filterCurriculumProgram');
+  if (program) program.value = selectedId;
+  const prerequisite = document.getElementById('filterCurriculumPrerequisiteSearch');
+  if (prerequisite) delete prerequisite.dataset.selectedCode;
+}
+
+async function handleSaveCurriculumProgram(event) {
+  event.preventDefault();
+  clearAdminEditorErrors('curriculumProgramFormErrors', 'curriculumProgramFormErrorsList', curriculumProgramFields);
+  const originalId = document.getElementById('curriculumProgramOriginalId').value;
+  const maCTDT = document.getElementById('curriculumProgramMaCTDT').value.trim();
+  const payload = {
+    maNganh: document.getElementById('curriculumProgramMaNganh').value,
+    tenCTDT: document.getElementById('curriculumProgramTenCTDT').value.trim(),
+    namTuyenSinh: Number(document.getElementById('curriculumProgramNamTuyenSinh').value),
+    tongTinChiYeuCau: Number(document.getElementById('curriculumProgramTongTinChi').value),
+    thoiGianDaoTao: Number(document.getElementById('curriculumProgramThoiGianDaoTao').value),
+    trangThai: document.getElementById('curriculumProgramTrangThai').value === 'true'
+  };
+  const button = document.getElementById('btnSaveCurriculumProgram');
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Đang lưu…';
+  try {
+    if (originalId) await api.put(`/admin/curriculum-programs/${encodeURIComponent(originalId)}`, payload);
+    else await api.post('/admin/curriculum-programs', { maCTDT, ...payload });
+    adminCurriculumCatalog = null;
+    adminCurriculumPrograms = null;
+    resetCurriculumProgramFilters(maCTDT);
+    closeCurriculumProgramModal();
+    showToast('Đã lưu chương trình đào tạo.', 'success');
+    await loadAdminCurriculums();
+  } catch (error) {
+    showAdminEditorErrors('curriculumProgramFormErrors', 'curriculumProgramFormErrorsList', error.errors || [], error.message, curriculumProgramFields);
+    showToast(`Không thể lưu CTĐT. ${error.message}`, 'danger');
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+async function deleteSelectedCurriculumProgram() {
+  const maCTDT = document.getElementById('filterCurriculumProgram')?.value;
+  const item = adminCurriculumPrograms?.find(program => program.maCTDT === maCTDT);
+  if (!item) return showToast('Hãy chọn một chương trình đào tạo trước.', 'warning');
+  if (!window.confirm(`Xóa “${item.tenCTDT}” (${maCTDT})? Liên kết môn trong CTĐT sẽ bị gỡ, môn vẫn còn trong danh mục. Chỉ xóa được khi không còn hồ sơ sinh viên liên kết.`)) return;
+  try {
+    await api.delete(`/admin/curriculum-programs/${encodeURIComponent(maCTDT)}`);
+    adminCurriculumCatalog = null;
+    adminCurriculumPrograms = null;
+    resetCurriculumProgramFilters();
+    showToast('Đã xóa chương trình đào tạo.', 'success');
+    await loadAdminCurriculums();
+  } catch (error) {
+    showToast(`Không thể xóa CTĐT. ${error.message}`, 'danger');
+  }
+}
+
+let adminCourseOptions = [];
+let adminSemesterOptions = [];
+let adminLecturerOptions = [];
+let lecturerOptionsRequest = 0;
+
+async function loadClassLecturerOptions(selectedId = null) {
+  const lecturer = document.getElementById('classFormMaGiangVien');
+  if (!lecturer) return;
+  const requestId = ++lecturerOptionsRequest;
+  const previous = selectedId ?? lecturer.value;
+  const maKhoa = document.getElementById('classFormLecturerFaculty')?.value || '';
+  const trangThai = document.getElementById('classFormLecturerStatus')?.value || '';
+  lecturer.disabled = true;
+  try {
+    const options = await api.get('/admin/lecturers/options', { maKhoa, trangThai });
+    if (requestId !== lecturerOptionsRequest) return;
+    adminLecturerOptions = options || [];
+    const lecturerStatusLabel = { DANG_CONG_TAC: 'Đang công tác', TAM_NGHI: 'Tạm nghỉ', NGHI_VIEC: 'Nghỉ việc' };
+    lecturer.innerHTML = '<option value="">Chưa phân công</option>' + adminLecturerOptions.map(row => `<option value="${row.maGV}">${escapeHtml(row.hoTen)} · ${escapeHtml(row.maKhoa)} · ${lecturerStatusLabel[row.trangThai] || escapeHtml(row.trangThai)}</option>`).join('');
+    lecturer.value = adminLecturerOptions.some(row => String(row.maGV) === String(previous)) ? String(previous) : '';
+    lecturer.disabled = false;
+  } catch (error) {
+    if (requestId !== lecturerOptionsRequest) return;
+    lecturer.innerHTML = '<option value="">Không tải được giảng viên</option>';
+    lecturer.value = '';
+    lecturer.disabled = true;
+    showToast(`Không thể tải danh sách giảng viên. ${error.message}`, 'danger');
+  }
+}
+
+async function openClassSectionModal(mode = 'create', maLHP = '') {
+  const modal = document.getElementById('adminClassFormModal');
+  if (!modal) return;
+  try {
+    [adminCourseOptions, adminSemesterOptions] = await Promise.all([
+      api.get('/admin/courses'), api.getSemesters()
+    ]);
+    const item = mode === 'edit' ? await api.get(`/admin/classes/${maLHP}`) : null;
+    adminEditorTrigger = document.activeElement;
+    document.getElementById('classFormTitle').textContent = mode === 'edit' ? 'Chỉnh sửa lớp học phần' : 'Tạo lớp học phần';
+    document.getElementById('classFormOriginalId').value = item?.maLHP || '';
+    const id = document.getElementById('classFormMaLHP');
+    id.value = item?.maLHP || '';
+    id.readOnly = mode === 'edit';
+    const course = document.getElementById('classFormMaMonHoc');
+    course.innerHTML = '<option value="">-- Chọn môn học --</option>' + adminCourseOptions.map(row => `<option value="${escapeHtml(row.maMonHoc)}">${escapeHtml(row.maMonHoc)} · ${escapeHtml(row.tenMonHoc)}</option>`).join('');
+    course.value = item?.maMonHoc || '';
+    const semester = document.getElementById('classFormMaHocKy');
+    semester.innerHTML = '<option value="">-- Chọn học kỳ --</option>' + adminSemesterOptions.map(row => `<option value="${row.maHocKy}">${escapeHtml(row.tenHocKy)} · ${escapeHtml(row.namHoc)}</option>`).join('');
+    semester.value = item?.maHocKy ?? '';
+    const lecturerFaculty = document.getElementById('classFormLecturerFaculty');
+    if (lecturerFaculty) {
+      const faculties = await api.get('/admin/faculties');
+      lecturerFaculty.innerHTML = '<option value="">Tất cả khoa</option>' + faculties.map(row => `<option value="${escapeHtml(row.maKhoa)}">${escapeHtml(row.tenKhoa)} (${escapeHtml(row.maKhoa)})</option>`).join('');
+      lecturerFaculty.value = '';
+    }
+    const lecturerStatus = document.getElementById('classFormLecturerStatus');
+    if (lecturerStatus) lecturerStatus.value = '';
+    await loadClassLecturerOptions(item?.maGiangVien ?? '');
+    document.getElementById('classFormTenLHP').value = item?.tenLHP || '';
+    document.getElementById('classFormSoLuongToiDa').value = item?.soLuongToiDa ?? 50;
+    document.getElementById('classFormTrangThai').value = item?.trangThai || 'DA_KHOA';
+    classScheduleDrafts = (item?.schedules || []).map(row => ({ ...row }));
+    renderClassScheduleDrafts();
+    clearAdminEditorErrors('classFormErrors', 'classFormErrorsList', classFormFields);
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    id.focus();
+  } catch (error) { showToast(`Không thể mở biểu mẫu lớp học phần. ${error.message}`, 'danger'); }
+}
+
+function addClassScheduleDraft() {
+  const schedule = {
+    thu: Number(document.getElementById('classScheduleDay').value),
+    tietBatDau: Number(document.getElementById('classScheduleStart').value),
+    soTiet: Number(document.getElementById('classScheduleCount').value),
+    phongHoc: document.getElementById('classScheduleRoom').value.trim()
+  };
+  if (!schedule.phongHoc || schedule.tietBatDau + schedule.soTiet - 1 > 12) return showToast('Hãy nhập phòng học và khoảng tiết kết thúc không muộn hơn tiết 12.', 'warning');
+  classScheduleDrafts.push(schedule);
+  renderClassScheduleDrafts();
+}
+
+function renderClassScheduleDrafts() {
+  const list = document.getElementById('classScheduleDraftList');
+  if (!list) return;
+  list.innerHTML = classScheduleDrafts.map((item, index) => `<li><span>Thứ ${escapeHtml(item.thu)}, tiết ${escapeHtml(item.tietBatDau)}-${escapeHtml(item.tietBatDau + item.soTiet - 1)} · ${escapeHtml(item.phongHoc)}</span><button type="button" class="btn btn-secondary btn-sm" onclick="removeClassScheduleDraft(${index})" aria-label="Gỡ buổi học thứ ${escapeHtml(item.thu)}">Gỡ</button></li>`).join('') || '<li>Chưa xếp lịch.</li>';
+}
+
+function removeClassScheduleDraft(index) {
+  classScheduleDrafts.splice(index, 1);
+  renderClassScheduleDrafts();
+}
+
+function closeClassSectionModal() {
+  const modal = document.getElementById('adminClassFormModal');
+  if (modal) { modal.classList.remove('show'); modal.setAttribute('aria-hidden', 'true'); }
+  adminEditorTrigger?.focus?.();
+  adminEditorTrigger = null;
+}
+
+const classFormFields = {
+  maLHP: 'classFormMaLHP', maMonHoc: 'classFormMaMonHoc', maHocKy: 'classFormMaHocKy',
+  maGiangVien: 'classFormMaGiangVien', tenLHP: 'classFormTenLHP', soLuongToiDa: 'classFormSoLuongToiDa',
+  phongHoc: 'classScheduleRoom', thu: 'classScheduleDay', tietBatDau: 'classScheduleStart',
+  soTiet: 'classScheduleCount', lichHoc: 'classScheduleRoom', siSo: 'classFormSoLuongToiDa'
+};
+
+async function handleSaveClassSection(event) {
+  event.preventDefault();
+  clearAdminEditorErrors('classFormErrors', 'classFormErrorsList', classFormFields);
+  const originalId = document.getElementById('classFormOriginalId').value;
+  const maLHP = document.getElementById('classFormMaLHP').value.trim();
+  const payload = {
+    maLHP,
+    maMonHoc: document.getElementById('classFormMaMonHoc').value,
+    maHocKy: Number(document.getElementById('classFormMaHocKy').value),
+    maGiangVien: document.getElementById('classFormMaGiangVien').value ? Number(document.getElementById('classFormMaGiangVien').value) : null,
+    tenLHP: document.getElementById('classFormTenLHP').value.trim(),
+    soLuongToiDa: Number(document.getElementById('classFormSoLuongToiDa').value),
+    trangThai: document.getElementById('classFormTrangThai').value,
+    schedules: classScheduleDrafts.map(({ thu, tietBatDau, soTiet, phongHoc }) => ({ thu, tietBatDau, soTiet, phongHoc }))
+  };
+  const button = document.getElementById('btnSaveClassForm');
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Đang lưu…';
+  try {
+    if (originalId) await api.put(`/admin/classes/${originalId}`, payload);
+    else await api.post('/admin/classes', payload);
+    closeClassSectionModal();
+    showToast('Đã lưu lớp học phần và lịch học.', 'success');
+    await loadAdminClasses();
+  } catch (error) {
+    showAdminEditorErrors('classFormErrors', 'classFormErrorsList', error.errors || [], error.message, classFormFields);
+    showToast(`Không thể lưu lớp học phần. ${error.message}`, 'danger');
+  } finally { button.disabled = false; button.textContent = originalText; }
+}
+
+async function deleteClassSection(maLHP) {
+  if (!window.confirm(`Xóa lớp ${maLHP} và các lịch học? Lớp có lịch sử đăng ký không thể xóa.`)) return;
+  try {
+    await api.delete(`/admin/classes/${maLHP}`);
+    showToast('Đã xóa lớp học phần.', 'success');
+    await loadAdminClasses();
+  } catch (error) { showToast(`Không thể xóa lớp học phần. ${error.message}`, 'danger'); }
+}
+
+let curriculumListRequest = 0;
 async function loadAdminCurriculums() {
   const container = document.getElementById('adminCurriculumContainer');
   if (!container) return;
   const count = document.getElementById('curriculumResultCount');
-  container.innerHTML = '<div style="text-align:center;padding:1.5rem;">Đang tải chương trình đào tạo...</div>';
+  const requestId = ++curriculumListRequest;
   try {
-    if (!adminCurriculumCatalog) {
-      adminCurriculumCatalog = await api.get('/admin/curriculums');
+    if (!adminCurriculumCatalog || !adminCurriculumPrograms) {
+      const [catalog, programs] = await Promise.all([
+        adminCurriculumCatalog || api.get('/admin/curriculums'),
+        adminCurriculumPrograms || api.get('/admin/curriculum-programs')
+      ]);
+      adminCurriculumCatalog = catalog;
+      adminCurriculumPrograms = programs;
     }
+    if (requestId !== curriculumListRequest) return;
     const setOptions = (id, label, options) => {
       const select = document.getElementById(id);
+      if (!select) return '';
       const selected = select.value;
       select.innerHTML = `<option value="">${label}</option>` + options.map(({ value, text }) => `<option value="${escapeHtml(value)}">${escapeHtml(text)}</option>`).join('');
       select.value = options.some(option => String(option.value) === selected) ? selected : '';
       return select.value;
     };
-    const faculties = [...new Map(adminCurriculumCatalog.map(item => [item.maKhoa, item])).values()];
+    const faculties = [...new Map(adminCurriculumPrograms.map(item => [item.maKhoa, item])).values()];
     const maKhoa = setOptions('filterCurriculumFaculty', '-- Tất cả khoa --', faculties.map(item => ({ value: item.maKhoa, text: `${item.tenKhoa} (${item.maKhoa})` })));
-    const facultyRows = adminCurriculumCatalog.filter(item => !maKhoa || item.maKhoa === maKhoa);
-    const years = [...new Set(facultyRows.map(item => item.namTuyenSinh))].sort((a, b) => b - a);
+    const facultyRows = adminCurriculumPrograms.filter(item => !maKhoa || item.maKhoa === maKhoa);
+    const majors = [...new Map(facultyRows.map(item => [item.maNganh, item])).values()];
+    const maNganh = setOptions('filterCurriculumMajor', '-- Tất cả ngành --', majors.map(item => ({ value: item.maNganh, text: `${item.nganh} (${item.maNganh})` })));
+    const majorRows = facultyRows.filter(item => !maNganh || item.maNganh === maNganh);
+    const years = [...new Set(majorRows.map(item => item.namTuyenSinh))].sort((a, b) => b - a);
     const namTuyenSinh = setOptions('filterCurriculumYear', '-- Tất cả khóa tuyển sinh --', years.map(year => ({ value: year, text: `Khóa ${year}` })));
-    const yearRows = facultyRows.filter(item => !namTuyenSinh || String(item.namTuyenSinh) === namTuyenSinh);
-    const programs = [...new Map(yearRows.map(item => [item.maCTDT, item])).values()];
-    const maCTDT = setOptions('filterCurriculumProgram', '-- Tất cả chương trình --', programs.map(item => ({ value: item.maCTDT, text: `${item.tenCTDT} (${item.khoaHoc})` })));
-    const programRows = yearRows.filter(item => !maCTDT || item.maCTDT === maCTDT);
-    const maxTerms = Math.max(0, ...programRows.map(item => Number(item.thoiGianDaoTao) || 0)) * 2;
+    const yearRows = majorRows.filter(item => !namTuyenSinh || String(item.namTuyenSinh) === namTuyenSinh);
+    const maCTDT = setOptions('filterCurriculumProgram', '-- Tất cả chương trình --', yearRows.map(item => ({ value: item.maCTDT, text: `${item.tenCTDT} (${item.khoaHoc})` })));
+    const curriculumRows = adminCurriculumCatalog.filter(item => yearRows.some(program => program.maCTDT === item.maCTDT));
+    const maxTerms = Math.max(0, ...yearRows.map(item => Number(item.thoiGianDaoTao) || 0)) * 2;
     const terms = Array.from({ length: maxTerms }, (_, index) => index + 1);
     setOptions('filterCurriculumTerm', '-- Tất cả học kỳ --', terms.map(term => ({ value: term, text: `Học kỳ ${term}` })));
+    const hocKyDuKien = document.getElementById('filterCurriculumTerm')?.value || '';
+    const scopedCourseRows = curriculumRows.filter(item => item.maMonHoc && (!hocKyDuKien || String(item.hocKyDuKien) === String(hocKyDuKien)));
+    const prerequisites = [...new Map(scopedCourseRows.flatMap(item => item.hocPhanTienQuyetChiTiet || []).map(item => [item.maMonHoc, item])).values()];
+    const prerequisiteInput = document.getElementById('filterCurriculumPrerequisiteSearch');
+    const prerequisiteOptions = document.getElementById('curriculumPrerequisiteOptions');
+    const filterFeedback = document.getElementById('curriculumFilterFeedback');
+    const previouslySelectedPrerequisite = prerequisiteInput?.dataset.selectedCode || '';
+    if (prerequisiteOptions) {
+      prerequisiteOptions.innerHTML = prerequisites.map(item => `<option value="${escapeHtml(item.maMonHoc)} · ${escapeHtml(item.tenMonHoc)}"></option>`).join('');
+    }
+    if (previouslySelectedPrerequisite && !prerequisites.some(item => item.maMonHoc === previouslySelectedPrerequisite)) {
+      prerequisiteInput.value = '';
+      delete prerequisiteInput.dataset.selectedCode;
+    }
+    const prerequisiteSearchText = prerequisiteInput?.value.trim() || '';
+    const normalize = value => String(value || '').trim().toLocaleLowerCase('vi');
+    const selectedPrerequisite = prerequisiteSearchText
+      ? prerequisites.find(item => [item.maMonHoc, item.tenMonHoc, `${item.maMonHoc} · ${item.tenMonHoc}`].some(value => normalize(value) === normalize(prerequisiteSearchText)))
+      : null;
+    if (prerequisiteSearchText && !selectedPrerequisite) {
+      if (filterFeedback) filterFeedback.textContent = 'Hãy chọn một môn tiên quyết trong danh sách gợi ý.';
+      return;
+    }
+    if (filterFeedback) filterFeedback.textContent = '';
+    if (prerequisiteInput) {
+      if (selectedPrerequisite) prerequisiteInput.dataset.selectedCode = selectedPrerequisite.maMonHoc;
+      else delete prerequisiteInput.dataset.selectedCode;
+    }
     const filters = {
-      maKhoa: document.getElementById('filterCurriculumFaculty').value,
-      namTuyenSinh: document.getElementById('filterCurriculumYear').value,
-      maCTDT: document.getElementById('filterCurriculumProgram').value,
-      hocKyDuKien: document.getElementById('filterCurriculumTerm').value
+      maKhoa: document.getElementById('filterCurriculumFaculty')?.value || '',
+      maNganh: document.getElementById('filterCurriculumMajor')?.value || '',
+      namTuyenSinh: document.getElementById('filterCurriculumYear')?.value || '',
+      maCTDT: document.getElementById('filterCurriculumProgram')?.value || '',
+      hocKyDuKien,
+      tuKhoaMonHoc: document.getElementById('filterCurriculumCourseSearch')?.value.trim() || '',
+      maMonTienQuyet: selectedPrerequisite?.maMonHoc || ''
     };
+    const addCourseButton = document.getElementById('addCurriculumCourseBtn');
+    const addCourseHint = document.getElementById('addCurriculumCourseHint');
+    const selectedProgram = yearRows.find(item => item.maCTDT === filters.maCTDT);
+    const editProgramButton = document.getElementById('editCurriculumProgramBtn');
+    const deleteProgramButton = document.getElementById('deleteCurriculumProgramBtn');
+    if (addCourseButton) addCourseButton.disabled = !filters.maCTDT;
+    if (editProgramButton) editProgramButton.hidden = !selectedProgram;
+    if (deleteProgramButton) deleteProgramButton.hidden = !selectedProgram;
+    if (addCourseHint) {
+      addCourseHint.textContent = selectedProgram
+        ? `Đang chọn: ${selectedProgram.tenCTDT} (${selectedProgram.maCTDT}).`
+        : 'Chọn một chương trình đào tạo ở bộ lọc bên dưới để bật thao tác thêm môn.';
+    }
+    container.innerHTML = '<div style="text-align:center;padding:1.5rem;">Đang tải chương trình đào tạo...</div>';
     const rows = Object.values(filters).some(Boolean) ? await api.get('/admin/curriculums', filters) : adminCurriculumCatalog;
+    if (requestId !== curriculumListRequest) return;
     const resultPrograms = new Set(rows.map(item => item.maCTDT));
     count.textContent = `${resultPrograms.size} chương trình`;
     if (!rows.length) {
@@ -1592,7 +2167,7 @@ async function loadAdminCurriculums() {
       ...(showTermContext ? [{ label: 'Học kỳ', weight: 6 }] : []),
       { label: 'Môn học', weight: 16 }, { label: 'Khoa phụ trách', weight: 9 }, { label: 'Khối lượng', weight: 8 },
       { label: 'Mô tả', weight: 12 }, { label: 'Học phần tiên quyết', weight: 12 }, { label: 'Loại môn / thứ tự', weight: 8 },
-      { label: 'Trạng thái môn', weight: 6 }, { label: 'Trạng thái CTĐT', weight: 6 }
+      { label: 'Trạng thái môn', weight: 6 }, { label: 'Trạng thái CTĐT', weight: 6 }, { label: 'Thao tác', weight: 6 }
     ];
     const totalWeight = columns.reduce((total, column) => total + column.weight, 0);
     const prerequisiteContent = item => {
@@ -1615,7 +2190,8 @@ async function loadAdminCurriculums() {
         { label: 'Học phần tiên quyết', value: prerequisiteContent(item) },
         { label: 'Loại môn / thứ tự', value: `<span class="badge ${item.loaiMon === 'BAT_BUOC' ? 'badge-info' : 'badge-warning'}">${item.loaiMon === 'BAT_BUOC' ? 'Bắt buộc' : item.loaiMon === 'TU_CHON' ? 'Tự chọn' : '—'}</span><small>Thứ tự: ${escapeHtml(item.thuTu ?? '—')}</small>` },
         { label: 'Trạng thái môn', value: item.trangThaiMon === null || item.trangThaiMon === undefined ? '—' : `<span class="badge ${item.trangThaiMon ? 'badge-success' : 'badge-warning'}">${item.trangThaiMon ? 'Đang áp dụng' : 'Ngừng áp dụng'}</span>` },
-        { label: 'Trạng thái CTĐT', value: `<span class="badge ${item.trangThai ? 'badge-success' : 'badge-warning'}">${item.trangThai ? 'Đang áp dụng' : 'Ngừng áp dụng'}</span>` }
+        { label: 'Trạng thái CTĐT', value: `<span class="badge ${item.trangThai ? 'badge-success' : 'badge-warning'}">${item.trangThai ? 'Đang áp dụng' : 'Ngừng áp dụng'}</span>` },
+        { label: 'Thao tác', value: `<button type="button" class="btn btn-secondary btn-sm" data-ma-ctdt="${escapeHtml(item.maCTDT)}" data-ma-mon-hoc="${escapeHtml(item.maMonHoc)}" onclick="openCurriculumCourseFromButton(this)" aria-label="Chỉnh sửa ${escapeHtml(item.tenMonHoc)}">Sửa</button> <button type="button" class="btn btn-danger btn-sm" onclick="removeCurriculumCourse('${escapeHtml(item.maCTDT)}', '${escapeHtml(item.maMonHoc)}')" aria-label="Gỡ ${escapeHtml(item.tenMonHoc)} khỏi CTĐT">Gỡ</button>` }
       ];
       return `<tr>${cells.map(cell => `<td data-label="${cell.label}">${cell.value}</td>`).join('')}</tr>`;
     }).join('');
@@ -1625,6 +2201,9 @@ async function loadAdminCurriculums() {
     container.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--color-danger-text);">Không thể tải chương trình đào tạo. ${escapeHtml(error.message)}</div>`;
   }
 }
+
+let adminDepartmentFaculties = [];
+let adminDepartmentMajors = [];
 
 async function loadAdminFaculties() {
   const container = document.getElementById('adminFacultiesContainer');
@@ -1636,35 +2215,213 @@ async function loadAdminFaculties() {
 
   try {
     const faculties = await api.get('/admin/faculties');
+    adminDepartmentFaculties = faculties;
     if (count) count.textContent = `${faculties.length} khoa`;
+
+    const facultyFilter = document.getElementById('adminMajorFacultyFilter');
+    if (facultyFilter) {
+      const selected = facultyFilter.value;
+      facultyFilter.innerHTML = '<option value="">Tất cả khoa</option>' + faculties.map(faculty =>
+        `<option value="${escapeHtml(faculty.maKhoa)}">${escapeHtml(faculty.tenKhoa)} (${escapeHtml(faculty.maKhoa)})</option>`
+      ).join('');
+      facultyFilter.value = faculties.some(faculty => faculty.maKhoa === selected) ? selected : '';
+      if (!facultyFilter.dataset.majorFilterBound) {
+        facultyFilter.addEventListener('change', () => loadAdminMajors());
+        facultyFilter.dataset.majorFilterBound = 'true';
+      }
+    }
 
     if (faculties.length === 0) {
       container.innerHTML = '<div class="faculty-directory-message" role="status">Chưa có khoa nào trong hệ thống.</div>';
+    } else {
+      const rows = faculties.map(faculty => `
+        <tr>
+          <td data-label="Mã khoa"><code>${escapeHtml(faculty.maKhoa)}</code></td>
+          <td data-label="Tên khoa"><strong>${escapeHtml(faculty.tenKhoa)}</strong></td>
+          <td data-label="Email">${faculty.email ? escapeHtml(faculty.email) : '-'}</td>
+          <td data-label="Số điện thoại">${faculty.soDienThoai ? escapeHtml(faculty.soDienThoai) : '-'}</td>
+          <td data-label="Trạng thái"><span class="badge ${faculty.trangThai ? 'badge-success' : 'badge-warning'}">${faculty.trangThai ? 'Đang hoạt động' : 'Ngừng hoạt động'}</span></td>
+          <td data-label="Thao tác"><button class="btn btn-secondary btn-sm" type="button" onclick="openDepartmentEditor('faculty','edit','${escapeHtml(faculty.maKhoa)}')" aria-label="Sửa khoa ${escapeHtml(faculty.maKhoa)}">Sửa</button> <button class="btn btn-danger btn-sm" type="button" onclick="deleteDepartmentEntity('faculty','${escapeHtml(faculty.maKhoa)}')" aria-label="Xóa khoa ${escapeHtml(faculty.maKhoa)}">Xóa</button></td>
+        </tr>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="faculty-table-wrap">
+          <table class="table faculty-directory-table">
+            <thead><tr><th>Mã khoa</th><th>Tên khoa</th><th>Email</th><th>Số điện thoại</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `;
+    }
+  } catch (error) {
+    if (count) count.textContent = 'Không tải được';
+    container.innerHTML = `<div class="faculty-directory-message faculty-directory-error" role="alert">Không thể tải danh sách khoa. ${escapeHtml(error.message)}</div>`;
+  }
+
+  await loadAdminMajors();
+}
+
+async function loadAdminMajors() {
+  const container = document.getElementById('adminMajorsContainer');
+  const count = document.getElementById('adminMajorCount');
+  if (!container) return;
+
+  const facultyFilter = document.getElementById('adminMajorFacultyFilter');
+  const maKhoa = facultyFilter?.value || '';
+  container.setAttribute('aria-busy', 'true');
+  container.innerHTML = '<div class="faculty-directory-message" role="status">Đang tải danh sách ngành...</div>';
+  if (count) count.textContent = 'Đang tải...';
+
+  try {
+    const majors = await api.get('/admin/majors', maKhoa ? { maKhoa } : {});
+    adminDepartmentMajors = majors;
+    if (count) {
+      const selectedLabel = facultyFilter?.selectedOptions?.[0]?.textContent;
+      count.textContent = `${majors.length} ngành${maKhoa && selectedLabel ? ` · ${selectedLabel}` : ''}`;
+    }
+    if (majors.length === 0) {
+      container.innerHTML = `<div class="faculty-directory-message" role="status">${maKhoa ? 'Khoa này chưa có ngành.' : 'Chưa có ngành nào trong hệ thống.'}</div>`;
       return;
     }
 
-    const rows = faculties.map(faculty => `
+    const rows = majors.map(major => `
       <tr>
-        <td data-label="Mã khoa"><code>${escapeHtml(faculty.maKhoa)}</code></td>
-        <td data-label="Tên khoa"><strong>${escapeHtml(faculty.tenKhoa)}</strong></td>
-        <td data-label="Email">${faculty.email ? escapeHtml(faculty.email) : '-'}</td>
-        <td data-label="Số điện thoại">${faculty.soDienThoai ? escapeHtml(faculty.soDienThoai) : '-'}</td>
-        <td data-label="Trạng thái"><span class="badge ${faculty.trangThai ? 'badge-success' : 'badge-warning'}">${faculty.trangThai ? 'Đang hoạt động' : 'Ngừng hoạt động'}</span></td>
+        <td data-label="Mã ngành"><code>${escapeHtml(major.maNganh)}</code></td>
+        <td data-label="Tên ngành"><strong>${escapeHtml(major.tenNganh)}</strong></td>
+        <td data-label="Khoa">${escapeHtml(major.tenKhoa)} <code>(${escapeHtml(major.maKhoa)})</code></td>
+        <td data-label="Mô tả">${major.moTa ? escapeHtml(major.moTa) : '-'}</td>
+        <td data-label="Trạng thái"><span class="badge ${major.trangThai ? 'badge-success' : 'badge-warning'}">${major.trangThai ? 'Đang hoạt động' : 'Ngừng hoạt động'}</span></td>
+        <td data-label="Thao tác"><button class="btn btn-secondary btn-sm" type="button" onclick="openDepartmentEditor('major','edit','${escapeHtml(major.maNganh)}')" aria-label="Sửa ngành ${escapeHtml(major.maNganh)}">Sửa</button> <button class="btn btn-danger btn-sm" type="button" onclick="deleteDepartmentEntity('major','${escapeHtml(major.maNganh)}')" aria-label="Xóa ngành ${escapeHtml(major.maNganh)}">Xóa</button></td>
       </tr>
     `).join('');
-
     container.innerHTML = `
       <div class="faculty-table-wrap">
         <table class="table faculty-directory-table">
-          <thead><tr><th>Mã khoa</th><th>Tên khoa</th><th>Email</th><th>Số điện thoại</th><th>Trạng thái</th></tr></thead>
+          <thead><tr><th>Mã ngành</th><th>Tên ngành</th><th>Khoa</th><th>Mô tả</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
     `;
   } catch (error) {
     if (count) count.textContent = 'Không tải được';
-    container.innerHTML = `<div class="faculty-directory-message faculty-directory-error" role="alert">Không thể tải danh sách khoa. ${escapeHtml(error.message)}</div>`;
+    container.innerHTML = `<div class="faculty-directory-message faculty-directory-error" role="alert">Không thể tải danh sách ngành. ${escapeHtml(error.message)}</div>`;
+  } finally {
+    container.setAttribute('aria-busy', 'false');
   }
+}
+
+const departmentFieldMap = {
+  maKhoa: 'adminDepartmentCode', tenKhoa: 'adminDepartmentName', email: 'adminDepartmentEmail', soDienThoai: 'adminDepartmentPhone',
+  maNganh: 'adminDepartmentCode', tenNganh: 'adminDepartmentName', maLop: 'adminDepartmentCode', tenLop: 'adminDepartmentName',
+  maKhoaFaculty: 'adminDepartmentFaculty', foreignKey: 'adminDepartmentFaculty', khoaHoc: 'adminDepartmentCohort',
+  namNhapHoc: 'adminDepartmentYear', unique: 'adminDepartmentCode'
+};
+
+async function openDepartmentEditor(type, mode = 'create', id = '') {
+  const modal = document.getElementById('adminDepartmentModal');
+  if (!modal) return;
+  try {
+    if (type !== 'faculty' && !adminDepartmentFaculties.length) adminDepartmentFaculties = await api.get('/admin/faculties');
+    const collections = { faculty: adminDepartmentFaculties, major: adminDepartmentMajors, class: allAdministrativeClasses };
+    const recordKeys = { faculty: 'maKhoa', major: 'maNganh', class: 'maLop' };
+    const recordKey = recordKeys[type];
+    const item = mode === 'edit' ? collections[type]?.find(row => row[recordKey] === id) : null;
+    const displayName = type === 'faculty' ? item?.tenKhoa : type === 'major' ? item?.tenNganh : item?.tenLop;
+    if (mode === 'edit' && !item) throw new Error('Không tìm thấy dữ liệu cần chỉnh sửa. Hãy tải lại danh sách.');
+    const labels = ['adminDepartmentFacultyLabel', 'adminDepartmentEmailLabel', 'adminDepartmentPhoneLabel', 'adminDepartmentDescriptionLabel', 'adminDepartmentCohortLabel', 'adminDepartmentYearLabel'];
+    labels.forEach(labelId => { const label = document.getElementById(labelId); if (label) label.hidden = true; });
+    const show = (...ids) => ids.forEach(labelId => { const label = document.getElementById(labelId); if (label) label.hidden = false; });
+    if (type === 'faculty') show('adminDepartmentEmailLabel', 'adminDepartmentPhoneLabel');
+    if (type === 'major') show('adminDepartmentFacultyLabel', 'adminDepartmentDescriptionLabel');
+    if (type === 'class') show('adminDepartmentFacultyLabel', 'adminDepartmentCohortLabel', 'adminDepartmentYearLabel');
+    document.getElementById('adminDepartmentTitle').textContent = `${mode === 'edit' ? 'Chỉnh sửa' : 'Thêm'} ${type === 'faculty' ? 'khoa' : type === 'major' ? 'ngành' : 'lớp sinh hoạt'}`;
+    document.getElementById('adminDepartmentSectionTitle').textContent = type === 'faculty' ? 'Thông tin khoa' : type === 'major' ? 'Thông tin ngành' : 'Thông tin lớp sinh hoạt';
+    document.getElementById('adminDepartmentType').value = type;
+    document.getElementById('adminDepartmentOriginalId').value = item ? item[recordKey] : '';
+    const code = document.getElementById('adminDepartmentCode');
+    code.value = item ? item[recordKey] : '';
+    code.readOnly = mode === 'edit';
+    document.getElementById('adminDepartmentCodeLabel').firstChild.textContent = type === 'faculty' ? 'Mã khoa' : type === 'major' ? 'Mã ngành' : 'Mã lớp sinh hoạt';
+    document.getElementById('adminDepartmentNameLabel').firstChild.textContent = type === 'faculty' ? 'Tên khoa' : type === 'major' ? 'Tên ngành' : 'Tên lớp sinh hoạt';
+    document.getElementById('adminDepartmentName').value = displayName || '';
+    const faculty = document.getElementById('adminDepartmentFaculty');
+    faculty.required = type !== 'faculty';
+    faculty.innerHTML = '<option value="">-- Chọn khoa --</option>' + adminDepartmentFaculties.map(row => `<option value="${escapeHtml(row.maKhoa)}">${escapeHtml(row.tenKhoa)} (${escapeHtml(row.maKhoa)})</option>`).join('');
+    faculty.value = item?.maKhoa || '';
+    document.getElementById('adminDepartmentEmail').value = item?.email || '';
+    document.getElementById('adminDepartmentPhone').value = item?.soDienThoai || '';
+    document.getElementById('adminDepartmentDescription').value = item?.moTa || '';
+    const cohort = document.getElementById('adminDepartmentCohort');
+    cohort.required = type === 'class';
+    cohort.value = item?.khoaHoc || '';
+    const year = document.getElementById('adminDepartmentYear');
+    year.required = type === 'class';
+    year.value = item?.namNhapHoc || '';
+    document.getElementById('adminDepartmentStatus').value = String(item?.trangThai ?? true);
+    clearAdminEditorErrors('adminDepartmentErrors', 'adminDepartmentErrorsList', departmentFieldMap);
+    adminEditorTrigger = document.activeElement;
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    const focusTarget = document.getElementById(mode === 'edit' ? 'adminDepartmentName' : 'adminDepartmentCode');
+    setTimeout(() => focusTarget.focus(), 0);
+  } catch (error) { showToast(`Không thể mở biểu mẫu. ${error.message}`, 'danger'); }
+}
+
+function closeDepartmentEditor() {
+  const modal = document.getElementById('adminDepartmentModal');
+  if (modal) { modal.classList.remove('show'); modal.setAttribute('aria-hidden', 'true'); }
+  adminEditorTrigger?.focus?.();
+  adminEditorTrigger = null;
+}
+
+async function handleSaveDepartment(event) {
+  event.preventDefault();
+  const type = document.getElementById('adminDepartmentType').value;
+  const originalId = document.getElementById('adminDepartmentOriginalId').value;
+  const code = document.getElementById('adminDepartmentCode').value.trim();
+  const status = document.getElementById('adminDepartmentStatus').value === 'true';
+  let endpoint = type === 'faculty' ? '/admin/faculties' : type === 'major' ? '/admin/majors' : '/admin/homeroom-classes';
+  let payload;
+  if (type === 'faculty') payload = { maKhoa: code, tenKhoa: document.getElementById('adminDepartmentName').value.trim(), email: document.getElementById('adminDepartmentEmail').value.trim() || null, soDienThoai: document.getElementById('adminDepartmentPhone').value.trim() || null, trangThai: status };
+  else if (type === 'major') payload = { maNganh: code, maKhoa: document.getElementById('adminDepartmentFaculty').value, tenNganh: document.getElementById('adminDepartmentName').value.trim(), moTa: document.getElementById('adminDepartmentDescription').value.trim() || null, trangThai: status };
+  else payload = { maLop: code, maKhoa: document.getElementById('adminDepartmentFaculty').value, tenLop: document.getElementById('adminDepartmentName').value.trim(), khoaHoc: document.getElementById('adminDepartmentCohort').value.trim(), namNhapHoc: Number(document.getElementById('adminDepartmentYear').value), trangThai: status };
+  const button = document.getElementById('btnSaveDepartment');
+  const label = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Đang lưu…';
+  try {
+    if (originalId) {
+      delete payload[type === 'faculty' ? 'maKhoa' : type === 'major' ? 'maNganh' : 'maLop'];
+      await api.put(`${endpoint}/${encodeURIComponent(originalId)}`, payload);
+    } else await api.post(endpoint, payload);
+    closeDepartmentEditor();
+    showToast('Đã lưu thông tin.', 'success');
+    if (type === 'class') await loadAdminAdministrativeClasses();
+    else await loadAdminFaculties();
+  } catch (error) {
+    const fieldMap = { ...departmentFieldMap, maKhoa: type === 'faculty' ? 'adminDepartmentCode' : 'adminDepartmentFaculty' };
+    showAdminEditorErrors('adminDepartmentErrors', 'adminDepartmentErrorsList', error.errors || [], error.message, fieldMap);
+    showToast(`Không thể lưu thông tin. ${error.message}`, 'danger');
+  } finally { button.disabled = false; button.textContent = label; }
+}
+
+async function deleteDepartmentEntity(type, id) {
+  const recordKey = { faculty: 'maKhoa', major: 'maNganh', class: 'maLop' }[type];
+  const item = (type === 'faculty' ? adminDepartmentFaculties : type === 'major' ? adminDepartmentMajors : allAdministrativeClasses)
+    .find(row => row[recordKey] === id);
+  const title = (type === 'faculty' ? item?.tenKhoa : type === 'major' ? item?.tenNganh : item?.tenLop) || id;
+  const classHasStudents = type === 'class' && Number(item?.soLuongSV || item?.siSo || 0) > 0;
+  const warning = type === 'faculty' ? ' Nếu còn ngành, môn học, lớp, sinh viên hoặc giảng viên, hệ thống sẽ từ chối xóa.'
+    : type === 'major' ? ' Nếu còn chương trình đào tạo, hệ thống sẽ từ chối xóa.'
+      : classHasStudents ? ` Lớp đang có ${item.soLuongSV || item.siSo} sinh viên; trigger CSDL sẽ chặn xóa.` : ' Chỉ xóa được khi không còn sinh viên trực thuộc.';
+  if (!window.confirm(`Xóa ${title}?${warning}`)) return;
+  const endpoint = type === 'faculty' ? '/admin/faculties' : type === 'major' ? '/admin/majors' : '/admin/homeroom-classes';
+  try {
+    await api.delete(`${endpoint}/${encodeURIComponent(id)}`);
+    showToast('Đã xóa bản ghi.', 'success');
+    if (type === 'class') await loadAdminAdministrativeClasses(); else await loadAdminFaculties();
+  } catch (error) { showToast(`Không thể xóa. ${error.message}`, 'danger'); }
 }
 
 function switchAdminTab(tabName, clickedBtn) {
@@ -1734,11 +2491,44 @@ document.addEventListener('click', (e) => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    const courseModal = document.getElementById('adminCurriculumCourseModal');
+    const curriculumProgramModal = document.getElementById('adminCurriculumProgramModal');
+    const classModal = document.getElementById('adminClassFormModal');
+    const departmentModal = document.getElementById('adminDepartmentModal');
+    if (courseModal?.classList.contains('show')) { closeCurriculumCourseModal(); return; }
+    if (curriculumProgramModal?.classList.contains('show')) { closeCurriculumProgramModal(); return; }
+    if (classModal?.classList.contains('show')) { closeClassSectionModal(); return; }
+    if (departmentModal?.classList.contains('show')) { closeDepartmentEditor(); return; }
     const openGroups = [...document.querySelectorAll('.tab-group.open')];
     openGroups.forEach(g => setTabDropdownOpen(g, false));
     const trigger = openGroups[0]?.querySelector('.tab-dropdown-btn');
     if (trigger) trigger.focus();
+    return;
   }
+  if (e.key === 'Tab') {
+    const modal = ['adminCurriculumCourseModal', 'adminCurriculumProgramModal', 'adminClassFormModal', 'adminDepartmentModal']
+      .map(id => document.getElementById(id)).find(element => element?.classList.contains('show'));
+    const dialog = modal?.querySelector('.admin-editor-dialog');
+    const focusable = dialog ? [...dialog.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+      .filter(element => element.getAttribute('aria-hidden') !== 'true' && !element.closest('[hidden]')) : [];
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+});
+
+document.addEventListener('click', e => {
+  if (e.target?.id === 'adminCurriculumCourseModal') closeCurriculumCourseModal();
+  if (e.target?.id === 'adminCurriculumProgramModal') closeCurriculumProgramModal();
+  if (e.target?.id === 'adminClassFormModal') closeClassSectionModal();
+  if (e.target?.id === 'adminDepartmentModal') closeDepartmentEditor();
 });
 
 // Xuất các hàm ra Global Window
@@ -1756,7 +2546,25 @@ window.submitAdminPayment = submitAdminPayment;
 window.loadAdminDashboard = loadAdminDashboard;
 window.loadAdminStudents = loadAdminStudents;
 window.loadAdminCurriculums = loadAdminCurriculums;
+window.openCurriculumCourseModal = openCurriculumCourseModal;
+window.openCurriculumCourseFromButton = openCurriculumCourseFromButton;
+window.closeCurriculumCourseModal = closeCurriculumCourseModal;
+window.handleSaveCurriculumCourse = handleSaveCurriculumCourse;
+window.addCurriculumPrerequisite = addCurriculumPrerequisite;
+window.removeCurriculumPrerequisite = removeCurriculumPrerequisite;
+window.removeCurriculumCourse = removeCurriculumCourse;
+window.openCurriculumProgramModal = openCurriculumProgramModal;
+window.openSelectedCurriculumProgramEditor = openSelectedCurriculumProgramEditor;
+window.closeCurriculumProgramModal = closeCurriculumProgramModal;
+window.updateCurriculumCohortPreview = updateCurriculumCohortPreview;
+window.handleSaveCurriculumProgram = handleSaveCurriculumProgram;
+window.deleteSelectedCurriculumProgram = deleteSelectedCurriculumProgram;
 window.loadAdminFaculties = loadAdminFaculties;
+window.loadAdminMajors = loadAdminMajors;
+window.openDepartmentEditor = openDepartmentEditor;
+window.closeDepartmentEditor = closeDepartmentEditor;
+window.handleSaveDepartment = handleSaveDepartment;
+window.deleteDepartmentEntity = deleteDepartmentEntity;
 window.viewStudentDetailModal = viewStudentDetailModal;
 window.closeStudentDetailModal = closeStudentDetailModal;
 window.openStudentModal = openStudentModal;
@@ -1771,6 +2579,12 @@ window.viewClassDetailModal = viewClassDetailModal;
 window.closeClassDetailModal = closeClassDetailModal;
 window.filterClassStudentsAdmin = filterClassStudentsAdmin;
 window.loadAdminClasses = loadAdminClasses;
+window.openClassSectionModal = openClassSectionModal;
+window.closeClassSectionModal = closeClassSectionModal;
+window.handleSaveClassSection = handleSaveClassSection;
+window.addClassScheduleDraft = addClassScheduleDraft;
+window.removeClassScheduleDraft = removeClassScheduleDraft;
+window.deleteClassSection = deleteClassSection;
 window.loadAdminRegistrations = loadAdminRegistrations;
 window.loadAdminUsers = loadAdminUsers;
 window.toggleUserStatus = toggleUserStatus;

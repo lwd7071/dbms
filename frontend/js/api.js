@@ -17,6 +17,8 @@ const API_ERROR_FIELD_LABELS = {
   vaiTro: 'Vai trò tài khoản', trangThai: 'Trạng thái', page: 'Số trang', pageSize: 'Số lượng mỗi trang',
   maSinhVien: 'Mã sinh viên', maSV: 'Mã sinh viên', hoTen: 'Họ tên', ngaySinh: 'Ngày sinh',
   email: 'Email', soDienThoai: 'Số điện thoại', maKhoa: 'Khoa', maCTDT: 'Chương trình đào tạo',
+  maNganh: 'Ngành', tenCTDT: 'Tên chương trình', namTuyenSinh: 'Năm tuyển sinh',
+  tongTinChiYeuCau: 'Tổng tín chỉ yêu cầu', thoiGianDaoTao: 'Thời gian đào tạo',
   maLop: 'Lớp sinh hoạt', maLHP: 'Lớp học phần', maMonHoc: 'Môn học', maHocKy: 'Học kỳ', hocKyDuKien: 'Học kỳ dự kiến',
   maDangKy: 'Mã đăng ký học phần', diemQuaTrinh: 'Điểm quá trình', diemGiuaKy: 'Điểm giữa kỳ',
   diemCuoiKy: 'Điểm cuối kỳ', maHocPhi: 'Hồ sơ học phí', soTien: 'Số tiền thanh toán',
