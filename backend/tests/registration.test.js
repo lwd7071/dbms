@@ -1,6 +1,6 @@
-﻿const request = require('supertest');
+const request = require('supertest');
 const app = require('../src/app');
-const { closePool, getPool, sql } = require('../src/config/db');
+const { closePool, getFixturePool, sql } = require('../src/config/db');
 const { requestAs } = require('./helpers/tokens');
 const { createStudentAccount, cleanupStudentAccount } = require('./helpers/student-account');
 
@@ -14,7 +14,7 @@ describe('Registration & cancellation transaction endpoints', () => {
   const studentRequest = () => requestAs(app, 'student', maSV);
 
   beforeAll(async () => {
-    pool = await getPool();
+    pool = await getFixturePool();
     const created = await requestAs(app, 'admin').post('/api/admin/students').send({
       maSinhVien,
       hoTen: 'Sinh viên kiểm thử đăng ký',

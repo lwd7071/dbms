@@ -1,10 +1,10 @@
-﻿const { getPool, sql } = require('../../src/config/db');
+const { getFixturePool, sql } = require('../../src/config/db');
 const { createStudentAccount, cleanupStudentAccount } = require('./student-account');
 
 let nextFixture = 0;
 
 const createTuitionFixture = async ({ total, paid = 0 }) => {
-  const pool = await getPool();
+  const pool = await getFixturePool();
   const suffix = `${Date.now()}${nextFixture++}`;
   const maSinhVien = `PAY${suffix}`;
   const fee = await pool.request()

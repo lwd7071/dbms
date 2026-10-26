@@ -1,4 +1,4 @@
-﻿const { getPool, sql } = require('../config/db');
+const { getPool, sql, getRequestActorId } = require('../config/db');
 
 /**
  * Repository thao tác giao dịch Đăng ký tín chỉ qua Stored Procedures
@@ -11,7 +11,8 @@ const registerCourse = async (maSV, maLHP) => {
     .request()
     .input('MaSV', sql.Int, maSV)
     .input('MaLHP', sql.VarChar(20), maLHP)
-    .execute('dbo.SP_DangKyTinChi');
+    .input('ActorMaTaiKhoan', sql.Int, getRequestActorId())
+    .execute('dbo.SP_App_Registration_Create');
 
   const record = result.recordset[0];
   return {
@@ -26,23 +27,7 @@ const registerCourse = async (maSV, maLHP) => {
 // Tìm thông tin đăng ký theo ID
 const findRegistrationById = async (maDangKy) => {
   const pool = await getPool();
-  const result = await pool
-    .request()
-    .input('MaDangKy', sql.BigInt, maDangKy)
-    .query(`
-      SELECT 
-        dk.MaDangKy,
-        dk.MaSV,
-        dk.MaLHP,
-        dk.NgayDangKy,
-        dk.TrangThai,
-        lhp.MaMonHoc,
-        lhp.MaHocKy
-      FROM dbo.DANGKYTINCHI dk
-      INNER JOIN dbo.LOPHOCPHAN lhp ON dk.MaLHP = lhp.MaLHP
-      WHERE dk.MaDangKy = @MaDangKy
-    `);
-
+  const result = await pool.request().input('MaDangKy', sql.BigInt, maDangKy).execute('dbo.SP_App_Registration_GetById');
   return result.recordset[0] || null;
 };
 
@@ -53,7 +38,8 @@ const cancelRegistration = async (maSV, maLHP) => {
     .request()
     .input('MaSV', sql.Int, maSV)
     .input('MaLHP', sql.VarChar(20), maLHP)
-    .execute('dbo.SP_HuyDangKy');
+    .input('ActorMaTaiKhoan', sql.Int, getRequestActorId())
+    .execute('dbo.SP_App_Registration_Cancel');
 
   const record = result.recordset[0];
   return {
@@ -68,50 +54,12 @@ const cancelRegistration = async (maSV, maLHP) => {
 // Lấy danh sách các môn đã đăng ký của sinh viên trong một học kỳ
 const getStudentRegistrations = async (maSV, maHocKy) => {
   const pool = await getPool();
-  const result = await pool
-    .request()
-    .input('MaSV', sql.Int, maSV)
-    .input('MaHocKy', sql.Int, maHocKy)
-    .query(`
-      SELECT 
-        dk.MaDangKy,
-        dk.MaLHP,
-        lhp.TenLHP,
-        mh.MaMonHoc,
-        mh.TenMonHoc,
-        mh.SoTinChi,
-        gv.HoTen AS TenGiangVien,
-        lh.Thu,
-        lh.TietBatDau,
-        lh.SoTiet,
-        lh.PhongHoc,
-        dk.NgayDangKy,
-        dk.TrangThai
-      FROM dbo.DANGKYTINCHI dk
-      INNER JOIN dbo.LOPHOCPHAN lhp ON dk.MaLHP = lhp.MaLHP
-      INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc = mh.MaMonHoc
-      LEFT JOIN dbo.GIANGVIEN gv ON lhp.MaGiangVien = gv.MaGV
-      LEFT JOIN dbo.LICHHOC lh ON lhp.MaLHP = lh.MaLHP
-      WHERE dk.MaSV = @MaSV
-        AND lhp.MaHocKy = @MaHocKy
-        AND dk.TrangThai = 'REGISTERED'
-      ORDER BY lhp.MaLHP
-    `);
-
+  const result = await pool.request().input('MaSV', sql.Int, maSV).input('MaHocKy', sql.Int, maHocKy)
+    .execute('dbo.SP_App_Registration_ListStudent');
   return result.recordset.map(r => ({
-    maDangKy: r.MaDangKy,
-    maLHP: r.MaLHP,
-    tenLHP: r.TenLHP,
-    maMonHoc: r.MaMonHoc,
-    tenMonHoc: r.TenMonHoc,
-    soTinChi: r.SoTinChi,
-    tenGiangVien: r.TenGiangVien || 'Chưa phân công',
-    thu: r.Thu,
-    tietBatDau: r.TietBatDau,
-    soTiet: r.SoTiet,
-    phongHoc: r.PhongHoc || 'TBA',
-    ngayDangKy: r.NgayDangKy,
-    trangThai: r.TrangThai
+    maDangKy: r.MaDangKy, maLHP: r.MaLHP, tenLHP: r.TenLHP, maMonHoc: r.MaMonHoc, tenMonHoc: r.TenMonHoc,
+    soTinChi: r.SoTinChi, tenGiangVien: r.TenGiangVien || 'Chưa phân công', thu: r.Thu, tietBatDau: r.TietBatDau,
+    soTiet: r.SoTiet, phongHoc: r.PhongHoc || 'TBA', ngayDangKy: r.NgayDangKy, trangThai: r.TrangThai
   }));
 };
 

@@ -1,13 +1,13 @@
 # TÀI LIỆU ĐẶC TẢ KỸ THUẬT WEB DEMO HỆ THỐNG DBMS330284
 > **Hệ thống Quản lý Đăng ký Tín chỉ & Học vụ Đại học**  
-> **Phiên bản:** 1.5.0 | **Ngày cập nhật:** 21/10/2026
+> **Phiên bản:** 1.5.0 | **Ngày cập nhật:** 27/10/2026
 > **Kiến trúc:** Node.js (Express) + Vanilla HTML/CSS/JS + Microsoft SQL Server 2022
 
 ---
 
 ## 1. TỔNG QUAN HỆ THỐNG & NGUYÊN TẮC CỐT LÕI
 
-Ứng dụng Express + SQL Server phục vụ demo đăng ký tín chỉ. Ngày 21/10/2026, schema được dựng và xác minh trên DB cô lập `DBMS330284_CodexDemo_Final`, sau đó migration có backup được áp dụng lên DB đang dùng `DBMS330284` mà không reset dữ liệu. DB cũ giữ 1.501 sinh viên, 44.545 đăng ký tín chỉ, 34.535 điểm, 7.424 hồ sơ học phí, 8.167 chi tiết thanh toán và 116.171 log hoạt động; có 24 CTĐT cho các khóa 2023–2025. Trong migration, cache `SoTienDaThanhToan` lệch 145.000 đồng ở một hồ sơ được đối chiếu từ giao dịch đã xác nhận và đồng bộ lại. Verify, SQL integration/permission/invariant tests và Jest (34 suites, 221 tests) đều pass trên DB này. Login runtime `dbms_app` chưa được provision; backend vẫn dùng `sa`/`dbo`. `DB/09_Indexes.sql` mô tả workload indexes; số index trong catalog bao gồm cả index do PK/UNIQUE sinh ra và không chứng minh hiệu năng.
+Ứng dụng Express + SQL Server phục vụ demo đăng ký tín chỉ. Ngày 21/10/2026, schema được dựng và xác minh trên DB cô lập `DBMS330284_CodexDemo_Final`, sau đó migration có backup được áp dụng lên DB đang dùng `DBMS330284` mà không reset dữ liệu. DB cũ giữ 1.501 sinh viên, 44.545 đăng ký tín chỉ, 34.535 điểm, 7.424 hồ sơ học phí, 8.167 chi tiết thanh toán và 116.171 log hoạt động; có 24 CTĐT cho các khóa 2023–2025. Trong migration, cache `SoTienDaThanhToan` lệch 145.000 đồng ở một hồ sơ được đối chiếu từ giao dịch đã xác nhận và đồng bộ lại. Verify, SQL integration/permission/invariant tests và Jest (34 suites, 221 tests) đều pass trên DB này. Backend hiện xác thực qua pool `APP_AUTH`, chọn một trong bốn pool SQL theo vai trò đọc từ DB, và các repository dùng stored procedure. Các runtime login/secret mới chưa được provision và chưa được rehearsal sau chuyển đổi; cần chạy kiểm chứng role/procedure/API/UI trên DB cô lập trước khi dùng cấu hình role mới cho demo hoặc cutover. `DB/09_Indexes.sql` mô tả workload indexes; số index trong catalog bao gồm cả index do PK/UNIQUE sinh ra và không chứng minh hiệu năng.
 
 ### 5 Nguyên tắc phát triển bắt buộc:
 1. **Validate API Input trước khi chạm DB:** Toàn bộ request payload phải được validate chặt chẽ ở tầng middleware; không cho phép request sai định dạng chạy xuống SQL Server.
@@ -738,3 +738,9 @@ Bao gồm 10 phân hệ màn hình chức năng chính:
 
 Portal Đào tạo/Quản trị hỗ trợ thêm, sửa và gỡ môn trong CTĐT; chỉnh sửa thông tin môn dùng chung, cách xếp trong CTĐT và tiên quyết; tạo/sửa/xóa lớp học phần cùng các buổi lịch học. Xóa môn chỉ gỡ khỏi CTĐT hiện chọn. Các form hiển thị cảnh báo tác động dữ liệu môn dùng chung, lỗi API theo trường, trạng thái lưu và xác nhận xóa. Modal co theo màn hình hẹp; phần nội dung cuộn riêng và giữ tiêu đề/nút thao tác trong khung nhìn.
 
+
+
+### Cập nhật runtime theo role (27/10/2026)
+- Login web được xác thực bằng `dbms_app` trong role `APP_AUTH`; các request sau đó đọc lại role/trạng thái từ DB và gắn pool SQL của `SINH_VIEN`, `GIANG_VIEN`, `DAO_TAO` hoặc `QUAN_TRI`. JWT không quyết định pool. Server xác minh `USER_NAME()` và role membership trước khi listen.
+- Đã chuyển các repository nghiệp vụ sang `dbo.SP_App_*` hoặc procedure nghiệp vụ hiện có; direct query còn lại chỉ là DB health/version probe. Các procedure ghi có actor context cho audit; role business không còn direct SELECT trên các bảng/view đã chuyển. Demo thu hồi quyền là `REVOKE EXECUTE ON dbo.SP_App_Faculty_DeleteFaculty FROM QUAN_TRI` trên DB rehearsal.
+- Chuyển đổi mã nguồn đã hoàn tất nhưng chưa cutover/nghiệm thu bằng SQL Server: runtime role logins, DB_MAINT và DB_TEST credentials chưa có trong môi trường hiện tại; kết nối SQL thất bại và fixture từ chối DB không cô lập. Cần provision credential ngoài repo rồi chạy `security`, API/`EXECUTE AS` và browser tests trên rehearsal trước khi demo/cutover.

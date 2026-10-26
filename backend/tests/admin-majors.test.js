@@ -1,7 +1,7 @@
 const request = require('supertest');
 const app = require('../src/app');
 const { requestAs } = require('./helpers/tokens');
-const { getPool, closePool, sql } = require('../src/config/db');
+const { getFixturePool, closePool, sql } = require('../src/config/db');
 
 const suffix = Date.now().toString(36).slice(-6).toUpperCase();
 const facultyCode = `F${suffix}`;
@@ -10,7 +10,7 @@ const majorCode = `M${suffix}`;
 let pool;
 
 beforeAll(async () => {
-  pool = await getPool();
+  pool = await getFixturePool();
   await pool.request().input('faculty', sql.VarChar(10), facultyCode)
     .input('facultyName', sql.NVarChar(100), `Khoa test ${suffix}`)
     .query('INSERT dbo.KHOA (MaKhoa, TenKhoa, TrangThai) VALUES (@faculty, @facultyName, 1)');

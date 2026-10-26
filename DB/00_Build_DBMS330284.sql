@@ -1,4 +1,4 @@
-﻿-- Dựng CSDL DBMS330284 hoàn chỉnh bằng cách chạy trực tiếp file này trong SSMS.
+-- Dựng CSDL DBMS330284 hoàn chỉnh bằng cách chạy trực tiếp file này trong SSMS.
 -- CẢNH BÁO: nếu DBMS330284 đã tồn tại, script sẽ xóa toàn bộ database và dữ liệu cũ rồi dựng lại.
 -- Script dùng extended property để dừng an toàn nếu một batch thất bại.
 USE [master];
@@ -6537,3 +6537,1077 @@ DECLARE @BuildState int; SELECT @BuildState = TRY_CONVERT(int, value) FROM [DBMS
 IF @BuildState IS NULL OR @BuildState <> 241 THROW 52103, N'Build chua hoan tat; khong the xoa dau vet kiem soat.', 1;
 EXEC sys.sp_executesql N'USE [DBMS330284]; EXEC sys.sp_dropextendedproperty @name=N''DBMS330284_BuildState'';';
 PRINT N'Da tao xong CSDL DBMS330284 va nap du lieu mau.';
+
+GO
+
+GO
+
+GO
+
+GO
+
+GO
+
+GO
+
+GO
+-- APP API role-based stored procedures and final runtime security (consolidated from 08_StoredProcedures.sql and 11_Security.sql).
+SET NOCOUNT ON;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Auth_FindByUsername @Username VARCHAR(50)
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT tk.MaTaiKhoan, tk.Username, tk.PasswordHash, tk.VaiTro, tk.TrangThai, tk.MaSV, tk.MaGV,
+    sv.MaSinhVien, sv.HoTen AS HoTenSinhVien, sv.MaKhoa AS MaKhoaSV, sv.MaLop, l.TenLop AS TenLopSV,
+    sv.TrangThai AS TrangThaiSV, gv.MaGiangVien, gv.HoTen AS HoTenGiangVien, gv.MaKhoa AS MaKhoaGV
+  FROM dbo.TAIKHOAN tk
+  LEFT JOIN dbo.SINHVIEN sv ON tk.MaSV=sv.MaSV
+  LEFT JOIN dbo.LOP l ON sv.MaLop=l.MaLop
+  LEFT JOIN dbo.GIANGVIEN gv ON tk.MaGV=gv.MaGV
+  WHERE tk.Username=@Username;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Auth_FindById @MaTaiKhoan INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT tk.MaTaiKhoan, tk.Username, tk.VaiTro, tk.TrangThai, tk.MaSV, tk.MaGV,
+    sv.MaSinhVien, sv.HoTen AS HoTenSinhVien, sv.MaLop, l.TenLop AS TenLopSV,
+    gv.MaGiangVien, gv.HoTen AS HoTenGiangVien
+  FROM dbo.TAIKHOAN tk
+  LEFT JOIN dbo.SINHVIEN sv ON tk.MaSV=sv.MaSV
+  LEFT JOIN dbo.LOP l ON sv.MaLop=l.MaLop
+  LEFT JOIN dbo.GIANGVIEN gv ON tk.MaGV=gv.MaGV
+  WHERE tk.MaTaiKhoan=@MaTaiKhoan;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Auth_UpdateLastLogin @MaTaiKhoan INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@MaTaiKhoan;
+  BEGIN TRY
+    UPDATE dbo.TAIKHOAN SET LanDangNhapCuoi=GETDATE() WHERE MaTaiKhoan=@MaTaiKhoan;
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+  END TRY BEGIN CATCH
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+    THROW;
+  END CATCH;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Registration_Create @MaSV INT,@MaLHP VARCHAR(20),@ActorMaTaiKhoan INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  IF NOT EXISTS(SELECT 1 FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND MaSV=@MaSV AND VaiTro='SINH_VIEN' AND TrangThai='ACTIVE' AND IS_MEMBER('SINH_VIEN')=1)
+    THROW 50003,'Invalid registration actor.',1;
+  EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+  BEGIN TRY
+    EXEC dbo.SP_DangKyTinChi @MaSV=@MaSV,@MaLHP=@MaLHP;
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+  END TRY BEGIN CATCH
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+    THROW;
+  END CATCH;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Registration_Cancel @MaSV INT,@MaLHP VARCHAR(20),@ActorMaTaiKhoan INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  IF NOT EXISTS(SELECT 1 FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND MaSV=@MaSV AND VaiTro='SINH_VIEN' AND TrangThai='ACTIVE' AND IS_MEMBER('SINH_VIEN')=1)
+    THROW 50003,'Invalid registration actor.',1;
+  EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+  BEGIN TRY
+    EXEC dbo.SP_HuyDangKy @MaSV=@MaSV,@MaLHP=@MaLHP;
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+  END TRY BEGIN CATCH
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+    THROW;
+  END CATCH;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Tuition_ConfirmPayment @MaThanhToan BIGINT,@ActorMaTaiKhoan INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  IF NOT EXISTS(SELECT 1 FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND TrangThai='ACTIVE' AND VaiTro IN('DAO_TAO','QUAN_TRI')
+    AND ((VaiTro='DAO_TAO' AND IS_MEMBER('DAO_TAO')=1) OR (VaiTro='QUAN_TRI' AND IS_MEMBER('QUAN_TRI')=1)))
+    THROW 51404,'Invalid payment confirmation actor.',1;
+  EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+  BEGIN TRY
+    EXEC dbo.SP_XacNhanThanhToan @MaThanhToan=@MaThanhToan,@MaTaiKhoanXacNhan=@ActorMaTaiKhoan;
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+  END TRY BEGIN CATCH
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+    THROW;
+  END CATCH;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Tuition_RejectPayment @MaThanhToan BIGINT,@ActorMaTaiKhoan INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  IF NOT EXISTS(SELECT 1 FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND TrangThai='ACTIVE' AND VaiTro IN('DAO_TAO','QUAN_TRI')
+    AND ((VaiTro='DAO_TAO' AND IS_MEMBER('DAO_TAO')=1) OR (VaiTro='QUAN_TRI' AND IS_MEMBER('QUAN_TRI')=1)))
+    THROW 51404,'Invalid payment rejection actor.',1;
+  EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+  BEGIN TRY
+    EXEC dbo.SP_TuChoiThanhToan @MaThanhToan=@MaThanhToan,@MaTaiKhoanXacNhan=@ActorMaTaiKhoan;
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+  END TRY BEGIN CATCH
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+    THROW;
+  END CATCH;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Faculty_List @ActiveOnly BIT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT MaKhoa,TenKhoa,Email,SoDienThoai,TrangThai FROM dbo.KHOA
+  WHERE @ActiveOnly=0 OR TrangThai=1 ORDER BY TenKhoa ASC;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Faculty_ListMajors @MaKhoa VARCHAR(10)=NULL
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT n.MaNganh,n.TenNganh,n.MaKhoa,k.TenKhoa,n.MoTa,n.TrangThai
+  FROM dbo.NGANH n INNER JOIN dbo.KHOA k ON k.MaKhoa=n.MaKhoa
+  WHERE @MaKhoa IS NULL OR n.MaKhoa=@MaKhoa ORDER BY k.TenKhoa,n.TenNganh;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Faculty_Create @MaKhoa VARCHAR(10),@TenKhoa NVARCHAR(100),@Email VARCHAR(100)=NULL,@SoDienThoai VARCHAR(15)=NULL,@TrangThai BIT=1
+AS
+BEGIN
+  SET NOCOUNT ON;
+  INSERT dbo.KHOA(MaKhoa,TenKhoa,Email,SoDienThoai,TrangThai) VALUES(@MaKhoa,@TenKhoa,@Email,@SoDienThoai,@TrangThai);
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Faculty_Update @MaKhoa VARCHAR(10),@TenKhoa NVARCHAR(100),@Email VARCHAR(100)=NULL,@SoDienThoai VARCHAR(15)=NULL,@TrangThai BIT=1
+AS
+BEGIN
+  SET NOCOUNT ON;
+  UPDATE dbo.KHOA SET TenKhoa=@TenKhoa,Email=@Email,SoDienThoai=@SoDienThoai,TrangThai=@TrangThai WHERE MaKhoa=@MaKhoa;
+  SELECT @@ROWCOUNT AS affected;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Faculty_DeleteFaculty @MaKhoa VARCHAR(10)
+AS
+BEGIN
+  SET NOCOUNT ON;
+  DELETE dbo.KHOA WHERE MaKhoa=@MaKhoa;
+  SELECT @@ROWCOUNT AS affected;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Major_List @MaKhoa VARCHAR(10)=NULL
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT n.MaNganh,n.MaKhoa,n.TenNganh,n.MoTa,n.TrangThai FROM dbo.NGANH n
+  WHERE @MaKhoa IS NULL OR n.MaKhoa=@MaKhoa ORDER BY n.TenNganh;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Major_Create @MaNganh VARCHAR(10),@MaKhoa VARCHAR(10),@TenNganh NVARCHAR(100),@MoTa NVARCHAR(500)=NULL,@TrangThai BIT=1
+AS
+BEGIN
+  SET NOCOUNT ON;
+  INSERT dbo.NGANH(MaNganh,MaKhoa,TenNganh,MoTa,TrangThai) VALUES(@MaNganh,@MaKhoa,@TenNganh,@MoTa,@TrangThai);
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Major_Update @MaNganh VARCHAR(10),@MaKhoa VARCHAR(10),@TenNganh NVARCHAR(100),@MoTa NVARCHAR(500)=NULL,@TrangThai BIT=1
+AS
+BEGIN
+  SET NOCOUNT ON;
+  UPDATE dbo.NGANH SET MaKhoa=@MaKhoa,TenNganh=@TenNganh,MoTa=@MoTa,TrangThai=@TrangThai WHERE MaNganh=@MaNganh;
+  SELECT @@ROWCOUNT AS affected;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Major_Delete @MaNganh VARCHAR(10)
+AS
+BEGIN
+  SET NOCOUNT ON;
+  DELETE dbo.NGANH WHERE MaNganh=@MaNganh;
+  SELECT @@ROWCOUNT AS affected;
+END;
+GO
+USE [DBMS330284];
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Course_DefaultOpenSemester
+AS
+BEGIN
+  SET NOCOUNT ON;
+  DECLARE @MaHocKy INT;
+  SELECT TOP(1) @MaHocKy=MaHocKy FROM dbo.HOCKY WHERE TrangThai='DANG_MO' ORDER BY MaHocKy DESC;
+  IF @MaHocKy IS NULL SELECT TOP(1) @MaHocKy=MaHocKy FROM dbo.LOPHOCPHAN WHERE TrangThai='MO_DANG_KY' ORDER BY MaHocKy DESC;
+  SELECT ISNULL(@MaHocKy,7) AS MaHocKy;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Course_ListAvailable
+  @MaHocKy INT,@MaKhoa VARCHAR(10)=NULL,@Search NVARCHAR(100)=NULL,@Type VARCHAR(10)=NULL,
+  @MaSV INT=NULL,@Offset INT=0,@PageSize INT=10
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT COUNT(*) AS TotalItems
+  FROM dbo.LOPHOCPHAN lhp INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc=mh.MaMonHoc
+  WHERE lhp.MaHocKy=@MaHocKy AND lhp.TrangThai='MO_DANG_KY'
+    AND (@MaKhoa IS NULL OR mh.MaKhoa=@MaKhoa)
+    AND (@Search IS NULL OR lhp.MaLHP LIKE N'%'+@Search+N'%' OR lhp.TenLHP LIKE N'%'+@Search+N'%' OR mh.TenMonHoc LIKE N'%'+@Search+N'%' OR mh.MaMonHoc LIKE N'%'+@Search+N'%')
+    AND (@Type IS NULL OR @Type<>'PLAN' OR @MaSV IS NULL OR EXISTS(
+      SELECT 1 FROM dbo.CTDT_MONHOC ctm INNER JOIN dbo.CHUONGTRINHDAOTAO ctdt ON ctm.MaCTDT=ctdt.MaCTDT
+      INNER JOIN dbo.SINHVIEN sv ON sv.MaCTDT=ctdt.MaCTDT INNER JOIN dbo.HOCKY hk ON hk.MaHocKy=lhp.MaHocKy
+      WHERE sv.MaSV=@MaSV AND ctm.MaMonHoc=lhp.MaMonHoc AND ctm.HocKyDuKien=((YEAR(hk.NgayBatDau)-CASE WHEN hk.TenHocKy LIKE N'%2%' THEN 1 ELSE 0 END-ctdt.NamTuyenSinh)*2)+CASE WHEN hk.TenHocKy LIKE N'%2%' THEN 2 ELSE 1 END))
+    AND (@Type IS NULL OR @Type<>'OTHER' OR @MaSV IS NULL OR NOT EXISTS(
+      SELECT 1 FROM dbo.CTDT_MONHOC ctm INNER JOIN dbo.CHUONGTRINHDAOTAO ctdt ON ctm.MaCTDT=ctdt.MaCTDT
+      INNER JOIN dbo.SINHVIEN sv ON sv.MaCTDT=ctdt.MaCTDT INNER JOIN dbo.HOCKY hk ON hk.MaHocKy=lhp.MaHocKy
+      WHERE sv.MaSV=@MaSV AND ctm.MaMonHoc=lhp.MaMonHoc AND ctm.HocKyDuKien=((YEAR(hk.NgayBatDau)-CASE WHEN hk.TenHocKy LIKE N'%2%' THEN 1 ELSE 0 END-ctdt.NamTuyenSinh)*2)+CASE WHEN hk.TenHocKy LIKE N'%2%' THEN 2 ELSE 1 END));
+
+  SELECT lhp.MaLHP,lhp.TenLHP,lhp.MaMonHoc,mh.TenMonHoc,mh.SoTinChi,lhp.SoLuongToiDa,ISNULL(dk.SiSoHienTai,0) AS SiSoHienTai,
+    CASE WHEN @MaSV IS NOT NULL AND EXISTS(
+      SELECT 1 FROM dbo.CTDT_MONHOC ctm INNER JOIN dbo.CHUONGTRINHDAOTAO ctdt ON ctm.MaCTDT=ctdt.MaCTDT
+      INNER JOIN dbo.SINHVIEN sv ON sv.MaCTDT=ctdt.MaCTDT INNER JOIN dbo.HOCKY hk ON hk.MaHocKy=lhp.MaHocKy
+      WHERE sv.MaSV=@MaSV AND ctm.MaMonHoc=lhp.MaMonHoc AND ctm.HocKyDuKien=((YEAR(hk.NgayBatDau)-CASE WHEN hk.TenHocKy LIKE N'%2%' THEN 1 ELSE 0 END-ctdt.NamTuyenSinh)*2)+CASE WHEN hk.TenHocKy LIKE N'%2%' THEN 2 ELSE 1 END) THEN 1 ELSE 0 END AS LaTheoKeHoach,
+    gv.HoTen AS TenGiangVien,lh.Thu,lh.TietBatDau,lh.SoTiet,lh.PhongHoc
+  FROM dbo.LOPHOCPHAN lhp INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc=mh.MaMonHoc LEFT JOIN dbo.GIANGVIEN gv ON lhp.MaGiangVien=gv.MaGV
+  OUTER APPLY(SELECT TOP 1 Thu,TietBatDau,SoTiet,PhongHoc FROM dbo.LICHHOC lh0 WHERE lh0.MaLHP=lhp.MaLHP ORDER BY Thu,TietBatDau) lh
+  OUTER APPLY(SELECT COUNT(*) AS SiSoHienTai FROM dbo.DANGKYTINCHI d WHERE d.MaLHP=lhp.MaLHP AND d.TrangThai='REGISTERED') dk
+  WHERE lhp.MaHocKy=@MaHocKy AND lhp.TrangThai='MO_DANG_KY'
+    AND (@MaKhoa IS NULL OR mh.MaKhoa=@MaKhoa)
+    AND (@Search IS NULL OR lhp.MaLHP LIKE N'%'+@Search+N'%' OR lhp.TenLHP LIKE N'%'+@Search+N'%' OR mh.TenMonHoc LIKE N'%'+@Search+N'%' OR mh.MaMonHoc LIKE N'%'+@Search+N'%')
+    AND (@Type IS NULL OR @Type<>'PLAN' OR @MaSV IS NULL OR EXISTS(
+      SELECT 1 FROM dbo.CTDT_MONHOC ctm INNER JOIN dbo.CHUONGTRINHDAOTAO ctdt ON ctm.MaCTDT=ctdt.MaCTDT INNER JOIN dbo.SINHVIEN sv ON sv.MaCTDT=ctdt.MaCTDT INNER JOIN dbo.HOCKY hk ON hk.MaHocKy=lhp.MaHocKy
+      WHERE sv.MaSV=@MaSV AND ctm.MaMonHoc=lhp.MaMonHoc AND ctm.HocKyDuKien=((YEAR(hk.NgayBatDau)-CASE WHEN hk.TenHocKy LIKE N'%2%' THEN 1 ELSE 0 END-ctdt.NamTuyenSinh)*2)+CASE WHEN hk.TenHocKy LIKE N'%2%' THEN 2 ELSE 1 END))
+    AND (@Type IS NULL OR @Type<>'OTHER' OR @MaSV IS NULL OR NOT EXISTS(
+      SELECT 1 FROM dbo.CTDT_MONHOC ctm INNER JOIN dbo.CHUONGTRINHDAOTAO ctdt ON ctm.MaCTDT=ctdt.MaCTDT INNER JOIN dbo.SINHVIEN sv ON sv.MaCTDT=ctdt.MaCTDT INNER JOIN dbo.HOCKY hk ON hk.MaHocKy=lhp.MaHocKy
+      WHERE sv.MaSV=@MaSV AND ctm.MaMonHoc=lhp.MaMonHoc AND ctm.HocKyDuKien=((YEAR(hk.NgayBatDau)-CASE WHEN hk.TenHocKy LIKE N'%2%' THEN 1 ELSE 0 END-ctdt.NamTuyenSinh)*2)+CASE WHEN hk.TenHocKy LIKE N'%2%' THEN 2 ELSE 1 END))
+  ORDER BY lhp.MaLHP OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Semester_List
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT MaHocKy,TenHocKy,NamHoc,TrangThai FROM dbo.HOCKY ORDER BY MaHocKy DESC;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Semester_Current
+AS
+BEGIN
+  SET NOCOUNT ON;
+  DECLARE @MaHocKy INT;
+  SELECT TOP(1) @MaHocKy=MaHocKy FROM dbo.HOCKY WHERE TrangThai='DANG_MO' ORDER BY MaHocKy DESC;
+  IF @MaHocKy IS NULL SELECT TOP(1) @MaHocKy=MaHocKy FROM dbo.LOPHOCPHAN WHERE TrangThai='MO_DANG_KY' ORDER BY MaHocKy DESC;
+  SELECT MaHocKy,TenHocKy,NamHoc,TrangThai FROM dbo.HOCKY WHERE MaHocKy=@MaHocKy;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Class_CreateHomeroom
+  @MaLop VARCHAR(20),@TenLop NVARCHAR(100),@MaKhoa VARCHAR(10),@KhoaHoc VARCHAR(20),@NamNhapHoc INT,@TrangThai BIT,@ActorMaTaiKhoan INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  IF NOT EXISTS(SELECT 1 FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND TrangThai='ACTIVE' AND VaiTro IN('DAO_TAO','QUAN_TRI')
+    AND ((VaiTro='DAO_TAO' AND IS_MEMBER('DAO_TAO')=1) OR (VaiTro='QUAN_TRI' AND IS_MEMBER('QUAN_TRI')=1))) THROW 52072,'Actor role mismatch.',1;
+  EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+  BEGIN TRY INSERT dbo.LOP(MaLop,TenLop,MaKhoa,KhoaHoc,NamNhapHoc,TrangThai) VALUES(@MaLop,@TenLop,@MaKhoa,@KhoaHoc,@NamNhapHoc,@TrangThai);
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+  END TRY BEGIN CATCH EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL; THROW; END CATCH;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Class_UpdateHomeroom
+  @MaLop VARCHAR(20),@TenLop NVARCHAR(100),@MaKhoa VARCHAR(10),@KhoaHoc VARCHAR(20),@NamNhapHoc INT,@TrangThai BIT,@ActorMaTaiKhoan INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  IF NOT EXISTS(SELECT 1 FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND TrangThai='ACTIVE' AND VaiTro IN('DAO_TAO','QUAN_TRI')
+    AND ((VaiTro='DAO_TAO' AND IS_MEMBER('DAO_TAO')=1) OR (VaiTro='QUAN_TRI' AND IS_MEMBER('QUAN_TRI')=1))) THROW 52072,'Actor role mismatch.',1;
+  EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+  BEGIN TRY UPDATE dbo.LOP SET TenLop=@TenLop,MaKhoa=@MaKhoa,KhoaHoc=@KhoaHoc,NamNhapHoc=@NamNhapHoc,TrangThai=@TrangThai WHERE MaLop=@MaLop;
+    DECLARE @Affected INT=@@ROWCOUNT; SELECT @Affected AS affected;
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+  END TRY BEGIN CATCH EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL; THROW; END CATCH;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Class_DeleteHomeroom @MaLop VARCHAR(20),@ActorMaTaiKhoan INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  IF NOT EXISTS(SELECT 1 FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND TrangThai='ACTIVE' AND VaiTro IN('DAO_TAO','QUAN_TRI')
+    AND ((VaiTro='DAO_TAO' AND IS_MEMBER('DAO_TAO')=1) OR (VaiTro='QUAN_TRI' AND IS_MEMBER('QUAN_TRI')=1))) THROW 52072,'Actor role mismatch.',1;
+  EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+  BEGIN TRY DELETE dbo.LOP WHERE MaLop=@MaLop;
+    DECLARE @Affected INT=@@ROWCOUNT; SELECT @Affected AS affected;
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+  END TRY BEGIN CATCH EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL; THROW; END CATCH;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Class_ListHomerooms @MaKhoa VARCHAR(10)=NULL,@NamNhapHoc INT=NULL
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT v.MaLop AS maLop,v.TenLop AS tenLop,v.MaKhoa AS maKhoa,v.TenKhoa AS tenKhoa,v.KhoaHoc AS khoaHoc,v.NamNhapHoc AS namNhapHoc,v.TrangThai AS trangThai,CAST(v.SiSoThucTe AS INT) AS soLuongSV
+  FROM dbo.V_DanhSachLopSinhHoat v WHERE (@MaKhoa IS NULL OR v.MaKhoa=@MaKhoa) AND (@NamNhapHoc IS NULL OR v.NamNhapHoc=@NamNhapHoc)
+  ORDER BY v.NamNhapHoc DESC,v.MaKhoa,v.MaLop;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Class_GetHomeroom @MaLop VARCHAR(20)
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT l.MaLop AS maLop,l.TenLop AS tenLop,l.MaKhoa AS maKhoa,k.TenKhoa AS tenKhoa,l.KhoaHoc AS khoaHoc,l.NamNhapHoc AS namNhapHoc,l.TrangThai AS trangThai
+  FROM dbo.LOP l INNER JOIN dbo.KHOA k ON l.MaKhoa=k.MaKhoa WHERE l.MaLop=@MaLop;
+  SELECT sv.MaSV AS maSV,sv.MaCTDT AS maCTDT,sv.MaSinhVien AS maSinhVien,sv.HoTen AS hoTen,sv.NgaySinh AS ngaySinh,sv.Email AS email,sv.SoDienThoai AS soDienThoai,sv.TrangThai AS trangThai
+  FROM dbo.SINHVIEN sv WHERE sv.MaLop=@MaLop ORDER BY sv.MaSinhVien;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Registration_GetById @MaDangKy BIGINT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT dk.MaDangKy,dk.MaSV,dk.MaLHP,dk.NgayDangKy,dk.TrangThai,lhp.MaMonHoc,lhp.MaHocKy
+  FROM dbo.DANGKYTINCHI dk INNER JOIN dbo.LOPHOCPHAN lhp ON dk.MaLHP=lhp.MaLHP WHERE dk.MaDangKy=@MaDangKy;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Registration_ListStudent @MaSV INT,@MaHocKy INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT dk.MaDangKy,dk.MaLHP,lhp.TenLHP,mh.MaMonHoc,mh.TenMonHoc,mh.SoTinChi,gv.HoTen AS TenGiangVien,lh.Thu,lh.TietBatDau,lh.SoTiet,lh.PhongHoc,dk.NgayDangKy,dk.TrangThai
+  FROM dbo.DANGKYTINCHI dk INNER JOIN dbo.LOPHOCPHAN lhp ON dk.MaLHP=lhp.MaLHP INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc=mh.MaMonHoc
+  LEFT JOIN dbo.GIANGVIEN gv ON lhp.MaGiangVien=gv.MaGV LEFT JOIN dbo.LICHHOC lh ON lhp.MaLHP=lh.MaLHP
+  WHERE dk.MaSV=@MaSV AND lhp.MaHocKy=@MaHocKy AND dk.TrangThai='REGISTERED' ORDER BY lhp.MaLHP;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Lecturer_Schedule @MaGV INT,@MaHocKy INT=NULL
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT lhp.MaLHP,lhp.TenLHP,lhp.MaMonHoc,mh.TenMonHoc,mh.SoTinChi,hk.MaHocKy,hk.NamHoc,hk.TenHocKy,lh.MaLichHoc,lh.Thu,lh.TietBatDau,lh.SoTiet,lh.PhongHoc
+  FROM dbo.LOPHOCPHAN lhp INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc=mh.MaMonHoc INNER JOIN dbo.HOCKY hk ON lhp.MaHocKy=hk.MaHocKy
+  INNER JOIN dbo.LICHHOC lh ON lhp.MaLHP=lh.MaLHP WHERE lhp.MaGiangVien=@MaGV AND (@MaHocKy IS NULL OR lhp.MaHocKy=@MaHocKy) ORDER BY lh.Thu,lh.TietBatDau;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Lecturer_Classes @MaGV INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT lhp.MaLHP,lhp.TenLHP,lhp.MaMonHoc,mh.TenMonHoc,mh.SoTinChi,hk.TenHocKy,hk.NamHoc,lhp.SoLuongToiDa,ISNULL(dk.SiSoHienTai,0) AS SiSoHienTai,lhp.TrangThai
+  FROM dbo.LOPHOCPHAN lhp INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc=mh.MaMonHoc INNER JOIN dbo.HOCKY hk ON lhp.MaHocKy=hk.MaHocKy
+  OUTER APPLY(SELECT COUNT(*) AS SiSoHienTai FROM dbo.DANGKYTINCHI d WHERE d.MaLHP=lhp.MaLHP AND d.TrangThai='REGISTERED') dk
+  WHERE lhp.MaGiangVien=@MaGV ORDER BY hk.MaHocKy DESC,lhp.MaLHP ASC;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Lecturer_ClassStudents @MaLHP VARCHAR(30)
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT dk.MaDangKy,sv.MaSV,sv.MaSinhVien,sv.HoTen AS HoTenSinhVien,COALESCE(l.TenLop,sv.MaLop) AS LopHoc,sv.MaLop,bd.DiemQuaTrinh,bd.DiemGiuaKy,bd.DiemCuoiKy,bd.DiemTongKet,bd.DiemChu,bd.KetQua
+  FROM dbo.DANGKYTINCHI dk INNER JOIN dbo.SINHVIEN sv ON dk.MaSV=sv.MaSV LEFT JOIN dbo.LOP l ON sv.MaLop=l.MaLop
+  LEFT JOIN dbo.V_BangDiemChiTiet bd ON bd.MaDangKy=dk.MaDangKy WHERE dk.MaLHP=@MaLHP AND dk.TrangThai='REGISTERED' ORDER BY sv.MaSinhVien ASC;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Lecturer_IsAssigned @MaGV INT,@MaLHP VARCHAR(30)
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT CAST(CASE WHEN EXISTS(SELECT 1 FROM dbo.LOPHOCPHAN WHERE MaLHP=@MaLHP AND MaGiangVien=@MaGV) THEN 1 ELSE 0 END AS BIT) AS Assigned;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Lecturer_UpdateClassGrades @MaLHP VARCHAR(30),@GradesJson NVARCHAR(MAX),@ActorMaTaiKhoan INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  IF ISJSON(@GradesJson)<>1 THROW 50031,'Danh sách điểm không hợp lệ.',1;
+  DECLARE @MaGV INT;
+  SELECT @MaGV=MaGV FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND VaiTro='GIANG_VIEN' AND TrangThai='ACTIVE' AND IS_MEMBER('GIANG_VIEN')=1;
+  IF @MaGV IS NULL THROW 50032,'Tài khoản giảng viên không hoạt động hoặc không hợp lệ.',1;
+  IF NOT EXISTS(SELECT 1 FROM dbo.LOPHOCPHAN WHERE MaLHP=@MaLHP AND MaGiangVien=@MaGV) THROW 50033,'Giảng viên không được phân công lớp học phần này.',1;
+  DECLARE @Grades TABLE(MaDangKy BIGINT PRIMARY KEY,HasDiemQuaTrinh BIT,DiemQuaTrinh DECIMAL(4,2),HasDiemGiuaKy BIT,DiemGiuaKy DECIMAL(4,2),HasDiemCuoiKy BIT,DiemCuoiKy DECIMAL(4,2));
+  INSERT @Grades SELECT MaDangKy,HasDiemQuaTrinh,DiemQuaTrinh,HasDiemGiuaKy,DiemGiuaKy,HasDiemCuoiKy,DiemCuoiKy
+  FROM OPENJSON(@GradesJson) WITH(MaDangKy BIGINT '$.maDangKy',HasDiemQuaTrinh BIT '$.hasDiemQuaTrinh',DiemQuaTrinh DECIMAL(4,2) '$.diemQuaTrinh',HasDiemGiuaKy BIT '$.hasDiemGiuaKy',DiemGiuaKy DECIMAL(4,2) '$.diemGiuaKy',HasDiemCuoiKy BIT '$.hasDiemCuoiKy',DiemCuoiKy DECIMAL(4,2) '$.diemCuoiKy');
+  IF EXISTS(SELECT 1 FROM @Grades g LEFT JOIN dbo.DANGKYTINCHI dk ON dk.MaDangKy=g.MaDangKy AND dk.MaLHP=@MaLHP AND dk.TrangThai='REGISTERED' WHERE dk.MaDangKy IS NULL) THROW 50030,'Mã đăng ký không thuộc lớp học phần này hoặc không còn hiệu lực.',1;
+  EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+  BEGIN TRY
+    BEGIN TRANSACTION;
+    UPDATE ds SET DiemQuaTrinh=CASE WHEN g.HasDiemQuaTrinh=1 THEN g.DiemQuaTrinh ELSE ds.DiemQuaTrinh END,DiemGiuaKy=CASE WHEN g.HasDiemGiuaKy=1 THEN g.DiemGiuaKy ELSE ds.DiemGiuaKy END,DiemCuoiKy=CASE WHEN g.HasDiemCuoiKy=1 THEN g.DiemCuoiKy ELSE ds.DiemCuoiKy END
+    FROM dbo.DIEMSO ds INNER JOIN @Grades g ON g.MaDangKy=ds.MaDangKy;
+    INSERT dbo.DIEMSO(MaDangKy,DiemQuaTrinh,DiemGiuaKy,DiemCuoiKy,TyTrongQT,TyTrongGK,TyTrongCK)
+    SELECT g.MaDangKy,g.DiemQuaTrinh,g.DiemGiuaKy,g.DiemCuoiKy,20,30,50 FROM @Grades g WHERE NOT EXISTS(SELECT 1 FROM dbo.DIEMSO ds WHERE ds.MaDangKy=g.MaDangKy);
+    COMMIT TRANSACTION;
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+  END TRY BEGIN CATCH
+    IF @@TRANCOUNT>0 ROLLBACK TRANSACTION;
+    EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+    THROW;
+  END CATCH;
+  SELECT COUNT(*) AS updatedCount FROM @Grades;
+END;
+GO
+USE [DBMS330284];
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Student_Schedule @MaSV INT,@MaHocKy INT=NULL
+AS
+BEGIN
+ SET NOCOUNT ON;
+ SELECT MaSV,MaSinhVien,HoTenSinhVien,MaHocKy,NamHoc,TenHocKy,MaLHP,MaMonHoc,TenMonHoc,TenLHP,HoTenGiangVien,Thu,TietBatDau,SoTiet,PhongHoc
+ FROM dbo.V_ThoiKhoaBieuSinhVien WHERE MaSV=@MaSV AND (@MaHocKy IS NULL OR MaHocKy=@MaHocKy) ORDER BY Thu,TietBatDau;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Student_Grades @MaSV INT,@MaHocKy INT=NULL
+AS
+BEGIN
+ SET NOCOUNT ON;
+ SELECT MaDangKy,MaSV,MaSinhVien,HoTenSinhVien,MaHocKy,NamHoc,TenHocKy,MaLHP,MaMonHoc,TenMonHoc,SoTinChi,DiemQuaTrinh,DiemGiuaKy,DiemCuoiKy,TyTrongQT,TyTrongGK,TyTrongCK,DiemTongKet,DiemChu,KetQua
+ FROM dbo.V_BangDiemChiTiet WHERE MaSV=@MaSV AND (@MaHocKy IS NULL OR MaHocKy=@MaHocKy) ORDER BY MaHocKy,MaMonHoc;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Student_Tuition @MaSV INT
+AS
+BEGIN
+ SET NOCOUNT ON;
+ SELECT hp.MaHocPhi,hp.MaSV,hp.MaSinhVien,hp.HoTenSinhVien,hp.MaHocKy,hp.NamHoc,hp.TenHocKy,hp.SoTinChi,hp.DonGiaTinChi,hp.TongTien,hp.SoTienDaThanhToan,hp.SoTienConLai,hp.TrangThai,hp.NgayCapNhat,
+   ISNULL(pending.SoGiaoDich,0) AS SoGiaoDichChoDuyet,ISNULL(pending.TongTienChoDuyet,0) AS SoTienChoDuyet
+ FROM dbo.V_HocPhiSinhVien hp OUTER APPLY(SELECT COUNT(*) AS SoGiaoDich,SUM(SoTien) AS TongTienChoDuyet FROM dbo.CHITIETTHANHTOAN ct WHERE ct.MaHocPhi=hp.MaHocPhi AND ct.TrangThai='CHO_XAC_NHAN') pending
+ WHERE hp.MaSV=@MaSV ORDER BY hp.MaHocKy DESC;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Student_PaymentHistory @MaSV INT,@Offset INT,@PageSize INT
+AS
+BEGIN
+ SET NOCOUNT ON;
+ SELECT COUNT(*) AS TotalItems FROM dbo.CHITIETTHANHTOAN ct INNER JOIN dbo.HOCPHI hp ON ct.MaHocPhi=hp.MaHocPhi WHERE hp.MaSV=@MaSV;
+ SELECT ct.MaThanhToan,ct.MaHocPhi,ct.SoTien,ct.PhuongThuc,ct.TrangThai,ct.NgayThanhToan,ct.NgayXacNhan,hk.TenHocKy,hk.NamHoc
+ FROM dbo.CHITIETTHANHTOAN ct INNER JOIN dbo.HOCPHI hp ON ct.MaHocPhi=hp.MaHocPhi INNER JOIN dbo.HOCKY hk ON hp.MaHocKy=hk.MaHocKy
+ WHERE hp.MaSV=@MaSV ORDER BY ct.NgayThanhToan DESC OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Student_Profile @MaSV INT
+AS
+BEGIN
+ SET NOCOUNT ON;
+ SELECT sv.MaSV,sv.MaSinhVien,sv.HoTen,sv.NgaySinh,sv.Email,sv.SoDienThoai,sv.MaKhoa,k.TenKhoa,sv.MaLop,l.TenLop,l.KhoaHoc,sv.TrangThai,sv.NgayTao,tk.Username,tk.VaiTro,tk.TrangThai AS TrangThaiTaiKhoan,tk.LanDangNhapCuoi
+ FROM dbo.SINHVIEN sv INNER JOIN dbo.KHOA k ON sv.MaKhoa=k.MaKhoa LEFT JOIN dbo.LOP l ON sv.MaLop=l.MaLop LEFT JOIN dbo.TAIKHOAN tk ON sv.MaSV=tk.MaSV WHERE sv.MaSV=@MaSV;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Student_Curriculum @MaSV INT
+AS
+BEGIN
+ SET NOCOUNT ON;
+ SELECT sv.MaSV,c.MaCTDT,c.TenCTDT,c.KhoaHoc,c.NamTuyenSinh,c.TongTinChiYeuCau,c.ThoiGianDaoTao,c.TrangThai AS TrangThaiCTDT,n.MaKhoa,k.TenKhoa,n.TenNganh AS Nganh,
+  mh.MaMonHoc,mh.MaKhoa AS MaKhoaMon,km.TenKhoa AS TenKhoaMon,mh.TenMonHoc,mh.SoTinChi,mh.SoTietLyThuyet,mh.SoTietThucHanh,mh.MoTa,mh.TrangThai AS TrangThaiMon,ctm.HocKyDuKien,ctm.LoaiMon,ctm.ThuTu,
+  (SELECT STRING_AGG(CONVERT(NVARCHAR(MAX),CONCAT(pre.MaMonHoc,N' - ',pre.TenMonHoc)),N'; ') FROM dbo.MONHOCTIENQUYET mtq INNER JOIN dbo.MONHOC pre ON pre.MaMonHoc=mtq.MaMonTienQuyet WHERE mtq.MaMonHoc=mh.MaMonHoc) AS HocPhanTienQuyet,
+  (SELECT mtq.MaMonTienQuyet AS maMonHoc,pre.TenMonHoc AS tenMonHoc,mtq.MucDo AS mucDo FROM dbo.MONHOCTIENQUYET mtq INNER JOIN dbo.MONHOC pre ON pre.MaMonHoc=mtq.MaMonTienQuyet WHERE mtq.MaMonHoc=mh.MaMonHoc FOR JSON PATH) AS HocPhanTienQuyetChiTiet
+ FROM dbo.SINHVIEN sv LEFT JOIN dbo.CHUONGTRINHDAOTAO c ON c.MaCTDT=sv.MaCTDT LEFT JOIN dbo.NGANH n ON n.MaNganh=c.MaNganh LEFT JOIN dbo.KHOA k ON k.MaKhoa=n.MaKhoa
+ LEFT JOIN dbo.CTDT_MONHOC ctm ON ctm.MaCTDT=c.MaCTDT LEFT JOIN dbo.MONHOC mh ON mh.MaMonHoc=ctm.MaMonHoc LEFT JOIN dbo.KHOA km ON km.MaKhoa=mh.MaKhoa
+ WHERE sv.MaSV=@MaSV ORDER BY ctm.HocKyDuKien,ctm.ThuTu,mh.MaMonHoc;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Tuition_CreatePayment @MaHocPhi INT,@SoTien DECIMAL(18,2),@PhuongThuc VARCHAR(20),@OwnerMaSV INT=NULL,@ActorMaTaiKhoan INT
+AS
+BEGIN
+ SET NOCOUNT ON; SET XACT_ABORT ON;
+ BEGIN TRY
+  BEGIN TRANSACTION;
+  DECLARE @MaSV INT,@MaHocKy INT,@TongTien DECIMAL(18,2),@DaThanhToan DECIMAL(18,2),@TrangThai VARCHAR(20);
+  SELECT @MaSV=MaSV,@MaHocKy=MaHocKy,@TongTien=TongTien,@DaThanhToan=SoTienDaThanhToan,@TrangThai=TrangThai
+  FROM dbo.HOCPHI WITH(UPDLOCK,HOLDLOCK) WHERE MaHocPhi=@MaHocPhi;
+  IF @MaSV IS NULL THROW 51501,'Tuition record not found.',1;
+  IF @OwnerMaSV IS NOT NULL AND @MaSV<>@OwnerMaSV THROW 51502,'Payment owner mismatch.',1;
+  IF NOT EXISTS(SELECT 1 FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND TrangThai='ACTIVE'
+    AND ((VaiTro='SINH_VIEN' AND MaSV=@MaSV AND IS_MEMBER('SINH_VIEN')=1)
+      OR (VaiTro='DAO_TAO' AND IS_MEMBER('DAO_TAO')=1)
+      OR (VaiTro='QUAN_TRI' AND IS_MEMBER('QUAN_TRI')=1))) THROW 51503,'Invalid payment actor.',1;
+  IF @SoTien<=0 OR @SoTien>@TongTien-@DaThanhToan THROW 51504,'Payment exceeds the outstanding balance.',1;
+  IF EXISTS(SELECT 1 FROM dbo.CHITIETTHANHTOAN WHERE MaHocPhi=@MaHocPhi AND TrangThai='CHO_XAC_NHAN') THROW 51505,'A payment is already pending.',1;
+  EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+  DECLARE @Inserted TABLE(MaThanhToan BIGINT,MaHocPhi INT,SoTien DECIMAL(18,2),PhuongThuc VARCHAR(20),TrangThai VARCHAR(20),NgayThanhToan DATETIME2);
+  INSERT dbo.CHITIETTHANHTOAN(MaHocPhi,SoTien,PhuongThuc,TrangThai,NgayThanhToan)
+  OUTPUT INSERTED.MaThanhToan,INSERTED.MaHocPhi,INSERTED.SoTien,INSERTED.PhuongThuc,INSERTED.TrangThai,INSERTED.NgayThanhToan INTO @Inserted
+  VALUES(@MaHocPhi,@SoTien,@PhuongThuc,'CHO_XAC_NHAN',SYSUTCDATETIME());
+  SELECT i.*,hp.MaSV,hp.MaHocKy,hp.TongTien,hp.SoTienDaThanhToan,(hp.TongTien-hp.SoTienDaThanhToan) AS SoTienConLai,hp.TrangThai AS TrangThaiHocPhi,hp.NgayCapNhat
+  FROM @Inserted i INNER JOIN dbo.HOCPHI hp ON hp.MaHocPhi=i.MaHocPhi;
+  EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+  COMMIT TRANSACTION;
+ END TRY BEGIN CATCH
+  IF @@TRANCOUNT>0 ROLLBACK TRANSACTION;
+  EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+  THROW;
+ END CATCH;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Tuition_PendingPayments @MaLop VARCHAR(20)=NULL
+AS
+BEGIN
+ SET NOCOUNT ON;
+ SELECT ct.MaThanhToan,ct.MaHocPhi,ct.SoTien,ct.PhuongThuc,ct.TrangThai,ct.NgayThanhToan,hp.MaSV,sv.MaSinhVien,sv.HoTen AS HoTenSinhVien,sv.MaLop,l.TenLop AS TenLopSinhVien,hk.TenHocKy,hk.NamHoc
+ FROM dbo.CHITIETTHANHTOAN ct INNER JOIN dbo.HOCPHI hp ON ct.MaHocPhi=hp.MaHocPhi INNER JOIN dbo.SINHVIEN sv ON hp.MaSV=sv.MaSV
+ LEFT JOIN dbo.LOP l ON sv.MaLop=l.MaLop INNER JOIN dbo.HOCKY hk ON hp.MaHocKy=hk.MaHocKy
+ WHERE ct.TrangThai='CHO_XAC_NHAN' AND (@MaLop IS NULL OR sv.MaLop=@MaLop) ORDER BY ct.NgayThanhToan DESC;
+END;
+GO
+USE [DBMS330284];
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Course_List
+AS BEGIN SET NOCOUNT ON; SELECT MaMonHoc AS maMonHoc,MaKhoa AS maKhoa,TenMonHoc AS tenMonHoc,SoTinChi AS soTinChi,SoTietLyThuyet AS soTietLyThuyet,SoTietThucHanh AS soTietThucHanh,MoTa AS moTa,TrangThai AS trangThai FROM dbo.MONHOC ORDER BY MaMonHoc; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Course_Create @MaMonHoc VARCHAR(15),@MaKhoa VARCHAR(10),@TenMonHoc NVARCHAR(150),@SoTinChi TINYINT,@SoTietLyThuyet SMALLINT,@SoTietThucHanh SMALLINT,@MoTa NVARCHAR(500)=NULL,@TrangThai BIT
+AS BEGIN SET NOCOUNT ON; INSERT dbo.MONHOC(MaMonHoc,MaKhoa,TenMonHoc,SoTinChi,SoTietLyThuyet,SoTietThucHanh,MoTa,TrangThai) VALUES(@MaMonHoc,@MaKhoa,@TenMonHoc,@SoTinChi,@SoTietLyThuyet,@SoTietThucHanh,@MoTa,@TrangThai); END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Course_Update @MaMonHoc VARCHAR(15),@MaKhoa VARCHAR(10),@TenMonHoc NVARCHAR(150),@SoTinChi TINYINT,@SoTietLyThuyet SMALLINT,@SoTietThucHanh SMALLINT,@MoTa NVARCHAR(500)=NULL,@TrangThai BIT
+AS BEGIN SET NOCOUNT ON; UPDATE dbo.MONHOC SET MaKhoa=@MaKhoa,TenMonHoc=@TenMonHoc,SoTinChi=@SoTinChi,SoTietLyThuyet=@SoTietLyThuyet,SoTietThucHanh=@SoTietThucHanh,MoTa=@MoTa,TrangThai=@TrangThai WHERE MaMonHoc=@MaMonHoc; SELECT @@ROWCOUNT AS changed; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Course_Delete @MaMonHoc VARCHAR(15)
+AS BEGIN SET NOCOUNT ON; DELETE dbo.MONHOC WHERE MaMonHoc=@MaMonHoc; SELECT @@ROWCOUNT AS changed; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_CurriculumCourse_Create @MaCTDT VARCHAR(24),@MaMonHoc VARCHAR(15),@MaKhoa VARCHAR(10),@TenMonHoc NVARCHAR(150),@SoTinChi TINYINT,@SoTietLyThuyet SMALLINT,@SoTietThucHanh SMALLINT,@MoTa NVARCHAR(500)=NULL,@TrangThai BIT,@HocKyDuKien TINYINT,@LoaiMon VARCHAR(20),@ThuTu SMALLINT=NULL,@PrerequisitesJson NVARCHAR(MAX)=N'[]'
+AS
+BEGIN SET NOCOUNT ON; SET XACT_ABORT ON; IF ISJSON(@PrerequisitesJson)<>1 THROW 50041,'Prerequisite data is invalid.',1;
+BEGIN TRY BEGIN TRANSACTION;
+ INSERT dbo.MONHOC(MaMonHoc,MaKhoa,TenMonHoc,SoTinChi,SoTietLyThuyet,SoTietThucHanh,MoTa,TrangThai) VALUES(@MaMonHoc,@MaKhoa,@TenMonHoc,@SoTinChi,@SoTietLyThuyet,@SoTietThucHanh,@MoTa,@TrangThai);
+ INSERT dbo.CTDT_MONHOC(MaCTDT,MaMonHoc,HocKyDuKien,LoaiMon,ThuTu) VALUES(@MaCTDT,@MaMonHoc,@HocKyDuKien,@LoaiMon,@ThuTu);
+ INSERT dbo.MONHOCTIENQUYET(MaMonHoc,MaMonTienQuyet,MucDo) SELECT @MaMonHoc,MaMonTienQuyet,MucDo FROM OPENJSON(@PrerequisitesJson) WITH(MaMonTienQuyet VARCHAR(15) '$.maMonTienQuyet',MucDo VARCHAR(20) '$.mucDo');
+ COMMIT TRANSACTION; END TRY BEGIN CATCH IF @@TRANCOUNT>0 ROLLBACK TRANSACTION; THROW; END CATCH; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_CurriculumCourse_Update @MaCTDT VARCHAR(24),@MaMonHoc VARCHAR(15),@MaKhoa VARCHAR(10),@TenMonHoc NVARCHAR(150),@SoTinChi TINYINT,@SoTietLyThuyet SMALLINT,@SoTietThucHanh SMALLINT,@MoTa NVARCHAR(500)=NULL,@TrangThai BIT,@HocKyDuKien TINYINT,@LoaiMon VARCHAR(20),@ThuTu SMALLINT=NULL,@PrerequisitesJson NVARCHAR(MAX)=N'[]'
+AS
+BEGIN SET NOCOUNT ON; SET XACT_ABORT ON; IF ISJSON(@PrerequisitesJson)<>1 THROW 50041,'Prerequisite data is invalid.',1;
+IF NOT EXISTS(SELECT 1 FROM dbo.CTDT_MONHOC WHERE MaCTDT=@MaCTDT AND MaMonHoc=@MaMonHoc) THROW 52051,'Curriculum course was not found.',1;
+BEGIN TRY BEGIN TRANSACTION;
+ UPDATE dbo.MONHOC SET MaKhoa=@MaKhoa,TenMonHoc=@TenMonHoc,SoTinChi=@SoTinChi,SoTietLyThuyet=@SoTietLyThuyet,SoTietThucHanh=@SoTietThucHanh,MoTa=@MoTa,TrangThai=@TrangThai WHERE MaMonHoc=@MaMonHoc;
+ UPDATE dbo.CTDT_MONHOC SET HocKyDuKien=@HocKyDuKien,LoaiMon=@LoaiMon,ThuTu=@ThuTu WHERE MaCTDT=@MaCTDT AND MaMonHoc=@MaMonHoc;
+ DELETE dbo.MONHOCTIENQUYET WHERE MaMonHoc=@MaMonHoc;
+ INSERT dbo.MONHOCTIENQUYET(MaMonHoc,MaMonTienQuyet,MucDo) SELECT @MaMonHoc,MaMonTienQuyet,MucDo FROM OPENJSON(@PrerequisitesJson) WITH(MaMonTienQuyet VARCHAR(15) '$.maMonTienQuyet',MucDo VARCHAR(20) '$.mucDo');
+ COMMIT TRANSACTION; END TRY BEGIN CATCH IF @@TRANCOUNT>0 ROLLBACK TRANSACTION; THROW; END CATCH; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_CurriculumCourse_Delete @MaCTDT VARCHAR(24),@MaMonHoc VARCHAR(15)
+AS BEGIN SET NOCOUNT ON; DELETE dbo.CTDT_MONHOC WHERE MaCTDT=@MaCTDT AND MaMonHoc=@MaMonHoc; SELECT @@ROWCOUNT AS changed; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Class_Create @MaLHP VARCHAR(20),@MaMonHoc VARCHAR(15),@MaHocKy INT,@MaGiangVien INT=NULL,@TenLHP NVARCHAR(100),@SoLuongToiDa INT,@TrangThai VARCHAR(20),@SchedulesJson NVARCHAR(MAX)=N'[]'
+AS
+BEGIN SET NOCOUNT ON; SET XACT_ABORT ON; IF ISJSON(@SchedulesJson)<>1 THROW 50042,'Schedule data is invalid.',1;
+BEGIN TRY BEGIN TRANSACTION;
+ INSERT dbo.LOPHOCPHAN(MaLHP,MaMonHoc,MaHocKy,MaGiangVien,TenLHP,SoLuongToiDa,TrangThai) VALUES(@MaLHP,@MaMonHoc,@MaHocKy,@MaGiangVien,@TenLHP,@SoLuongToiDa,'DA_KHOA');
+ INSERT dbo.LICHHOC(MaLHP,Thu,TietBatDau,SoTiet,PhongHoc) SELECT @MaLHP,Thu,TietBatDau,SoTiet,PhongHoc FROM OPENJSON(@SchedulesJson) WITH(Thu TINYINT '$.thu',TietBatDau TINYINT '$.tietBatDau',SoTiet TINYINT '$.soTiet',PhongHoc VARCHAR(20) '$.phongHoc');
+ IF @TrangThai<>'DA_KHOA' UPDATE dbo.LOPHOCPHAN SET TrangThai=@TrangThai WHERE MaLHP=@MaLHP;
+ COMMIT TRANSACTION; END TRY BEGIN CATCH IF @@TRANCOUNT>0 ROLLBACK TRANSACTION; THROW; END CATCH; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Class_Update @MaLHP VARCHAR(20),@MaMonHoc VARCHAR(15),@MaHocKy INT,@MaGiangVien INT=NULL,@TenLHP NVARCHAR(100),@SoLuongToiDa INT,@TrangThai VARCHAR(20)=NULL,@SchedulesJson NVARCHAR(MAX)=NULL
+AS
+BEGIN SET NOCOUNT ON; SET XACT_ABORT ON; IF @SchedulesJson IS NOT NULL AND ISJSON(@SchedulesJson)<>1 THROW 50042,'Schedule data is invalid.',1;
+BEGIN TRY BEGIN TRANSACTION;
+ DECLARE @CurrentStatus VARCHAR(20); SELECT @CurrentStatus=TrangThai FROM dbo.LOPHOCPHAN WITH(UPDLOCK,HOLDLOCK) WHERE MaLHP=@MaLHP;
+ IF @CurrentStatus IS NULL THROW 52061,'Class section was not found.',1;
+ UPDATE dbo.LOPHOCPHAN SET MaMonHoc=@MaMonHoc,MaHocKy=@MaHocKy,MaGiangVien=@MaGiangVien,TenLHP=@TenLHP,SoLuongToiDa=@SoLuongToiDa,TrangThai='DA_KHOA' WHERE MaLHP=@MaLHP;
+ IF @SchedulesJson IS NOT NULL BEGIN DELETE dbo.LICHHOC WHERE MaLHP=@MaLHP; INSERT dbo.LICHHOC(MaLHP,Thu,TietBatDau,SoTiet,PhongHoc) SELECT @MaLHP,Thu,TietBatDau,SoTiet,PhongHoc FROM OPENJSON(@SchedulesJson) WITH(Thu TINYINT '$.thu',TietBatDau TINYINT '$.tietBatDau',SoTiet TINYINT '$.soTiet',PhongHoc VARCHAR(20) '$.phongHoc'); END;
+ IF COALESCE(@TrangThai,@CurrentStatus)<>'DA_KHOA' UPDATE dbo.LOPHOCPHAN SET TrangThai=COALESCE(@TrangThai,@CurrentStatus) WHERE MaLHP=@MaLHP;
+ COMMIT TRANSACTION; SELECT COALESCE(@TrangThai,@CurrentStatus) AS trangThai; END TRY BEGIN CATCH IF @@TRANCOUNT>0 ROLLBACK TRANSACTION; THROW; END CATCH; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Class_Delete @MaLHP VARCHAR(20)
+AS BEGIN SET NOCOUNT ON; SET XACT_ABORT ON; BEGIN TRY BEGIN TRANSACTION;
+ IF NOT EXISTS(SELECT 1 FROM dbo.LOPHOCPHAN WITH(UPDLOCK,HOLDLOCK) WHERE MaLHP=@MaLHP) THROW 52061,'Class section was not found.',1;
+ IF EXISTS(SELECT 1 FROM dbo.DANGKYTINCHI WHERE MaLHP=@MaLHP) THROW 52060,'Cannot delete a class with registration history.',1;
+ UPDATE dbo.LOPHOCPHAN SET TrangThai='DA_KHOA' WHERE MaLHP=@MaLHP;
+ DELETE dbo.LICHHOC WHERE MaLHP=@MaLHP; DELETE dbo.LOPHOCPHAN WHERE MaLHP=@MaLHP;
+ COMMIT TRANSACTION; END TRY BEGIN CATCH IF @@TRANCOUNT>0 ROLLBACK TRANSACTION; THROW; END CATCH; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Class_Get @MaLHP VARCHAR(20)
+AS BEGIN SET NOCOUNT ON; SELECT lhp.MaLHP AS maLHP,lhp.MaMonHoc AS maMonHoc,lhp.MaHocKy AS maHocKy,lhp.MaGiangVien AS maGiangVien,lhp.TenLHP AS tenLHP,lhp.SoLuongToiDa AS soLuongToiDa,lhp.TrangThai AS trangThai,
+(SELECT lh.MaLichHoc AS maLichHoc,lh.Thu AS thu,lh.TietBatDau AS tietBatDau,lh.SoTiet AS soTiet,lh.PhongHoc AS phongHoc FROM dbo.LICHHOC lh WHERE lh.MaLHP=lhp.MaLHP ORDER BY lh.Thu,lh.TietBatDau FOR JSON PATH) AS schedules
+FROM dbo.LOPHOCPHAN lhp WHERE lhp.MaLHP=@MaLHP; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_LecturerOptions @MaKhoa VARCHAR(10)=NULL,@TrangThai VARCHAR(20)=NULL
+AS BEGIN SET NOCOUNT ON; SELECT MaGV AS maGV,HoTen AS hoTen,MaKhoa AS maKhoa,TrangThai AS trangThai FROM dbo.GIANGVIEN WHERE (@MaKhoa IS NULL OR MaKhoa=@MaKhoa) AND (@TrangThai IS NULL OR TrangThai=@TrangThai) ORDER BY HoTen,MaGV; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_ClassSchedule_Create @MaLHP VARCHAR(20),@Thu TINYINT,@TietBatDau TINYINT,@SoTiet TINYINT,@PhongHoc VARCHAR(20)
+AS BEGIN SET NOCOUNT ON; DECLARE @Created TABLE(MaLichHoc INT); INSERT dbo.LICHHOC(MaLHP,Thu,TietBatDau,SoTiet,PhongHoc) OUTPUT INSERTED.MaLichHoc INTO @Created VALUES(@MaLHP,@Thu,@TietBatDau,@SoTiet,@PhongHoc); SELECT MaLichHoc FROM @Created; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_ClassSchedule_Update @MaLHP VARCHAR(20),@MaLichHoc INT,@Thu TINYINT,@TietBatDau TINYINT,@SoTiet TINYINT,@PhongHoc VARCHAR(20)
+AS BEGIN SET NOCOUNT ON; UPDATE dbo.LICHHOC SET Thu=@Thu,TietBatDau=@TietBatDau,SoTiet=@SoTiet,PhongHoc=@PhongHoc WHERE MaLichHoc=@MaLichHoc AND MaLHP=@MaLHP; SELECT @@ROWCOUNT AS changed; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_ClassSchedule_Delete @MaLHP VARCHAR(20),@MaLichHoc INT
+AS BEGIN SET NOCOUNT ON; DELETE dbo.LICHHOC WHERE MaLichHoc=@MaLichHoc AND MaLHP=@MaLHP; SELECT @@ROWCOUNT AS changed; END;
+GO
+USE [DBMS330284];
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Users_List @VaiTro VARCHAR(20)=NULL,@TrangThai VARCHAR(20)=NULL,@MaLop VARCHAR(20)=NULL,@Search NVARCHAR(100)=NULL,@Offset INT=0,@PageSize INT=10
+AS BEGIN SET NOCOUNT ON;
+SELECT COUNT(*) AS TotalItems FROM dbo.V_TaiKhoanNguoiDung WHERE (@VaiTro IS NULL OR VaiTro=@VaiTro) AND (@TrangThai IS NULL OR TrangThai=@TrangThai) AND (@MaLop IS NULL OR MaLop=@MaLop) AND (@Search IS NULL OR Username LIKE N'%'+@Search+N'%' OR HoTenSinhVien LIKE N'%'+@Search+N'%' OR HoTenGiangVien LIKE N'%'+@Search+N'%');
+SELECT MaTaiKhoan,Username,VaiTro,TrangThai,MaSV,MaSinhVien,HoTenSinhVien,EmailSinhVien,MaLop,TenLopSinhVien,MaGV,MaGiangVien,HoTenGiangVien,EmailGiangVien,NgayTao,LanDangNhapCuoi
+FROM dbo.V_TaiKhoanNguoiDung WHERE (@VaiTro IS NULL OR VaiTro=@VaiTro) AND (@TrangThai IS NULL OR TrangThai=@TrangThai) AND (@MaLop IS NULL OR MaLop=@MaLop) AND (@Search IS NULL OR Username LIKE N'%'+@Search+N'%' OR HoTenSinhVien LIKE N'%'+@Search+N'%' OR HoTenGiangVien LIKE N'%'+@Search+N'%') ORDER BY MaTaiKhoan DESC OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_UserStatus @Username VARCHAR(50),@TrangThai VARCHAR(20),@ActorMaTaiKhoan INT
+AS BEGIN SET NOCOUNT ON; SET XACT_ABORT ON; BEGIN TRY BEGIN TRANSACTION;
+DECLARE @TargetId INT,@TargetRole VARCHAR(20),@CurrentStatus VARCHAR(20),@ActorRole VARCHAR(20);
+SELECT @TargetId=MaTaiKhoan,@TargetRole=VaiTro,@CurrentStatus=TrangThai FROM dbo.TAIKHOAN WITH(UPDLOCK,HOLDLOCK) WHERE Username=@Username;
+SELECT @ActorRole=VaiTro FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND TrangThai='ACTIVE';
+IF @TargetId IS NULL THROW 52071,'Account not found.',1;
+IF @ActorRole NOT IN ('DAO_TAO','QUAN_TRI') OR NOT ((@ActorRole='DAO_TAO' AND IS_MEMBER('DAO_TAO')=1) OR (@ActorRole='QUAN_TRI' AND IS_MEMBER('QUAN_TRI')=1)) THROW 52072,'Actor role mismatch.',1;
+IF @ActorRole='DAO_TAO' AND @TargetRole IN('DAO_TAO','QUAN_TRI') THROW 52073,'Training cannot change privileged accounts.',1;
+IF @TargetId=@ActorMaTaiKhoan AND @TrangThai='LOCKED' THROW 52074,'Cannot lock own account.',1;
+IF @CurrentStatus='DISABLED' AND @TrangThai='ACTIVE' THROW 52075,'Disabled account cannot be reactivated.',1;
+EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+IF @TrangThai='LOCKED' BEGIN EXEC dbo.SP_KhoaTaiKhoan @MaTaiKhoan=@TargetId,@MaTaiKhoanNguoiThaoTac=@ActorMaTaiKhoan; END
+ELSE IF @CurrentStatus<>'ACTIVE' UPDATE dbo.TAIKHOAN SET TrangThai='ACTIVE' WHERE MaTaiKhoan=@TargetId AND TrangThai='LOCKED';
+EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+COMMIT TRANSACTION; END TRY BEGIN CATCH IF @@TRANCOUNT>0 ROLLBACK TRANSACTION; EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL; THROW; END CATCH;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Dashboard
+AS BEGIN SET NOCOUNT ON; SELECT (SELECT COUNT(*) FROM dbo.SINHVIEN) AS TongSinhVien,(SELECT COUNT(*) FROM dbo.LOP) AS TongLopSinhHoat,(SELECT COUNT(*) FROM dbo.LOPHOCPHAN) AS TongLopHocPhan,(SELECT COUNT(*) FROM dbo.DANGKYTINCHI WHERE TrangThai='REGISTERED') AS TongLuotDangKy,(SELECT ISNULL(SUM(TongTien),0) FROM dbo.HOCPHI) AS TongHocPhiPhaiThu,(SELECT ISNULL(SUM(SoTienDaThanhToan),0) FROM dbo.HOCPHI) AS TongTienDaThu,(SELECT COUNT(*) FROM dbo.CHITIETTHANHTOAN WHERE TrangThai='CHO_XAC_NHAN') AS SoGiaoDichChoXacNhan; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Students_List @MaKhoa VARCHAR(10)=NULL,@MaLop VARCHAR(20)=NULL,@TrangThai VARCHAR(20)=NULL,@Search NVARCHAR(100)=NULL,@Offset INT=0,@PageSize INT=10
+AS BEGIN SET NOCOUNT ON;
+IF @MaKhoa IS NOT NULL AND @MaLop IS NOT NULL AND NOT EXISTS(SELECT 1 FROM dbo.LOP WHERE MaKhoa=@MaKhoa AND MaLop=@MaLop) THROW 52076,'Class does not belong to selected faculty.',1;
+SELECT COUNT(*) AS TotalItems FROM dbo.SINHVIEN sv WHERE (@MaKhoa IS NULL OR sv.MaKhoa=@MaKhoa) AND (@MaLop IS NULL OR sv.MaLop=@MaLop) AND (@TrangThai IS NULL OR sv.TrangThai=@TrangThai) AND (@Search IS NULL OR sv.MaSinhVien LIKE N'%'+@Search+N'%' OR sv.HoTen LIKE N'%'+@Search+N'%' OR sv.Email LIKE N'%'+@Search+N'%');
+SELECT sv.MaSV,sv.MaSinhVien,sv.HoTen,sv.NgaySinh,sv.Email,sv.SoDienThoai,sv.MaKhoa,k.TenKhoa,sv.MaLop,l.TenLop,sv.MaCTDT,sv.TrangThai,sv.NgayTao FROM dbo.SINHVIEN sv INNER JOIN dbo.KHOA k ON sv.MaKhoa=k.MaKhoa LEFT JOIN dbo.LOP l ON sv.MaLop=l.MaLop
+WHERE (@MaKhoa IS NULL OR sv.MaKhoa=@MaKhoa) AND (@MaLop IS NULL OR sv.MaLop=@MaLop) AND (@TrangThai IS NULL OR sv.TrangThai=@TrangThai) AND (@Search IS NULL OR sv.MaSinhVien LIKE N'%'+@Search+N'%' OR sv.HoTen LIKE N'%'+@Search+N'%' OR sv.Email LIKE N'%'+@Search+N'%') ORDER BY sv.MaSV OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Classes_List @MaHocKy INT=NULL,@Search NVARCHAR(100)=NULL,@Offset INT=0,@PageSize INT=10
+AS BEGIN SET NOCOUNT ON;
+SELECT COUNT(*) AS TotalItems FROM dbo.LOPHOCPHAN lhp INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc=mh.MaMonHoc INNER JOIN dbo.HOCKY hk ON lhp.MaHocKy=hk.MaHocKy WHERE (@MaHocKy IS NULL OR lhp.MaHocKy=@MaHocKy) AND (@Search IS NULL OR lhp.MaLHP LIKE N'%'+@Search+N'%' OR mh.TenMonHoc LIKE N'%'+@Search+N'%');
+SELECT lhp.MaLHP,lhp.TenLHP,mh.MaMonHoc,mh.TenMonHoc,mh.SoTinChi,hk.MaHocKy,hk.TenHocKy,hk.NamHoc,gv.HoTen AS HoTenGiangVien,lhp.SoLuongToiDa,lhp.TrangThai,(SELECT COUNT(*) FROM dbo.DANGKYTINCHI dk WHERE dk.MaLHP=lhp.MaLHP AND dk.TrangThai='REGISTERED') AS SiSoHienTai,
+(SELECT lh.MaLichHoc AS maLichHoc,lh.Thu AS thu,lh.TietBatDau AS tietBatDau,lh.SoTiet AS soTiet,lh.PhongHoc AS phongHoc FROM dbo.LICHHOC lh WHERE lh.MaLHP=lhp.MaLHP ORDER BY lh.Thu,lh.TietBatDau FOR JSON PATH) AS Schedules,lh.Thu,lh.TietBatDau,lh.SoTiet,lh.PhongHoc
+FROM dbo.LOPHOCPHAN lhp INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc=mh.MaMonHoc INNER JOIN dbo.HOCKY hk ON lhp.MaHocKy=hk.MaHocKy LEFT JOIN dbo.GIANGVIEN gv ON lhp.MaGiangVien=gv.MaGV
+OUTER APPLY(SELECT TOP(1) lh1.Thu,lh1.TietBatDau,lh1.SoTiet,lh1.PhongHoc FROM dbo.LICHHOC lh1 WHERE lh1.MaLHP=lhp.MaLHP ORDER BY lh1.Thu,lh1.TietBatDau) lh
+WHERE (@MaHocKy IS NULL OR lhp.MaHocKy=@MaHocKy) AND (@Search IS NULL OR lhp.MaLHP LIKE N'%'+@Search+N'%' OR mh.TenMonHoc LIKE N'%'+@Search+N'%') ORDER BY lhp.MaLHP OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Registrations_List @MaSV INT=NULL,@MaSinhVien VARCHAR(20)=NULL,@MaLHP VARCHAR(20)=NULL,@MaLop VARCHAR(20)=NULL,@TrangThai VARCHAR(20)=NULL,@Search NVARCHAR(100)=NULL,@Offset INT=0,@PageSize INT=10
+AS BEGIN SET NOCOUNT ON;
+SELECT COUNT(*) AS TotalItems FROM dbo.DANGKYTINCHI dk INNER JOIN dbo.SINHVIEN sv ON dk.MaSV=sv.MaSV INNER JOIN dbo.LOPHOCPHAN lhp ON dk.MaLHP=lhp.MaLHP INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc=mh.MaMonHoc
+WHERE (@MaSV IS NULL OR dk.MaSV=@MaSV) AND (@MaSinhVien IS NULL OR sv.MaSinhVien=@MaSinhVien) AND (@MaLHP IS NULL OR dk.MaLHP=@MaLHP) AND (@MaLop IS NULL OR sv.MaLop=@MaLop) AND (@TrangThai IS NULL OR dk.TrangThai=@TrangThai) AND (@Search IS NULL OR sv.MaSinhVien LIKE N'%'+@Search+N'%' OR sv.HoTen LIKE N'%'+@Search+N'%' OR dk.MaLHP LIKE N'%'+@Search+N'%');
+SELECT dk.MaDangKy,dk.MaSV,sv.MaSinhVien,sv.HoTen AS HoTenSinhVien,sv.MaLop,l.TenLop AS TenLopSinhVien,dk.MaLHP,mh.TenMonHoc,mh.SoTinChi,dk.NgayDangKy,dk.TrangThai
+FROM dbo.DANGKYTINCHI dk INNER JOIN dbo.SINHVIEN sv ON dk.MaSV=sv.MaSV LEFT JOIN dbo.LOP l ON sv.MaLop=l.MaLop INNER JOIN dbo.LOPHOCPHAN lhp ON dk.MaLHP=lhp.MaLHP INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc=mh.MaMonHoc
+WHERE (@MaSV IS NULL OR dk.MaSV=@MaSV) AND (@MaSinhVien IS NULL OR sv.MaSinhVien=@MaSinhVien) AND (@MaLHP IS NULL OR dk.MaLHP=@MaLHP) AND (@MaLop IS NULL OR sv.MaLop=@MaLop) AND (@TrangThai IS NULL OR dk.TrangThai=@TrangThai) AND (@Search IS NULL OR sv.MaSinhVien LIKE N'%'+@Search+N'%' OR sv.HoTen LIKE N'%'+@Search+N'%' OR dk.MaLHP LIKE N'%'+@Search+N'%') ORDER BY dk.MaDangKy DESC OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_AuditLogs @MaTaiKhoan INT=NULL,@TuNgay DATE=NULL,@DenNgay DATE=NULL,@Offset INT=0,@PageSize INT=10
+AS BEGIN SET NOCOUNT ON;
+SELECT COUNT(*) AS TotalItems FROM dbo.LOGHOATDONG lg WHERE (@MaTaiKhoan IS NULL OR lg.MaTaiKhoan=@MaTaiKhoan) AND (@TuNgay IS NULL OR lg.ThoiGian>=@TuNgay) AND (@DenNgay IS NULL OR lg.ThoiGian<DATEADD(day,1,@DenNgay));
+SELECT lg.MaLog,lg.MaTaiKhoan,tk.Username,tk.VaiTro,lg.ThoiGian,lg.HanhDong,lg.TenBang,lg.KhoaBanGhi,lg.NoiDungCu,lg.NoiDungMoi FROM dbo.LOGHOATDONG lg LEFT JOIN dbo.TAIKHOAN tk ON lg.MaTaiKhoan=tk.MaTaiKhoan
+WHERE (@MaTaiKhoan IS NULL OR lg.MaTaiKhoan=@MaTaiKhoan) AND (@TuNgay IS NULL OR lg.ThoiGian>=@TuNgay) AND (@DenNgay IS NULL OR lg.ThoiGian<DATEADD(day,1,@DenNgay)) ORDER BY lg.MaLog DESC OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+USE [DBMS330284];
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Student_Create @MaSinhVien VARCHAR(20),@HoTen NVARCHAR(100),@NgaySinh DATE=NULL,@Email VARCHAR(254)=NULL,@SoDienThoai VARCHAR(20)=NULL,@MaKhoa VARCHAR(10),@MaLop VARCHAR(20)=NULL,@MaCTDT VARCHAR(24),@TrangThai VARCHAR(20),@ActorMaTaiKhoan INT
+AS BEGIN SET NOCOUNT ON; SET XACT_ABORT ON;
+IF EXISTS(SELECT 1 FROM dbo.SINHVIEN WHERE MaSinhVien=@MaSinhVien) THROW 52080,'Student number already exists.',1;
+IF NOT EXISTS(SELECT 1 FROM dbo.CHUONGTRINHDAOTAO c INNER JOIN dbo.NGANH n ON n.MaNganh=c.MaNganh WHERE c.MaCTDT=@MaCTDT AND n.MaKhoa=@MaKhoa) THROW 52081,'Curriculum does not belong to selected faculty.',1;
+IF @MaLop IS NOT NULL AND NOT EXISTS(SELECT 1 FROM dbo.LOP l INNER JOIN dbo.CHUONGTRINHDAOTAO c ON c.NamTuyenSinh=l.NamNhapHoc WHERE l.MaLop=@MaLop AND l.MaKhoa=@MaKhoa AND c.MaCTDT=@MaCTDT) THROW 52082,'Homeroom class and curriculum do not match.',1;
+IF NOT EXISTS(SELECT 1 FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND TrangThai='ACTIVE' AND VaiTro IN('DAO_TAO','QUAN_TRI') AND ((VaiTro='DAO_TAO' AND IS_MEMBER('DAO_TAO')=1) OR (VaiTro='QUAN_TRI' AND IS_MEMBER('QUAN_TRI')=1))) THROW 52072,'Actor role mismatch.',1;
+EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+BEGIN TRY
+DECLARE @Output TABLE(MaSV INT,MaSinhVien VARCHAR(20),HoTen NVARCHAR(100),NgaySinh DATE,Email VARCHAR(254),SoDienThoai VARCHAR(20),MaKhoa VARCHAR(10),MaLop VARCHAR(20),MaCTDT VARCHAR(24),TrangThai VARCHAR(20),NgayTao DATETIME2(0));
+INSERT dbo.SINHVIEN(MaSinhVien,HoTen,NgaySinh,Email,SoDienThoai,MaKhoa,MaLop,MaCTDT,TrangThai)
+OUTPUT inserted.MaSV,inserted.MaSinhVien,inserted.HoTen,inserted.NgaySinh,inserted.Email,inserted.SoDienThoai,inserted.MaKhoa,inserted.MaLop,inserted.MaCTDT,inserted.TrangThai,inserted.NgayTao INTO @Output
+VALUES(@MaSinhVien,@HoTen,@NgaySinh,@Email,@SoDienThoai,@MaKhoa,@MaLop,@MaCTDT,@TrangThai);
+SELECT * FROM @Output; EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+END TRY BEGIN CATCH EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL; THROW; END CATCH;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Student_Update @MaSV INT,@HoTen NVARCHAR(100)=NULL,@NgaySinh DATE=NULL,@Email VARCHAR(254)=NULL,@SoDienThoai VARCHAR(20)=NULL,@MaKhoa VARCHAR(10)=NULL,@MaLop VARCHAR(20)=NULL,@MaCTDT VARCHAR(24)=NULL,@TrangThai VARCHAR(20)=NULL,@HasNgaySinh BIT,@HasEmail BIT,@HasSoDienThoai BIT,@HasMaKhoa BIT,@HasMaLop BIT,@HasMaCTDT BIT,@HasTrangThai BIT,@ActorMaTaiKhoan INT
+AS BEGIN SET NOCOUNT ON; SET XACT_ABORT ON;
+DECLARE @Current TABLE(MaSinhVien VARCHAR(20),HoTen NVARCHAR(100),NgaySinh DATE,Email VARCHAR(254),SoDienThoai VARCHAR(20),MaKhoa VARCHAR(10),MaLop VARCHAR(20),MaCTDT VARCHAR(24),TrangThai VARCHAR(20),NgayTao DATETIME2(0));
+INSERT @Current SELECT MaSinhVien,HoTen,NgaySinh,Email,SoDienThoai,MaKhoa,MaLop,MaCTDT,TrangThai,NgayTao FROM dbo.SINHVIEN WHERE MaSV=@MaSV;
+IF NOT EXISTS(SELECT 1 FROM @Current) THROW 52083,'Student record was not found.',1;
+DECLARE @FinalFaculty VARCHAR(10)=CASE WHEN @HasMaKhoa=1 THEN @MaKhoa ELSE (SELECT MaKhoa FROM @Current) END;
+DECLARE @FinalClass VARCHAR(20)=CASE WHEN @HasMaLop=1 THEN @MaLop ELSE (SELECT MaLop FROM @Current) END;
+DECLARE @FinalCurriculum VARCHAR(24)=CASE WHEN @HasMaCTDT=1 THEN @MaCTDT ELSE (SELECT MaCTDT FROM @Current) END;
+IF NOT EXISTS(SELECT 1 FROM dbo.CHUONGTRINHDAOTAO c INNER JOIN dbo.NGANH n ON n.MaNganh=c.MaNganh WHERE c.MaCTDT=@FinalCurriculum AND n.MaKhoa=@FinalFaculty) THROW 52081,'Curriculum does not belong to selected faculty.',1;
+IF @FinalClass IS NOT NULL AND NOT EXISTS(SELECT 1 FROM dbo.LOP l INNER JOIN dbo.CHUONGTRINHDAOTAO c ON c.NamTuyenSinh=l.NamNhapHoc WHERE l.MaLop=@FinalClass AND l.MaKhoa=@FinalFaculty AND c.MaCTDT=@FinalCurriculum) THROW 52082,'Homeroom class and curriculum do not match.',1;
+IF NOT EXISTS(SELECT 1 FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND TrangThai='ACTIVE' AND VaiTro IN('DAO_TAO','QUAN_TRI')
+ AND ((VaiTro='DAO_TAO' AND IS_MEMBER('DAO_TAO')=1) OR (VaiTro='QUAN_TRI' AND IS_MEMBER('QUAN_TRI')=1))) THROW 52072,'Actor role mismatch.',1;
+EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+BEGIN TRY
+UPDATE dbo.SINHVIEN SET HoTen=COALESCE(@HoTen,HoTen),NgaySinh=CASE WHEN @HasNgaySinh=1 THEN @NgaySinh ELSE NgaySinh END,Email=CASE WHEN @HasEmail=1 THEN @Email ELSE Email END,
+SoDienThoai=CASE WHEN @HasSoDienThoai=1 THEN @SoDienThoai ELSE SoDienThoai END,MaKhoa=@FinalFaculty,MaLop=@FinalClass,MaCTDT=@FinalCurriculum,TrangThai=CASE WHEN @HasTrangThai=1 THEN @TrangThai ELSE TrangThai END WHERE MaSV=@MaSV;
+SELECT MaSV,MaSinhVien,HoTen,NgaySinh,Email,SoDienThoai,MaKhoa,MaLop,MaCTDT,TrangThai,NgayTao FROM dbo.SINHVIEN WHERE MaSV=@MaSV;
+EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+END TRY BEGIN CATCH EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL; THROW; END CATCH;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Student_Delete @MaSV INT,@ActorMaTaiKhoan INT
+AS BEGIN SET NOCOUNT ON; SET XACT_ABORT ON; BEGIN TRY BEGIN TRANSACTION;
+IF NOT EXISTS(SELECT 1 FROM dbo.SINHVIEN WITH(UPDLOCK,HOLDLOCK) WHERE MaSV=@MaSV) THROW 52083,'Student record was not found.',1;
+IF NOT EXISTS(SELECT 1 FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND TrangThai='ACTIVE' AND VaiTro IN('DAO_TAO','QUAN_TRI')
+ AND ((VaiTro='DAO_TAO' AND IS_MEMBER('DAO_TAO')=1) OR (VaiTro='QUAN_TRI' AND IS_MEMBER('QUAN_TRI')=1))) THROW 52072,'Actor role mismatch.',1;
+EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+IF EXISTS(SELECT 1 FROM dbo.DANGKYTINCHI WHERE MaSV=@MaSV) OR EXISTS(SELECT 1 FROM dbo.HOCPHI WHERE MaSV=@MaSV)
+BEGIN UPDATE dbo.SINHVIEN SET TrangThai='THOI_HOC' WHERE MaSV=@MaSV; SELECT 'SOFT_DELETE' AS action; END
+ELSE BEGIN DELETE dbo.TAIKHOAN WHERE MaSV=@MaSV; DELETE dbo.SINHVIEN WHERE MaSV=@MaSV; SELECT 'HARD_DELETE' AS action; END;
+EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL; COMMIT TRANSACTION;
+END TRY BEGIN CATCH IF @@TRANCOUNT>0 ROLLBACK TRANSACTION; EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL; THROW; END CATCH; END;
+GO
+USE [DBMS330284];
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_Curriculums_List @MaKhoa VARCHAR(10)=NULL,@MaNganh VARCHAR(10)=NULL,@NamTuyenSinh SMALLINT=NULL,@MaCTDT VARCHAR(24)=NULL,@TuKhoaMonHoc NVARCHAR(100)=NULL,@MaMonTienQuyet VARCHAR(15)=NULL,@HocKyDuKien TINYINT=NULL
+AS BEGIN SET NOCOUNT ON;
+SELECT c.MaCTDT,c.TenCTDT,n.MaNganh,n.TenNganh AS Nganh,c.KhoaHoc,c.NamTuyenSinh,c.TongTinChiYeuCau,c.ThoiGianDaoTao,c.TrangThai AS TrangThaiCTDT,n.MaKhoa,k.TenKhoa,mh.MaMonHoc,mh.MaKhoa AS MaKhoaMon,km.TenKhoa AS TenKhoaMon,mh.TenMonHoc,mh.SoTinChi,mh.SoTietLyThuyet,mh.SoTietThucHanh,mh.MoTa,mh.TrangThai AS TrangThaiMon,ctm.HocKyDuKien,ctm.LoaiMon,ctm.ThuTu,
+(SELECT STRING_AGG(CONVERT(NVARCHAR(MAX),CONCAT(pre.MaMonHoc,N' - ',pre.TenMonHoc)),N'; ') FROM dbo.MONHOCTIENQUYET mtq INNER JOIN dbo.MONHOC pre ON pre.MaMonHoc=mtq.MaMonTienQuyet WHERE mtq.MaMonHoc=mh.MaMonHoc) AS HocPhanTienQuyet,
+(SELECT mtq.MaMonTienQuyet AS maMonHoc,pre.TenMonHoc AS tenMonHoc,mtq.MucDo AS mucDo FROM dbo.MONHOCTIENQUYET mtq INNER JOIN dbo.MONHOC pre ON pre.MaMonHoc=mtq.MaMonTienQuyet WHERE mtq.MaMonHoc=mh.MaMonHoc FOR JSON PATH) AS HocPhanTienQuyetChiTiet
+FROM dbo.CHUONGTRINHDAOTAO c INNER JOIN dbo.NGANH n ON n.MaNganh=c.MaNganh INNER JOIN dbo.KHOA k ON k.MaKhoa=n.MaKhoa
+LEFT JOIN dbo.CTDT_MONHOC ctm ON ctm.MaCTDT=c.MaCTDT AND (@HocKyDuKien IS NULL OR ctm.HocKyDuKien=@HocKyDuKien)
+AND (@MaMonTienQuyet IS NULL OR EXISTS(SELECT 1 FROM dbo.MONHOCTIENQUYET rowMtq WHERE rowMtq.MaMonTienQuyet=@MaMonTienQuyet AND rowMtq.MaMonHoc=ctm.MaMonHoc))
+LEFT JOIN dbo.MONHOC mh ON mh.MaMonHoc=ctm.MaMonHoc LEFT JOIN dbo.KHOA km ON km.MaKhoa=mh.MaKhoa
+WHERE (@MaKhoa IS NULL OR n.MaKhoa=@MaKhoa) AND (@MaNganh IS NULL OR c.MaNganh=@MaNganh) AND (@NamTuyenSinh IS NULL OR c.NamTuyenSinh=@NamTuyenSinh) AND (@MaCTDT IS NULL OR c.MaCTDT=@MaCTDT)
+AND (@TuKhoaMonHoc IS NULL OR mh.MaMonHoc LIKE N'%'+@TuKhoaMonHoc+N'%' OR mh.TenMonHoc LIKE N'%'+@TuKhoaMonHoc+N'%')
+AND (@MaMonTienQuyet IS NULL OR EXISTS(SELECT 1 FROM dbo.MONHOCTIENQUYET filterMtq INNER JOIN dbo.CTDT_MONHOC filterCtm ON filterCtm.MaMonHoc=filterMtq.MaMonHoc WHERE filterMtq.MaMonTienQuyet=@MaMonTienQuyet AND filterCtm.MaCTDT=c.MaCTDT AND (@HocKyDuKien IS NULL OR filterCtm.HocKyDuKien=@HocKyDuKien)))
+ORDER BY c.MaCTDT,ctm.HocKyDuKien,ctm.ThuTu,mh.MaMonHoc;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_CurriculumOptions @MaKhoa VARCHAR(10)=NULL,@NamTuyenSinh SMALLINT=NULL
+AS BEGIN SET NOCOUNT ON; SELECT c.MaCTDT,c.TenCTDT,c.KhoaHoc,c.NamTuyenSinh,n.MaKhoa FROM dbo.CHUONGTRINHDAOTAO c INNER JOIN dbo.NGANH n ON n.MaNganh=c.MaNganh WHERE c.TrangThai=1 AND (@MaKhoa IS NULL OR n.MaKhoa=@MaKhoa) AND (@NamTuyenSinh IS NULL OR c.NamTuyenSinh=@NamTuyenSinh) ORDER BY c.NamTuyenSinh DESC,c.MaCTDT; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_CurriculumPrograms_List
+AS BEGIN SET NOCOUNT ON; SELECT c.MaCTDT,c.MaNganh,n.TenNganh,n.MaKhoa,k.TenKhoa,c.TenCTDT,c.KhoaHoc,c.NamTuyenSinh,c.TongTinChiYeuCau,c.ThoiGianDaoTao,c.TrangThai FROM dbo.CHUONGTRINHDAOTAO c INNER JOIN dbo.NGANH n ON n.MaNganh=c.MaNganh INNER JOIN dbo.KHOA k ON k.MaKhoa=n.MaKhoa ORDER BY k.TenKhoa,n.TenNganh,c.NamTuyenSinh DESC,c.MaCTDT; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_CurriculumProgram_Get @MaCTDT VARCHAR(24)
+AS BEGIN SET NOCOUNT ON; SELECT c.MaCTDT,c.MaNganh,n.TenNganh,k.MaKhoa,k.TenKhoa,c.TenCTDT,c.KhoaHoc,c.NamTuyenSinh,c.TongTinChiYeuCau,c.ThoiGianDaoTao,c.TrangThai FROM dbo.CHUONGTRINHDAOTAO c INNER JOIN dbo.NGANH n ON n.MaNganh=c.MaNganh INNER JOIN dbo.KHOA k ON k.MaKhoa=n.MaKhoa WHERE c.MaCTDT=@MaCTDT; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_CurriculumProgram_Create @MaCTDT VARCHAR(24),@MaNganh VARCHAR(10),@TenCTDT NVARCHAR(150),@NamTuyenSinh SMALLINT,@TongTinChiYeuCau INT,@ThoiGianDaoTao INT,@TrangThai BIT,@ActorMaTaiKhoan INT
+AS BEGIN SET NOCOUNT ON; IF NOT EXISTS(SELECT 1 FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND TrangThai='ACTIVE' AND VaiTro IN('DAO_TAO','QUAN_TRI')
+ AND ((VaiTro='DAO_TAO' AND IS_MEMBER('DAO_TAO')=1) OR (VaiTro='QUAN_TRI' AND IS_MEMBER('QUAN_TRI')=1))) THROW 52072,'Actor role mismatch.',1;
+EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+BEGIN TRY INSERT dbo.CHUONGTRINHDAOTAO(MaCTDT,MaNganh,TenCTDT,KhoaHoc,NamTuyenSinh,TongTinChiYeuCau,ThoiGianDaoTao,TrangThai) VALUES(@MaCTDT,@MaNganh,@TenCTDT,CONCAT(@NamTuyenSinh,'-',@NamTuyenSinh+@ThoiGianDaoTao),@NamTuyenSinh,@TongTinChiYeuCau,@ThoiGianDaoTao,@TrangThai); EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL; END TRY BEGIN CATCH EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL; THROW; END CATCH; END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_CurriculumProgram_Update @MaCTDT VARCHAR(24),@MaNganh VARCHAR(10),@TenCTDT NVARCHAR(150),@NamTuyenSinh SMALLINT,@TongTinChiYeuCau INT,@ThoiGianDaoTao INT,@TrangThai BIT,@ActorMaTaiKhoan INT
+AS BEGIN SET NOCOUNT ON; DECLARE @OldYear SMALLINT,@OldDuration INT;
+SELECT @OldYear=NamTuyenSinh,@OldDuration=ThoiGianDaoTao FROM dbo.CHUONGTRINHDAOTAO WHERE MaCTDT=@MaCTDT;
+IF @OldYear IS NULL THROW 52085,'Curriculum program was not found.',1;
+IF NOT EXISTS(SELECT 1 FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND TrangThai='ACTIVE' AND VaiTro IN('DAO_TAO','QUAN_TRI')
+ AND ((VaiTro='DAO_TAO' AND IS_MEMBER('DAO_TAO')=1) OR (VaiTro='QUAN_TRI' AND IS_MEMBER('QUAN_TRI')=1))) THROW 52072,'Actor role mismatch.',1;
+IF @OldYear<>@NamTuyenSinh OR @OldDuration<>@ThoiGianDaoTao OR EXISTS(SELECT 1 FROM dbo.CHUONGTRINHDAOTAO WHERE MaCTDT=@MaCTDT AND MaNganh<>@MaNganh) EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+BEGIN TRY
+IF @OldYear<>@NamTuyenSinh OR @OldDuration<>@ThoiGianDaoTao OR EXISTS(SELECT 1 FROM dbo.CHUONGTRINHDAOTAO WHERE MaCTDT=@MaCTDT AND MaNganh<>@MaNganh)
+ UPDATE dbo.CHUONGTRINHDAOTAO SET MaNganh=@MaNganh,NamTuyenSinh=@NamTuyenSinh,ThoiGianDaoTao=@ThoiGianDaoTao,KhoaHoc=CONCAT(@NamTuyenSinh,'-',@NamTuyenSinh+@ThoiGianDaoTao),TenCTDT=@TenCTDT,TongTinChiYeuCau=@TongTinChiYeuCau,TrangThai=@TrangThai WHERE MaCTDT=@MaCTDT;
+ELSE UPDATE dbo.CHUONGTRINHDAOTAO SET TenCTDT=@TenCTDT,TongTinChiYeuCau=@TongTinChiYeuCau,TrangThai=@TrangThai WHERE MaCTDT=@MaCTDT;
+EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL;
+END TRY BEGIN CATCH EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL; THROW; END CATCH;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_App_Admin_CurriculumProgram_Delete @MaCTDT VARCHAR(24),@ActorMaTaiKhoan INT
+AS BEGIN SET NOCOUNT ON; SET XACT_ABORT ON; BEGIN TRY BEGIN TRANSACTION;
+IF NOT EXISTS(SELECT 1 FROM dbo.CHUONGTRINHDAOTAO WITH(UPDLOCK,HOLDLOCK) WHERE MaCTDT=@MaCTDT) THROW 52085,'Curriculum program was not found.',1;
+IF EXISTS(SELECT 1 FROM dbo.SINHVIEN WHERE MaCTDT=@MaCTDT) THROW 52084,'Students are linked to this curriculum.',1;
+IF NOT EXISTS(SELECT 1 FROM dbo.TAIKHOAN WHERE MaTaiKhoan=@ActorMaTaiKhoan AND TrangThai='ACTIVE' AND VaiTro IN('DAO_TAO','QUAN_TRI')
+ AND ((VaiTro='DAO_TAO' AND IS_MEMBER('DAO_TAO')=1) OR (VaiTro='QUAN_TRI' AND IS_MEMBER('QUAN_TRI')=1))) THROW 52072,'Actor role mismatch.',1;
+EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=@ActorMaTaiKhoan;
+DELETE dbo.CTDT_MONHOC WHERE MaCTDT=@MaCTDT; DELETE dbo.CHUONGTRINHDAOTAO WHERE MaCTDT=@MaCTDT;
+EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL; COMMIT TRANSACTION;
+END TRY BEGIN CATCH IF @@TRANCOUNT>0 ROLLBACK TRANSACTION; EXEC sys.sp_set_session_context @key=N'MaTaiKhoan',@value=NULL; THROW; END CATCH; END;
+GO
+
+-- Roles nghiệp vụ và runtime least privilege.
+USE [DBMS330284];
+GO
+IF DATABASE_PRINCIPAL_ID('SINH_VIEN') IS NULL CREATE ROLE SINH_VIEN;
+IF DATABASE_PRINCIPAL_ID('GIANG_VIEN') IS NULL CREATE ROLE GIANG_VIEN;
+IF DATABASE_PRINCIPAL_ID('DAO_TAO') IS NULL CREATE ROLE DAO_TAO;
+IF DATABASE_PRINCIPAL_ID('QUAN_TRI') IS NULL CREATE ROLE QUAN_TRI;
+IF DATABASE_PRINCIPAL_ID('APP_RUNTIME') IS NULL CREATE ROLE APP_RUNTIME;
+IF DATABASE_PRINCIPAL_ID('APP_AUTH') IS NULL CREATE ROLE APP_AUTH;
+GO
+
+-- Phụ trách: Trần Biểu Hương
+GRANT SELECT ON dbo.V_ThoiKhoaBieuSinhVien TO SINH_VIEN;
+GRANT SELECT ON dbo.V_BangDiemChiTiet TO SINH_VIEN;
+GRANT SELECT ON dbo.V_CauTrucChuongTrinhDAOTAO TO SINH_VIEN;
+GRANT EXECUTE ON dbo.SP_DangKyTinChi TO SINH_VIEN;
+GRANT EXECUTE ON dbo.SP_HuyDangKy TO SINH_VIEN;
+
+-- Phụ trách: Trần Biểu Hương
+GRANT SELECT ON dbo.V_BangDiemChiTiet TO GIANG_VIEN;
+GRANT SELECT ON dbo.V_CauTrucChuongTrinhDAOTAO TO GIANG_VIEN;
+GRANT EXECUTE ON dbo.FN_TinhDiemTongKet TO GIANG_VIEN;
+
+-- Phụ trách: Lê Trung Đông
+GRANT SELECT ON dbo.V_TaiKhoanNguoiDung TO DAO_TAO;
+
+-- Phụ trách: Lương Viết Vĩ Đông
+GRANT SELECT ON dbo.V_CauTrucChuongTrinhDAOTAO TO DAO_TAO;
+
+-- Phụ trách: Trần Biểu Hương
+GRANT SELECT ON dbo.V_BangDiemChiTiet TO DAO_TAO;
+GRANT SELECT ON dbo.V_ThoiKhoaBieuSinhVien TO DAO_TAO;
+
+-- Phụ trách: Âu Quốc Khánh
+GRANT SELECT ON dbo.V_HocPhiSinhVien TO DAO_TAO;
+-- Phụ trách: Lê Trung Đông
+GRANT EXECUTE ON dbo.SP_TaoTaiKhoan TO DAO_TAO;
+GRANT EXECUTE ON dbo.SP_KhoaTaiKhoan TO DAO_TAO;
+
+-- Phụ trách: Âu Quốc Khánh
+GRANT EXECUTE ON dbo.SP_TinhHocPhiSinhVien TO DAO_TAO;
+GRANT EXECUTE ON dbo.SP_ThongKeHocPhi TO DAO_TAO;
+GRANT EXECUTE ON dbo.SP_ThongKeHocPhiTheoLop TO DAO_TAO;
+GRANT EXECUTE ON dbo.SP_XacNhanThanhToan TO DAO_TAO;
+GRANT EXECUTE ON dbo.SP_TuChoiThanhToan TO DAO_TAO;
+GO
+
+-- Web CRUD phải đi qua procedure; không cấp DML trực tiếp trên bảng danh mục cho QUAN_TRI.
+-- Phụ trách: Lê Trung Đông
+GRANT SELECT ON dbo.V_TaiKhoanNguoiDung TO QUAN_TRI;
+
+-- Phụ trách: Lương Viết Vĩ Đông
+GRANT SELECT ON dbo.V_CauTrucChuongTrinhDAOTAO TO QUAN_TRI;
+
+-- Phụ trách: Trần Biểu Hương
+GRANT SELECT ON dbo.V_ThoiKhoaBieuSinhVien TO QUAN_TRI;
+GRANT SELECT ON dbo.V_BangDiemChiTiet TO QUAN_TRI;
+
+-- Phụ trách: Âu Quốc Khánh
+GRANT SELECT ON dbo.V_HocPhiSinhVien TO QUAN_TRI;
+
+-- Phụ trách: Trần Biểu Hương
+GRANT EXECUTE ON dbo.SP_DangKyTinChi TO QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_HuyDangKy TO QUAN_TRI;
+
+-- Phụ trách: Lê Trung Đông
+GRANT EXECUTE ON dbo.SP_TaoTaiKhoan TO QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_KhoaTaiKhoan TO QUAN_TRI;
+
+-- Phụ trách: Âu Quốc Khánh
+GRANT EXECUTE ON dbo.SP_TinhHocPhiSinhVien TO QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_ThongKeHocPhi TO QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_ThongKeHocPhiTheoLop TO QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_XacNhanThanhToan TO QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_TuChoiThanhToan TO QUAN_TRI;
+GO
+
+-- Phụ trách: Lương Viết Vĩ Đông
+-- Runtime receives read-only catalog access and explicitly named procedure permissions.
+DENY SELECT ON dbo.TAIKHOAN TO APP_RUNTIME;
+DENY INSERT, UPDATE, DELETE ON dbo.DANGKYTINCHI TO APP_RUNTIME;
+DENY INSERT, UPDATE, DELETE ON dbo.DIEMSO TO APP_RUNTIME;
+DENY INSERT, UPDATE, DELETE ON dbo.HOCPHI TO APP_RUNTIME;
+DENY INSERT, UPDATE, DELETE ON dbo.CHITIETTHANHTOAN TO APP_RUNTIME;
+DENY INSERT, UPDATE, DELETE ON dbo.LOGHOATDONG TO APP_RUNTIME;
+GO
+
+-- Phụ trách: Lương Viết Vĩ Đông
+-- Map an already-provisioned low-privilege SQL login; this script never creates a password.
+IF SUSER_ID(N'dbms_app') IS NOT NULL AND DATABASE_PRINCIPAL_ID(N'dbms_app') IS NULL
+    CREATE USER dbms_app FOR LOGIN dbms_app;
+GO
+IF DATABASE_PRINCIPAL_ID(N'dbms_app') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_app'))
+    ALTER ROLE APP_RUNTIME ADD MEMBER dbms_app;
+GO
+
+-- Principals without a login make role tests exercise SQL permissions safely.
+IF DATABASE_PRINCIPAL_ID(N'dbms_test_student') IS NULL CREATE USER dbms_test_student WITHOUT LOGIN;
+IF DATABASE_PRINCIPAL_ID(N'dbms_test_lecturer') IS NULL CREATE USER dbms_test_lecturer WITHOUT LOGIN;
+IF DATABASE_PRINCIPAL_ID(N'dbms_test_training') IS NULL CREATE USER dbms_test_training WITHOUT LOGIN;
+IF DATABASE_PRINCIPAL_ID(N'dbms_test_admin') IS NULL CREATE USER dbms_test_admin WITHOUT LOGIN;
+IF DATABASE_PRINCIPAL_ID(N'dbms_test_runtime') IS NULL CREATE USER dbms_test_runtime WITHOUT LOGIN;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('SINH_VIEN') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_student')) ALTER ROLE SINH_VIEN ADD MEMBER dbms_test_student;
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('GIANG_VIEN') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_lecturer')) ALTER ROLE GIANG_VIEN ADD MEMBER dbms_test_lecturer;
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('DAO_TAO') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_training')) ALTER ROLE DAO_TAO ADD MEMBER dbms_test_training;
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('QUAN_TRI') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_admin')) ALTER ROLE QUAN_TRI ADD MEMBER dbms_test_admin;
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_student')) ALTER ROLE APP_RUNTIME ADD MEMBER dbms_test_student;
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_lecturer')) ALTER ROLE APP_RUNTIME ADD MEMBER dbms_test_lecturer;
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_training')) ALTER ROLE APP_RUNTIME ADD MEMBER dbms_test_training;
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_admin')) ALTER ROLE APP_RUNTIME ADD MEMBER dbms_test_admin;
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_runtime')) ALTER ROLE APP_RUNTIME ADD MEMBER dbms_test_runtime;
+GO
+
+-- Phụ trách: Âu Quốc Khánh
+DENY UPDATE, DELETE ON dbo.LOGHOATDONG TO SINH_VIEN;
+DENY UPDATE, DELETE ON dbo.LOGHOATDONG TO GIANG_VIEN;
+DENY UPDATE, DELETE ON dbo.LOGHOATDONG TO DAO_TAO;
+-- Phụ trách: Lê Trung Đông
+DENY SELECT ON dbo.TAIKHOAN TO SINH_VIEN;
+DENY SELECT ON dbo.TAIKHOAN TO GIANG_VIEN;
+DENY SELECT ON dbo.TAIKHOAN (PasswordHash) TO DAO_TAO;
+GO
+
+GO
+-- Remove legacy broad grants as well, so rerunning this file tightens existing databases.
+REVOKE INSERT, UPDATE, DELETE ON dbo.KHOA FROM QUAN_TRI;
+REVOKE INSERT, UPDATE, DELETE ON dbo.NGANH FROM QUAN_TRI;
+REVOKE INSERT, UPDATE, DELETE ON dbo.CHUONGTRINHDAOTAO FROM QUAN_TRI;
+REVOKE INSERT, UPDATE, DELETE ON dbo.MONHOC FROM QUAN_TRI;
+REVOKE INSERT, UPDATE, DELETE ON dbo.CTDT_MONHOC FROM QUAN_TRI;
+REVOKE INSERT, UPDATE, DELETE ON dbo.MONHOCTIENQUYET FROM QUAN_TRI;
+REVOKE INSERT, UPDATE, DELETE ON dbo.SINHVIEN FROM QUAN_TRI;
+REVOKE INSERT, UPDATE, DELETE ON dbo.GIANGVIEN FROM QUAN_TRI;
+REVOKE INSERT, UPDATE, DELETE ON dbo.TAIKHOAN FROM QUAN_TRI;
+REVOKE INSERT, UPDATE ON dbo.HOCKY FROM QUAN_TRI;
+REVOKE INSERT, UPDATE, DELETE ON dbo.LOPHOCPHAN FROM QUAN_TRI;
+REVOKE INSERT, UPDATE, DELETE ON dbo.LICHHOC FROM QUAN_TRI;
+REVOKE SELECT ON dbo.LOGHOATDONG FROM DAO_TAO;
+REVOKE SELECT ON dbo.V_TaiKhoanNguoiDung FROM APP_RUNTIME;
+REVOKE SELECT ON dbo.V_CauTrucChuongTrinhDAOTAO FROM APP_RUNTIME;
+REVOKE SELECT ON dbo.V_ThoiKhoaBieuSinhVien FROM APP_RUNTIME;
+REVOKE SELECT ON dbo.V_BangDiemChiTiet FROM APP_RUNTIME;
+REVOKE SELECT ON dbo.V_HocPhiSinhVien FROM APP_RUNTIME;
+REVOKE SELECT ON dbo.V_DanhSachLopSinhHoat FROM APP_RUNTIME;
+REVOKE SELECT ON dbo.LOGHOATDONG FROM APP_RUNTIME;
+REVOKE EXECUTE ON dbo.SP_DangKyTinChi FROM APP_RUNTIME;
+REVOKE EXECUTE ON dbo.SP_HuyDangKy FROM APP_RUNTIME;
+REVOKE EXECUTE ON dbo.SP_TaoTaiKhoan FROM APP_RUNTIME;
+REVOKE EXECUTE ON dbo.SP_KhoaTaiKhoan FROM APP_RUNTIME;
+REVOKE EXECUTE ON dbo.SP_TinhHocPhiSinhVien FROM APP_RUNTIME;
+REVOKE EXECUTE ON dbo.SP_ThongKeHocPhi FROM APP_RUNTIME;
+REVOKE EXECUTE ON dbo.SP_ThongKeHocPhiTheoLop FROM APP_RUNTIME;
+REVOKE EXECUTE ON dbo.SP_XacNhanThanhToan FROM APP_RUNTIME;
+REVOKE EXECUTE ON dbo.SP_TuChoiThanhToan FROM APP_RUNTIME;
+
+-- Keep legacy route reads available to the two staff roles while the remaining repositories migrate to procedures.
+GRANT SELECT ON dbo.KHOA TO DAO_TAO, QUAN_TRI;
+GRANT SELECT ON dbo.NGANH TO DAO_TAO, QUAN_TRI;
+GRANT SELECT ON dbo.CHUONGTRINHDAOTAO TO DAO_TAO, QUAN_TRI;
+GRANT SELECT ON dbo.MONHOC TO DAO_TAO, QUAN_TRI;
+GRANT SELECT ON dbo.CTDT_MONHOC TO DAO_TAO, QUAN_TRI;
+GRANT SELECT ON dbo.MONHOCTIENQUYET TO DAO_TAO, QUAN_TRI;
+GRANT SELECT ON dbo.SINHVIEN TO DAO_TAO, QUAN_TRI;
+GRANT SELECT ON dbo.GIANGVIEN TO DAO_TAO, QUAN_TRI;
+GRANT SELECT ON dbo.HOCKY TO DAO_TAO, QUAN_TRI;
+GRANT SELECT ON dbo.LOPHOCPHAN TO DAO_TAO, QUAN_TRI;
+GRANT SELECT ON dbo.LICHHOC TO DAO_TAO, QUAN_TRI;
+
+-- Runtime web logins: dbms_app chỉ xác thực; mỗi business login thuộc đúng một role.
+IF SUSER_ID(N'dbms_app') IS NOT NULL
+BEGIN
+  IF DATABASE_PRINCIPAL_ID(N'dbms_app') IS NULL CREATE USER [dbms_app] FOR LOGIN [dbms_app];
+  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_app')) ALTER ROLE APP_RUNTIME ADD MEMBER [dbms_app];
+  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'APP_AUTH') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_app')) ALTER ROLE APP_AUTH ADD MEMBER [dbms_app];
+END;
+IF SUSER_ID(N'dbms_student') IS NOT NULL
+BEGIN
+  IF DATABASE_PRINCIPAL_ID(N'dbms_student') IS NULL CREATE USER [dbms_student] FOR LOGIN [dbms_student];
+  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_student')) ALTER ROLE APP_RUNTIME ADD MEMBER [dbms_student]; IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'SINH_VIEN') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_student')) ALTER ROLE SINH_VIEN ADD MEMBER [dbms_student];
+END;
+IF SUSER_ID(N'dbms_lecturer') IS NOT NULL
+BEGIN
+  IF DATABASE_PRINCIPAL_ID(N'dbms_lecturer') IS NULL CREATE USER [dbms_lecturer] FOR LOGIN [dbms_lecturer];
+  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_lecturer')) ALTER ROLE APP_RUNTIME ADD MEMBER [dbms_lecturer]; IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'GIANG_VIEN') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_lecturer')) ALTER ROLE GIANG_VIEN ADD MEMBER [dbms_lecturer];
+END;
+IF SUSER_ID(N'dbms_training') IS NOT NULL
+BEGIN
+  IF DATABASE_PRINCIPAL_ID(N'dbms_training') IS NULL CREATE USER [dbms_training] FOR LOGIN [dbms_training];
+  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_training')) ALTER ROLE APP_RUNTIME ADD MEMBER [dbms_training]; IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'DAO_TAO') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_training')) ALTER ROLE DAO_TAO ADD MEMBER [dbms_training];
+END;
+IF SUSER_ID(N'dbms_admin') IS NOT NULL
+BEGIN
+  IF DATABASE_PRINCIPAL_ID(N'dbms_admin') IS NULL CREATE USER [dbms_admin] FOR LOGIN [dbms_admin];
+  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_admin')) ALTER ROLE APP_RUNTIME ADD MEMBER [dbms_admin]; IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'QUAN_TRI') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_admin')) ALTER ROLE QUAN_TRI ADD MEMBER [dbms_admin];
+END;
+GO
+-- Authentication boundary: password hash is returned only through this role's procedures.
+GRANT EXECUTE ON dbo.SP_App_Auth_FindByUsername TO APP_AUTH;
+GRANT EXECUTE ON dbo.SP_App_Auth_FindById TO APP_AUTH;
+GRANT EXECUTE ON dbo.SP_App_Auth_UpdateLastLogin TO APP_AUTH;
+GO
+-- Shared catalog reads and role-scoped CRUD procedures.
+GRANT EXECUTE ON dbo.SP_App_Faculty_List TO SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Faculty_ListMajors TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Major_List TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Faculty_Create TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Faculty_Update TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Faculty_DeleteFaculty TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Major_Create TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Major_Update TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Major_Delete TO DAO_TAO, QUAN_TRI;
+GO
+
+GO
+GRANT EXECUTE ON dbo.SP_App_Course_DefaultOpenSemester TO SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Course_ListAvailable TO SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Semester_List TO SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Semester_Current TO SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Class_CreateHomeroom TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Class_UpdateHomeroom TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Class_DeleteHomeroom TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Class_ListHomerooms TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Class_GetHomeroom TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Registration_GetById TO SINH_VIEN;
+GRANT EXECUTE ON dbo.SP_App_Registration_ListStudent TO SINH_VIEN;
+GRANT EXECUTE ON dbo.SP_App_Lecturer_Schedule TO GIANG_VIEN;
+GRANT EXECUTE ON dbo.SP_App_Lecturer_Classes TO GIANG_VIEN;
+GRANT EXECUTE ON dbo.SP_App_Lecturer_ClassStudents TO GIANG_VIEN;
+GRANT EXECUTE ON dbo.SP_App_Lecturer_IsAssigned TO GIANG_VIEN;
+GRANT EXECUTE ON dbo.SP_App_Lecturer_UpdateClassGrades TO GIANG_VIEN;
+GO
+
+GO
+GRANT EXECUTE ON dbo.SP_App_Student_Schedule TO SINH_VIEN, DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Student_Grades TO SINH_VIEN, DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Student_Tuition TO SINH_VIEN, DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Student_PaymentHistory TO SINH_VIEN, DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Student_Profile TO SINH_VIEN, DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Student_Curriculum TO SINH_VIEN, DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Tuition_CreatePayment TO SINH_VIEN, DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Tuition_PendingPayments TO DAO_TAO, QUAN_TRI;
+GO
+
+GO
+GRANT EXECUTE ON dbo.SP_App_Admin_Course_List TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Course_Create TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Course_Update TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Course_Delete TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_CurriculumCourse_Create TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_CurriculumCourse_Update TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_CurriculumCourse_Delete TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Class_Create TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Class_Update TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Class_Delete TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Class_Get TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_LecturerOptions TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_ClassSchedule_Create TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_ClassSchedule_Update TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_ClassSchedule_Delete TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Users_List TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_UserStatus TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Dashboard TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Students_List TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Classes_List TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Registrations_List TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_AuditLogs TO QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Student_Create TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Student_Update TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Student_Delete TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_Curriculums_List TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_CurriculumOptions TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_CurriculumPrograms_List TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_CurriculumProgram_Get TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_CurriculumProgram_Create TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_CurriculumProgram_Update TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Admin_CurriculumProgram_Delete TO DAO_TAO, QUAN_TRI;
+GO
+-- Request handlers now use role-scoped procedures; remove legacy direct reads from web roles.
+REVOKE SELECT ON dbo.V_ThoiKhoaBieuSinhVien FROM SINH_VIEN, DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.V_BangDiemChiTiet FROM SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.V_CauTrucChuongTrinhDAOTAO FROM SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.V_TaiKhoanNguoiDung FROM DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.V_HocPhiSinhVien FROM DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.KHOA FROM DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.NGANH FROM DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.CHUONGTRINHDAOTAO FROM DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.MONHOC FROM DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.CTDT_MONHOC FROM DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.MONHOCTIENQUYET FROM DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.SINHVIEN FROM DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.GIANGVIEN FROM DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.HOCKY FROM DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.LOPHOCPHAN FROM DAO_TAO, QUAN_TRI;
+REVOKE SELECT ON dbo.LICHHOC FROM DAO_TAO, QUAN_TRI;
+REVOKE EXECUTE ON dbo.SP_DangKyTinChi FROM SINH_VIEN, QUAN_TRI;
+REVOKE EXECUTE ON dbo.SP_HuyDangKy FROM SINH_VIEN, QUAN_TRI;
+REVOKE EXECUTE ON dbo.SP_XacNhanThanhToan FROM DAO_TAO, QUAN_TRI;
+REVOKE EXECUTE ON dbo.SP_TuChoiThanhToan FROM DAO_TAO, QUAN_TRI;
+REVOKE EXECUTE ON dbo.SP_TinhHocPhiSinhVien FROM DAO_TAO, QUAN_TRI;
+REVOKE EXECUTE ON dbo.SP_KhoaTaiKhoan FROM DAO_TAO, QUAN_TRI;
+REVOKE EXECUTE ON dbo.SP_TaoTaiKhoan FROM DAO_TAO, QUAN_TRI;
+GO
+GRANT EXECUTE ON dbo.SP_App_Registration_Create TO SINH_VIEN;
+GRANT EXECUTE ON dbo.SP_App_Registration_Cancel TO SINH_VIEN;
+GRANT EXECUTE ON dbo.SP_App_Tuition_ConfirmPayment TO DAO_TAO, QUAN_TRI;
+GRANT EXECUTE ON dbo.SP_App_Tuition_RejectPayment TO DAO_TAO, QUAN_TRI;
+GO
+GO

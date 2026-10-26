@@ -1,6 +1,6 @@
-﻿const requestAs = require('./helpers/tokens').requestAs;
+const requestAs = require('./helpers/tokens').requestAs;
 const app = require('../src/app');
-const { getPool, closePool, sql } = require('../src/config/db');
+const { getFixturePool, closePool, sql } = require('../src/config/db');
 
 describe('Lecturer Grade Management APIs', () => {
   let pool;
@@ -10,7 +10,7 @@ describe('Lecturer Grade Management APIs', () => {
   const maDangKys = [];
 
   beforeAll(async () => {
-    pool = await getPool();
+    pool = await getFixturePool();
     for (let index = 0; index < 2; index++) {
       const created = await requestAs(app, 'admin').post('/api/admin/students').send({
         maSinhVien: `${maSinhVienPrefix}${index}`,

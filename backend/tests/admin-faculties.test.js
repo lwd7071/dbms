@@ -1,12 +1,12 @@
 const request = require('supertest');
 const app = require('../src/app');
 const { requestAs } = require('./helpers/tokens');
-const { getPool, sql, closePool } = require('../src/config/db');
+const { getFixturePool, sql, closePool } = require('../src/config/db');
 
 const testFacultyCode = `TST${Date.now().toString(36).slice(-6)}`;
 
 beforeAll(async () => {
-  const pool = await getPool();
+  const pool = await getFixturePool();
   await pool.request()
     .input('MaKhoa', sql.VarChar(10), testFacultyCode)
     .input('TenKhoa', sql.NVarChar(100), 'Khoa thử nghiệm ngừng hoạt động')
@@ -18,7 +18,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   try {
-    const pool = await getPool();
+    const pool = await getFixturePool();
     await pool.request().input('MaKhoa', sql.VarChar(10), testFacultyCode)
       .query('DELETE FROM dbo.KHOA WHERE MaKhoa = @MaKhoa');
   } finally {

@@ -1,7 +1,7 @@
 const request = require('supertest');
 const app = require('../src/app');
 const { requestAs } = require('./helpers/tokens');
-const { getPool, sql, closePool } = require('../src/config/db');
+const { getFixturePool, sql, closePool } = require('../src/config/db');
 
 const suffix = Date.now().toString(36).slice(-6).toUpperCase();
 const facultyCode = `F${suffix}`;
@@ -12,7 +12,7 @@ const curriculumCode = `CTDT_${suffix}`;
 
 afterAll(async () => {
   try {
-    const pool = await getPool();
+    const pool = await getFixturePool();
     await pool.request().input('curriculum', sql.VarChar(24), curriculumCode).query('DELETE dbo.CHUONGTRINHDAOTAO WHERE MaCTDT=@curriculum');
     await requestAs(app, 'training').delete(`/api/admin/homeroom-classes/${classCode}`);
     await requestAs(app, 'training').delete(`/api/admin/majors/${majorCode}`);
@@ -69,7 +69,7 @@ describe('admin faculty and major CRUD', () => {
   });
 
   it('blocks deleting a major referenced by a curriculum and allows it after unlinking', async () => {
-    const pool = await getPool();
+    const pool = await getFixturePool();
     await pool.request().input('curriculum', sql.VarChar(24), curriculumCode)
       .input('major', sql.VarChar(10), majorCode).input('name', sql.NVarChar(150), `CTĐT test ${suffix}`)
       .query(`INSERT dbo.CHUONGTRINHDAOTAO (MaCTDT,MaNganh,TenCTDT,KhoaHoc,NamTuyenSinh,TongTinChiYeuCau,ThoiGianDaoTao,TrangThai)

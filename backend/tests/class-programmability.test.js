@@ -1,14 +1,14 @@
 const request = require('supertest');
 const app = require('../src/app');
 const { requestAs } = require('./helpers/tokens');
-const { getPool, closePool, sql } = require('../src/config/db');
+const { getFixturePool, closePool, sql } = require('../src/config/db');
 
 describe('Administrative Class Programmability TDD (Views, Functions, Triggers, SP)', () => {
   let pool;
   let tokenDaoTao;
 
   beforeAll(async () => {
-    pool = await getPool();
+    pool = await getFixturePool();
 
     // Lấy token vai trò DAO_TAO
     const resLogin = await requestAs(app, "training", 1)

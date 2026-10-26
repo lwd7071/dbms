@@ -10,9 +10,9 @@ const isReadableVietnameseMessage = message => /[ăâđêôơưáàảãạấ�
  */
 const errorHandler = (err, req, res, next) => {
   // Nếu lỗi đến từ SQL Server
-  if (err.number) {
+  if (err.number || err.code) {
     const mapped = mapSqlError(err, req.context || '');
-    if (mapped.status >= 500) {
+    if (mapped.status >= 500 || err.number === 229 || err.number === 230) {
       console.error('💥 SQL Server Internal Error:', err);
     }
     return res.status(mapped.status).json(errorResponse({

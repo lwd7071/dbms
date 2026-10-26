@@ -1,7 +1,7 @@
 const app = require('../src/app');
 const request = require('supertest');
 const { requestAs } = require('./helpers/tokens');
-const { getPool, closePool, sql } = require('../src/config/db');
+const { getFixturePool, closePool, sql } = require('../src/config/db');
 const suffix = Date.now().toString(36).slice(-6).toUpperCase();
 const programCode = `CTDT_${suffix}`;
 const deletionProgramCode = `DEL_${suffix}`;
@@ -12,7 +12,7 @@ let deletionProgramCreated = false;
 afterAll(async () => {
   try {
     if (programCreated || deletionProgramCreated) {
-      const pool = await getPool();
+      const pool = await getFixturePool();
       await pool.request().input('id', sql.VarChar(24), programCode).input('deleteId', sql.VarChar(24), deletionProgramCode)
         .query('DELETE dbo.CTDT_MONHOC WHERE MaCTDT IN (@id,@deleteId); DELETE dbo.CHUONGTRINHDAOTAO WHERE MaCTDT IN (@id,@deleteId);');
     }
@@ -141,7 +141,7 @@ describe('Admin curriculum program CRUD', () => {
     });
     expect(created.status).toBe(201);
     deletionProgramCreated = true;
-    const pool = await getPool();
+    const pool = await getFixturePool();
     await pool.request().input('id', sql.VarChar(24), deletionProgramCode)
       .query("INSERT dbo.CTDT_MONHOC (MaCTDT,MaMonHoc,HocKyDuKien,LoaiMon,ThuTu) VALUES (@id,'NMLT',1,'BAT_BUOC',1)");
 

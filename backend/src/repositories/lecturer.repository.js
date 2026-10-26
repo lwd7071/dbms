@@ -7,210 +7,44 @@ const { getPool, sql } = require('../config/db');
 // Lấy lịch dạy theo tuần của Giảng viên
 const getLecturerSchedule = async (maGV, maHocKy = null) => {
   const pool = await getPool();
-  const request = pool.request();
-  request.input('MaGV', sql.Int, maGV);
-
-  let query = `
-    SELECT 
-      lhp.MaLHP,
-      lhp.TenLHP,
-      lhp.MaMonHoc,
-      mh.TenMonHoc,
-      mh.SoTinChi,
-      hk.MaHocKy,
-      hk.NamHoc,
-      hk.TenHocKy,
-      lh.MaLichHoc,
-      lh.Thu,
-      lh.TietBatDau,
-      lh.SoTiet,
-      lh.PhongHoc
-    FROM dbo.LOPHOCPHAN lhp
-    INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc = mh.MaMonHoc
-    INNER JOIN dbo.HOCKY hk ON lhp.MaHocKy = hk.MaHocKy
-    INNER JOIN dbo.LICHHOC lh ON lhp.MaLHP = lh.MaLHP
-    WHERE lhp.MaGiangVien = @MaGV
-  `;
-
-  if (maHocKy) {
-    query += ` AND lhp.MaHocKy = @MaHocKy`;
-    request.input('MaHocKy', sql.Int, maHocKy);
-  }
-
-  query += ` ORDER BY lh.Thu, lh.TietBatDau`;
-  const result = await request.query(query);
-
-  return result.recordset.map(r => ({
-    maLHP: r.MaLHP,
-    tenLHP: r.TenLHP,
-    maMonHoc: r.MaMonHoc,
-    tenMonHoc: r.TenMonHoc,
-    soTinChi: r.SoTinChi,
-    maHocKy: r.MaHocKy,
-    namHoc: r.NamHoc,
-    tenHocKy: r.TenHocKy,
-    thu: r.Thu,
-    tietBatDau: r.TietBatDau,
-    soTiet: r.SoTiet,
-    phongHoc: r.PhongHoc
-  }));
+  const result = await pool.request().input('MaGV', sql.Int, maGV).input('MaHocKy', sql.Int, maHocKy)
+    .execute('dbo.SP_App_Lecturer_Schedule');
+  return result.recordset.map(r => ({ maLHP:r.MaLHP,tenLHP:r.TenLHP,maMonHoc:r.MaMonHoc,tenMonHoc:r.TenMonHoc,soTinChi:r.SoTinChi,
+    maHocKy:r.MaHocKy,namHoc:r.NamHoc,tenHocKy:r.TenHocKy,thu:r.Thu,tietBatDau:r.TietBatDau,soTiet:r.SoTiet,phongHoc:r.PhongHoc }));
 };
-
-// Lấy danh sách các lớp học phần do Giảng viên phụ trách kèm sĩ số thực tế
-const getLecturerClasses = async (maGV) => {
+const getLecturerClasses = async maGV => {
   const pool = await getPool();
-  const result = await pool
-    .request()
-    .input('MaGV', sql.Int, maGV)
-    .query(`
-      SELECT 
-        lhp.MaLHP,
-        lhp.TenLHP,
-        lhp.MaMonHoc,
-        mh.TenMonHoc,
-        mh.SoTinChi,
-        hk.TenHocKy,
-        hk.NamHoc,
-        lhp.SoLuongToiDa,
-        ISNULL(dk.SiSoHienTai, 0) AS SiSoHienTai,
-        lhp.TrangThai
-      FROM dbo.LOPHOCPHAN lhp
-      INNER JOIN dbo.MONHOC mh ON lhp.MaMonHoc = mh.MaMonHoc
-      INNER JOIN dbo.HOCKY hk ON lhp.MaHocKy = hk.MaHocKy
-      OUTER APPLY (
-        SELECT COUNT(*) AS SiSoHienTai
-        FROM dbo.DANGKYTINCHI d
-        WHERE d.MaLHP = lhp.MaLHP AND d.TrangThai = 'REGISTERED'
-      ) dk
-      WHERE lhp.MaGiangVien = @MaGV
-      ORDER BY hk.MaHocKy DESC, lhp.MaLHP ASC;
-    `);
-
-  return result.recordset.map(r => ({
-    maLHP: r.MaLHP,
-    tenLHP: r.TenLHP,
-    maMonHoc: r.MaMonHoc,
-    tenMonHoc: r.TenMonHoc,
-    soTinChi: r.SoTinChi,
-    tenHocKy: r.TenHocKy,
-    namHoc: r.NamHoc,
-    soLuongToiDa: r.SoLuongToiDa,
-    siSoHienTai: r.SiSoHienTai,
-    trangThai: r.TrangThai
-  }));
+  const result = await pool.request().input('MaGV', sql.Int, maGV).execute('dbo.SP_App_Lecturer_Classes');
+  return result.recordset.map(r => ({ maLHP:r.MaLHP,tenLHP:r.TenLHP,maMonHoc:r.MaMonHoc,tenMonHoc:r.TenMonHoc,soTinChi:r.SoTinChi,
+    tenHocKy:r.TenHocKy,namHoc:r.NamHoc,soLuongToiDa:r.SoLuongToiDa,siSoHienTai:r.SiSoHienTai,trangThai:r.TrangThai }));
 };
-
-// Lấy danh sách sinh viên và điểm trong một lớp học phần
-const getClassStudents = async (maLHP) => {
+const getClassStudents = async maLHP => {
   const pool = await getPool();
-  const result = await pool
-    .request()
-    .input('MaLHP', sql.VarChar(30), maLHP)
-    .query(`
-      SELECT 
-        dk.MaDangKy,
-        sv.MaSV,
-        sv.MaSinhVien,
-        sv.HoTen AS HoTenSinhVien,
-        COALESCE(l.TenLop, sv.MaLop) AS LopHoc,
-        sv.MaLop,
-        bd.DiemQuaTrinh,
-        bd.DiemGiuaKy,
-        bd.DiemCuoiKy,
-        bd.DiemTongKet,
-        bd.DiemChu,
-        bd.KetQua
-      FROM dbo.DANGKYTINCHI dk
-      INNER JOIN dbo.SINHVIEN sv ON dk.MaSV = sv.MaSV
-      LEFT JOIN dbo.LOP l ON sv.MaLop = l.MaLop
-      LEFT JOIN dbo.V_BangDiemChiTiet bd ON bd.MaDangKy = dk.MaDangKy
-      WHERE dk.MaLHP = @MaLHP AND dk.TrangThai = 'REGISTERED'
-      ORDER BY sv.MaSinhVien ASC;
-    `);
-
-  return result.recordset.map(r => ({
-    maDangKy: Number(r.MaDangKy),
-    maSV: r.MaSV,
-    maSinhVien: r.MaSinhVien,
-    hoTen: r.HoTenSinhVien,
-    lopHoc: r.LopHoc || r.maLop || '',
-    maLop: r.MaLop,
-    diemQuaTrinh: r.DiemQuaTrinh !== null ? Number(r.DiemQuaTrinh) : null,
-    diemGiuaKy: r.DiemGiuaKy !== null ? Number(r.DiemGiuaKy) : null,
-    diemCuoiKy: r.DiemCuoiKy !== null ? Number(r.DiemCuoiKy) : null,
-    diemTongKet: r.DiemTongKet !== null ? Number(r.DiemTongKet) : null,
-    diemChu: r.DiemChu,
-    ketQua: r.KetQua
-  }));
+  const result = await pool.request().input('MaLHP', sql.VarChar(30), maLHP).execute('dbo.SP_App_Lecturer_ClassStudents');
+  return result.recordset.map(r => ({ maDangKy:Number(r.MaDangKy),maSV:r.MaSV,maSinhVien:r.MaSinhVien,hoTen:r.HoTenSinhVien,
+    lopHoc:r.LopHoc||r.maLop||'',maLop:r.MaLop,diemQuaTrinh:r.DiemQuaTrinh!==null?Number(r.DiemQuaTrinh):null,
+    diemGiuaKy:r.DiemGiuaKy!==null?Number(r.DiemGiuaKy):null,diemCuoiKy:r.DiemCuoiKy!==null?Number(r.DiemCuoiKy):null,
+    diemTongKet:r.DiemTongKet!==null?Number(r.DiemTongKet):null,diemChu:r.DiemChu,ketQua:r.KetQua }));
 };
-
 const isLecturerAssignedToClass = async (maGV, maLHP) => {
   const pool = await getPool();
-  const result = await pool.request()
-    .input('MaGV', sql.Int, Number(maGV))
-    .input('MaLHP', sql.VarChar(30), maLHP)
-    .query(`
-      SELECT 1 AS Assigned
-      FROM dbo.LOPHOCPHAN
-      WHERE MaLHP = @MaLHP AND MaGiangVien = @MaGV;
-    `);
-  return result.recordset.length > 0;
+  const result = await pool.request().input('MaGV',sql.Int,Number(maGV)).input('MaLHP',sql.VarChar(30),maLHP)
+    .execute('dbo.SP_App_Lecturer_IsAssigned');
+  return Boolean(result.recordset[0]?.Assigned);
 };
 
 // Cập nhật điểm cho sinh viên trong lớp học phần (UPSERT vào bảng DIEMSO)
-const updateClassGrades = async (maLHP, grades) => {
+const updateClassGrades = async (maLHP, grades, actorMaTaiKhoan) => {
   const pool = await getPool();
-  const transaction = new sql.Transaction(pool);
-  await transaction.begin();
-
-  try {
-    let updatedCount = 0;
-    for (const g of grades) {
-      const request = new sql.Request(transaction);
-      request.input('MaDangKy', sql.BigInt, g.maDangKy);
-      request.input('MaLHP', sql.VarChar(30), maLHP);
-      request.input('HasDiemQuaTrinh', sql.Bit, g.diemQuaTrinh !== undefined);
-      request.input('HasDiemGiuaKy', sql.Bit, g.diemGiuaKy !== undefined);
-      request.input('HasDiemCuoiKy', sql.Bit, g.diemCuoiKy !== undefined);
-      request.input('DiemQuaTrinh', sql.Decimal(4, 2), g.diemQuaTrinh !== undefined ? g.diemQuaTrinh : null);
-      request.input('DiemGiuaKy', sql.Decimal(4, 2), g.diemGiuaKy !== undefined ? g.diemGiuaKy : null);
-      request.input('DiemCuoiKy', sql.Decimal(4, 2), g.diemCuoiKy !== undefined ? g.diemCuoiKy : null);
-
-      await request.query(`
-        IF NOT EXISTS (
-          SELECT 1
-          FROM dbo.DANGKYTINCHI
-          WHERE MaDangKy = @MaDangKy
-            AND MaLHP = @MaLHP
-            AND TrangThai = 'REGISTERED'
-        )
-        BEGIN
-          THROW 50030, 'Mã đăng ký không thuộc lớp học phần này hoặc không còn hiệu lực.', 1;
-        END
-
-        IF EXISTS (SELECT 1 FROM dbo.DIEMSO WHERE MaDangKy = @MaDangKy)
-        BEGIN
-          UPDATE dbo.DIEMSO
-          SET DiemQuaTrinh = CASE WHEN @HasDiemQuaTrinh = 1 THEN @DiemQuaTrinh ELSE DiemQuaTrinh END,
-              DiemGiuaKy = CASE WHEN @HasDiemGiuaKy = 1 THEN @DiemGiuaKy ELSE DiemGiuaKy END,
-              DiemCuoiKy = CASE WHEN @HasDiemCuoiKy = 1 THEN @DiemCuoiKy ELSE DiemCuoiKy END
-          WHERE MaDangKy = @MaDangKy;
-        END
-        ELSE
-        BEGIN
-          INSERT INTO dbo.DIEMSO (MaDangKy, DiemQuaTrinh, DiemGiuaKy, DiemCuoiKy, TyTrongQT, TyTrongGK, TyTrongCK)
-          VALUES (@MaDangKy, @DiemQuaTrinh, @DiemGiuaKy, @DiemCuoiKy, 20, 30, 50);
-        END
-      `);
-      updatedCount++;
-    }
-
-    await transaction.commit();
-    return { updatedCount };
-  } catch (err) {
-    await transaction.rollback();
-    throw err;
-  }
+  const gradesJson = JSON.stringify(grades.map(g => ({
+    maDangKy:g.maDangKy, hasDiemQuaTrinh:g.diemQuaTrinh!==undefined, diemQuaTrinh:g.diemQuaTrinh??null,
+    hasDiemGiuaKy:g.diemGiuaKy!==undefined, diemGiuaKy:g.diemGiuaKy??null,
+    hasDiemCuoiKy:g.diemCuoiKy!==undefined, diemCuoiKy:g.diemCuoiKy??null
+  })));
+  const result = await pool.request().input('MaLHP',sql.VarChar(30),maLHP)
+    .input('GradesJson',sql.NVarChar(sql.MAX),gradesJson).input('ActorMaTaiKhoan',sql.Int,actorMaTaiKhoan)
+    .execute('dbo.SP_App_Lecturer_UpdateClassGrades');
+  return { updatedCount: result.recordset[0]?.updatedCount || 0 };
 };
 
 module.exports = {

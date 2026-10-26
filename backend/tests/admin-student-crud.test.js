@@ -1,7 +1,7 @@
-﻿const request = require('supertest');
+const request = require('supertest');
 const app = require('../src/app');
 const { requestAs } = require('./helpers/tokens');
-const { getPool, closePool, sql } = require('../src/config/db');
+const { getFixturePool, closePool, sql } = require('../src/config/db');
 
 describe('Admin Student CRUD APIs (/api/admin/students)', () => {
   let pool;
@@ -10,7 +10,7 @@ describe('Admin Student CRUD APIs (/api/admin/students)', () => {
   let duplicateMaSV = null;
 
   beforeAll(async () => {
-    pool = await getPool();
+    pool = await getFixturePool();
   });
 
   afterAll(async () => {

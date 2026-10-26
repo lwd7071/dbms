@@ -1,7 +1,7 @@
-const { getPool } = require('../src/config/db');
+const { getMaintenancePool } = require('../src/config/db');
 
 async function migratePaymentConfirmation() {
-  const pool = await getPool();
+  const pool = await getMaintenancePool();
 
   console.log('--- BẮT ĐẦU MIGRATION XÁC NHẬN THANH TOÁN ---');
 

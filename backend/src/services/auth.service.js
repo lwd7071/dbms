@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const authRepo = require('../repositories/auth.repository');
+const { getAuthPool } = require('../config/db');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -8,8 +9,9 @@ const JWT_SECRET = process.env.JWT_SECRET;
  * Service xử lý nghiệp vụ xác thực đăng nhập
  */
 const login = async (username, password) => {
+  const pool = await getAuthPool();
   // 1. Tìm tài khoản trong CSDL
-  const account = await authRepo.findByUsername(username);
+  const account = await authRepo.findByUsername(username, pool);
   if (!account) {
     const error = new Error('Tên đăng nhập hoặc mật khẩu không chính xác.');
     error.status = 401;
@@ -35,7 +37,7 @@ const login = async (username, password) => {
   }
 
   // 4. Cập nhật thời điểm đăng nhập cuối
-  await authRepo.updateLastLogin(account.MaTaiKhoan);
+  await authRepo.updateLastLogin(account.MaTaiKhoan, pool);
 
   // 5. Chuẩn bị payload thông tin người dùng
   const userPayload = {

@@ -15,7 +15,8 @@ const createPayment = async (req, res, next) => {
       maHocPhi,
       soTien,
       phuongThuc,
-      ownerMaSV: req.user.vaiTro === 'SINH_VIEN' ? req.user.maSV : null
+      ownerMaSV: req.user.vaiTro === 'SINH_VIEN' ? req.user.maSV : null,
+      actorMaTaiKhoan: req.user.maTaiKhoan
     });
 
     return res.status(201).json(
@@ -31,8 +32,7 @@ const confirmPayment = async (req, res, next) => {
   try {
     req.context = 'PAYMENT';
     const { id } = req.params;
-    // Lấy mã tài khoản từ token đã được decode bởi middleware
-    const maTaiKhoan = req.user ? req.user.maTaiKhoan : (req.body.maTaiKhoanXacNhan || 1);
+    const maTaiKhoan = req.user.maTaiKhoan;
 
     const result = await tuitionService.confirmPayment(id, maTaiKhoan);
 
@@ -49,7 +49,7 @@ const rejectPayment = async (req, res, next) => {
   try {
     req.context = 'PAYMENT';
     const { id } = req.params;
-    const maTaiKhoan = req.user ? req.user.maTaiKhoan : (req.body.maTaiKhoanXacNhan || 1);
+    const maTaiKhoan = req.user.maTaiKhoan;
 
     const result = await tuitionService.rejectPayment(id, maTaiKhoan);
 

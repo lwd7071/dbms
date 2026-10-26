@@ -1,5 +1,5 @@
-﻿const app = require('../src/app');
-const { closePool, getPool } = require('../src/config/db');
+const app = require('../src/app');
+const { closePool, getFixturePool } = require('../src/config/db');
 const { requestAs } = require('./helpers/tokens');
 const { createStudentAccount, cleanupStudentAccount } = require('./helpers/student-account');
 
@@ -9,7 +9,7 @@ describe('Admin account status API', () => {
   let testAccount;
 
   beforeAll(async () => {
-    pool = await getPool();
+    pool = await getFixturePool();
     student = await requestAs(app, 'admin').post('/api/admin/students').send({
       maSinhVien: `STA${Date.now()}`,
       hoTen: 'Sinh viên kiểm thử trạng thái',

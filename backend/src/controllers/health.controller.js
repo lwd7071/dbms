@@ -1,5 +1,5 @@
 const { successResponse } = require('../utils/apiResponse');
-const { getPool } = require('../config/db');
+const { getAuthPool } = require('../config/db');
 
 /**
  * Controller kiểm tra trạng thái hoạt động của hệ thống
@@ -18,7 +18,7 @@ const getAppHealth = (req, res) => {
 // Slice 2: Kiểm tra kết nối mssql Connection Pool đến SQL Server
 const getDbHealth = async (req, res, next) => {
   try {
-    const pool = await getPool();
+    const pool = await getAuthPool();
     const result = await pool.request().query('SELECT @@VERSION AS ServerVersion, DB_NAME() AS CurrentDatabase');
 
     return res.status(200).json(

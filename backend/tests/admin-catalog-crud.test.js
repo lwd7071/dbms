@@ -1,6 +1,6 @@
-﻿const app = require('../src/app');
+const app = require('../src/app');
 const { requestAs } = require('./helpers/tokens');
-const { getPool, closePool, sql } = require('../src/config/db');
+const { getFixturePool, closePool, sql } = require('../src/config/db');
 
 describe('Admin catalog CRUD', () => {
   const suffix = String(Date.now()).slice(-8);
@@ -10,7 +10,7 @@ describe('Admin catalog CRUD', () => {
   let courseCreated = false;
   let classCreated = false;
 
-  beforeAll(async () => { pool = await getPool(); });
+  beforeAll(async () => { pool = await getFixturePool(); });
   afterAll(async () => {
     if (classCreated) await pool.request().input('id', sql.VarChar(20), classId).query('DELETE dbo.LOPHOCPHAN WHERE MaLHP=@id');
     if (courseCreated) await pool.request().input('id', sql.VarChar(15), courseId).query('DELETE dbo.MONHOC WHERE MaMonHoc=@id');

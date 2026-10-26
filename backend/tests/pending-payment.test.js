@@ -1,5 +1,5 @@
 const app = require('../src/app');
-const { closePool, getPool, sql } = require('../src/config/db');
+const { closePool, getFixturePool, sql } = require('../src/config/db');
 const { requestAs } = require('./helpers/tokens');
 const { createTuitionFixture } = require('./helpers/tuition-fixture');
 
@@ -57,7 +57,7 @@ describe('Anti-spam pending payment flow', () => {
       ]);
 
       expect(responses.map(response => response.status).sort()).toEqual([201, 409]);
-      const pool = await getPool();
+      const pool = await getFixturePool();
       const result = await pool.request()
         .input('MaHocPhi', sql.Int, raceFixture.maHocPhi)
         .query("SELECT COUNT(*) AS PendingCount FROM dbo.CHITIETTHANHTOAN WHERE MaHocPhi = @MaHocPhi AND TrangThai = 'CHO_XAC_NHAN'");

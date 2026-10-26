@@ -1,6 +1,6 @@
 const requestAs = require('./helpers/tokens').requestAs;
 const app = require('../src/app');
-const { getPool, closePool, sql } = require('../src/config/db');
+const { getFixturePool, closePool, sql } = require('../src/config/db');
 const { createTuitionFixture } = require('./helpers/tuition-fixture');
 
 describe('Payment confirmation, RBAC, and tuition totals', () => {
@@ -15,7 +15,7 @@ describe('Payment confirmation, RBAC, and tuition totals', () => {
   let rejectedPaymentId;
 
   beforeAll(async () => {
-    pool = await getPool();
+    pool = await getFixturePool();
     partialFixture = await createTuitionFixture({ total: 8550000, paid: 4275000 });
     unpaidFixture = await createTuitionFixture({ total: 8640000 });
     multiFixture = await createTuitionFixture({ total: 7800000 });

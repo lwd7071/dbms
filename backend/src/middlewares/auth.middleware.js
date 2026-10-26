@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { errorResponse } = require('../utils/apiResponse');
 const authRepo = require('../repositories/auth.repository');
+const { getAuthPool, getRolePool, runWithRequestPool } = require('../config/db');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -38,7 +39,8 @@ const verifyToken = async (req, res, next) => {
     }));
   }
 
-  const account = await authRepo.findById(decoded.maTaiKhoan);
+  const authPool = await getAuthPool();
+  const account = await authRepo.findById(decoded.maTaiKhoan, authPool);
   if (!account || account.TrangThai !== 'ACTIVE') {
     return res.status(401).json(errorResponse({
       field: 'taiKhoan',
@@ -46,6 +48,8 @@ const verifyToken = async (req, res, next) => {
     }));
   }
 
+  const rolePool = await getRolePool(account.VaiTro);
+  req.dbPool = rolePool;
   req.user = {
     maTaiKhoan: account.MaTaiKhoan,
     username: account.Username,
@@ -59,7 +63,7 @@ const verifyToken = async (req, res, next) => {
     tenLop: account.TenLopSV || null,
     hoTen: account.HoTenSinhVien || account.HoTenGiangVien || account.Username
   };
-  return next();
+  return runWithRequestPool(rolePool, req.user, next);
 };
 
 /**

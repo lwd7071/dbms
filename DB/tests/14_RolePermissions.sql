@@ -1,4 +1,4 @@
-﻿USE [DBMS330284];
+USE [DBMS330284];
 GO
 SET NOCOUNT ON;
 DECLARE @Passed int = 0;
@@ -31,7 +31,6 @@ EXECUTE AS USER = 'dbms_test_lecturer';
 SELECT TOP (0) MaDangKy FROM dbo.V_BangDiemChiTiet;
 REVERT;
 EXECUTE AS USER = 'dbms_test_runtime';
-SELECT TOP (0) MaHocPhi FROM dbo.V_HocPhiSinhVien;
 BEGIN TRY
     SELECT TOP (0) Username FROM dbo.TAIKHOAN;
     REVERT;

@@ -50,7 +50,7 @@ const updateGrades = async (req, res, next) => {
   try {
     const { maLHP } = req.params;
     const { grades } = req.body;
-    const result = await lecturerService.updateGrades(maLHP, req.user.maGV, grades);
+    const result = await lecturerService.updateGrades(maLHP, req.user.maGV, grades, req.user.maTaiKhoan);
     return res.status(200).json(successResponse(result));
   } catch (err) {
     next(err);

@@ -1,6 +1,6 @@
 const app = require('../src/app');
 const { requestAs } = require('./helpers/tokens');
-const { getPool, closePool, sql } = require('../src/config/db');
+const { getFixturePool, closePool, sql } = require('../src/config/db');
 
 describe('Admin class schedule management', () => {
   const suffix = String(Date.now()).slice(-7);
@@ -11,7 +11,7 @@ describe('Admin class schedule management', () => {
   let classesCreated = [];
 
   beforeAll(async () => {
-    pool = await getPool();
+    pool = await getFixturePool();
     const semester = await pool.request().query('SELECT TOP (1) MaHocKy FROM dbo.HOCKY ORDER BY MaHocKy');
     semesterId = semester.recordset[0].MaHocKy;
   });

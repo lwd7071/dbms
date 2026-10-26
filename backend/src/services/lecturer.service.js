@@ -25,9 +25,9 @@ const getClassStudents = async (maLHP, maGV) => {
   return await lecturerRepo.getClassStudents(maLHP);
 };
 
-const updateGrades = async (maLHP, maGV, grades) => {
+const updateGrades = async (maLHP, maGV, grades, actorMaTaiKhoan) => {
   await assertLecturerOwnsClass(maGV, maLHP);
-  return await lecturerRepo.updateClassGrades(maLHP, grades);
+  return await lecturerRepo.updateClassGrades(maLHP, grades, actorMaTaiKhoan);
 };
 
 module.exports = {

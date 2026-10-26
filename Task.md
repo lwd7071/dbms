@@ -2763,3 +2763,11 @@
 
 ### Next Step
 - Không có.
+
+
+## 2026-10-27 — Backend role-scoped SQL
+- Backend HTTP requests authenticate through `dbms_app`; after DB-backed account lookup, each request uses the SQL pool for exactly the current account role. Pool identity/membership is validated at startup, and no elevated fallback pool exists.
+- Repositories now use stored procedures for application data access; health/version check is the only direct query. Consolidated backend API procedures into `DB/08_StoredProcedures.sql`; role-scoped EXECUTE grants, audit actor context for authentication, registration/cancellation, grades, payments, account status, curriculum and homeroom-class writes; removed legacy direct SELECT and unsafe direct EXECUTE grants from role accounts.
+- Admin 403/503 form handling preserves entered data and failed-delete rows. Runner/migration use maintenance credentials and refuse production migration without explicit verified-backup flag. Fixture SQL access is restricted to isolated test/demo database names.
+- Local verification: 6 Jest suites / 75 tests PASS (including browser DOM behavior); all backend JavaScript passes `node --check`; procedure-call/definition/grant and standalone-build audits pass. SQL-backed suites were attempted and refused the configured non-isolated DB as intended.
+- SQL/API/UI integration acceptance remains unverified: the SQL socket probe failed with `ESOCKET`; current environment has no DB_MAINT, DB_TEST or four role-login credentials. No migration or live database mutation was run. Operational completion requires provisioning these least-privilege SQL logins and rehearsal credentials, then running runner action `security` and SQL/API/`EXECUTE AS`/browser checks against an isolated rehearsal database before any production cutover.

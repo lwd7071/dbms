@@ -2406,7 +2406,7 @@ async function handleSaveDepartment(event) {
   } finally { button.disabled = false; button.textContent = label; }
 }
 
-async function deleteDepartmentEntity(type, id) {
+async function deleteDepartmentEntity(type, id, retry = false) {
   const recordKey = { faculty: 'maKhoa', major: 'maNganh', class: 'maLop' }[type];
   const item = (type === 'faculty' ? adminDepartmentFaculties : type === 'major' ? adminDepartmentMajors : allAdministrativeClasses)
     .find(row => row[recordKey] === id);
@@ -2415,13 +2415,23 @@ async function deleteDepartmentEntity(type, id) {
   const warning = type === 'faculty' ? ' Nếu còn ngành, môn học, lớp, sinh viên hoặc giảng viên, hệ thống sẽ từ chối xóa.'
     : type === 'major' ? ' Nếu còn chương trình đào tạo, hệ thống sẽ từ chối xóa.'
       : classHasStudents ? ` Lớp đang có ${item.soLuongSV || item.siSo} sinh viên; trigger CSDL sẽ chặn xóa.` : ' Chỉ xóa được khi không còn sinh viên trực thuộc.';
-  if (!window.confirm(`Xóa ${title}?${warning}`)) return;
+  if (!retry && !window.confirm(`Xóa ${title}?${warning}`)) return;
   const endpoint = type === 'faculty' ? '/admin/faculties' : type === 'major' ? '/admin/majors' : '/admin/homeroom-classes';
   try {
     await api.delete(`${endpoint}/${encodeURIComponent(id)}`);
     showToast('Đã xóa bản ghi.', 'success');
     if (type === 'class') await loadAdminAdministrativeClasses(); else await loadAdminFaculties();
-  } catch (error) { showToast(`Không thể xóa. ${error.message}`, 'danger'); }
+  } catch (error) {
+    const list = document.getElementById(type === 'faculty' || type === 'major' ? 'adminFacultiesContainer' : 'adminAdministrativeClassesContainer');
+    const alert = document.createElement('div');
+    alert.className = 'faculty-directory-message faculty-directory-error';
+    alert.setAttribute('role', 'alert');
+    alert.tabIndex = -1;
+    alert.innerHTML = `<span>Không thể xóa ${escapeHtml(title)}. ${escapeHtml(error.message)}</span> <button class="btn btn-secondary btn-sm" type="button">Thử lại</button>`;
+    alert.querySelector('button').addEventListener('click', () => deleteDepartmentEntity(type, id, true));
+    list?.prepend(alert);
+    alert.focus();
+  }
 }
 
 function switchAdminTab(tabName, clickedBtn) {

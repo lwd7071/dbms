@@ -57,6 +57,54 @@ const SQL_ERROR_MAP = {
 const mapSqlError = (error, context = '') => {
   const errorNumber = error.number;
 
+  if ([229, 230].includes(errorNumber)) {
+    return {
+      status: 403,
+      field: 'permission',
+      message: 'Bạn không có quyền thực hiện thao tác này.'
+    };
+  }
+
+  if (['ESOCKET', 'ECONNRESET', 'ECONNREFUSED', 'ETIMEOUT', 'ENOTOPEN', 'ELOGIN'].includes(error.code)) {
+    return {
+      status: 503,
+      field: 'database',
+      message: 'Không thể kết nối dữ liệu lúc này. Vui lòng thử lại sau.'
+    };
+  }
+
+  if ([50032, 50033].includes(errorNumber)) {
+    return { status: 403, field: 'permission', message: 'Bạn không có quyền thực hiện thao tác này.' };
+  }
+
+  const adminProcedureErrors = {
+    52051: { status: 404, field: 'maCTDT', message: 'Không tìm thấy môn trong chương trình đào tạo.' },
+    52060: { status: 409, field: 'maLHP', message: 'Không thể xóa lớp đã có lịch sử đăng ký tín chỉ.' },
+    52061: { status: 404, field: 'maLHP', message: 'Không tìm thấy lớp học phần.' },
+    52071: { status: 404, field: 'username', message: 'Không tìm thấy tài khoản người dùng cần thao tác.' },
+    52072: { status: 403, field: 'permission', message: 'Bạn không có quyền thực hiện thao tác này.' },
+    52073: { status: 403, field: 'permission', message: 'Phòng Đào tạo không được thay đổi trạng thái tài khoản quản trị.' },
+    52074: { status: 409, field: 'username', message: 'Không thể tự khóa tài khoản đang đăng nhập.' },
+    52075: { status: 409, field: 'trangThai', message: 'Tài khoản đã vô hiệu hóa không thể kích hoạt lại.' },
+    52076: { status: 400, field: 'maLop', message: 'Lớp sinh hoạt không thuộc khoa đã chọn.' },
+    52080: { status: 409, field: 'maSinhVien', message: 'Mã sinh viên đã được sử dụng.' },
+    52081: { status: 400, field: 'maCTDT', message: 'Chương trình đào tạo không thuộc khoa đã chọn.' },
+    52082: { status: 400, field: 'maLop', message: 'Lớp sinh hoạt và chương trình đào tạo không khớp.' },
+    52083: { status: 404, field: 'maSV', message: 'Không tìm thấy sinh viên.' },
+    52084: { status: 409, field: 'maCTDT', message: 'Không thể xóa chương trình đào tạo đang có sinh viên theo học.' },
+    52085: { status: 404, field: 'maCTDT', message: 'Không tìm thấy chương trình đào tạo.' }
+  };
+  if (adminProcedureErrors[errorNumber]) return adminProcedureErrors[errorNumber];
+
+  const tuitionProcedureErrors = {
+    51501: { status: 404, field: 'maHocPhi', message: 'Hồ sơ học phí không tồn tại trong hệ thống.' },
+    51502: { status: 403, field: 'permission', message: 'Bạn không có quyền tạo giao dịch cho hồ sơ học phí này.' },
+    51503: { status: 403, field: 'permission', message: 'Bạn không có quyền thực hiện thao tác này.' },
+    51504: { status: 409, field: 'soTien', message: 'Tổng số tiền thanh toán không được vượt quá số dư học phí còn lại.' },
+    51505: { status: 409, field: 'maHocPhi', message: 'Hồ sơ học phí này đang có giao dịch chờ duyệt.' }
+  };
+  if (tuitionProcedureErrors[errorNumber]) return tuitionProcedureErrors[errorNumber];
+
   // Xử lý riêng mã lỗi 51006 dựa theo ngữ cảnh
   if (errorNumber === 51006) {
     if (context === 'CREATE_USER') {

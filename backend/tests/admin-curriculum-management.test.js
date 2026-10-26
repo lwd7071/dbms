@@ -1,6 +1,6 @@
 const app = require('../src/app');
 const { requestAs } = require('./helpers/tokens');
-const { getPool, closePool, sql } = require('../src/config/db');
+const { getFixturePool, closePool, sql } = require('../src/config/db');
 
 describe('Admin curriculum course management', () => {
   const suffix = String(Date.now()).slice(-8);
@@ -10,7 +10,7 @@ describe('Admin curriculum course management', () => {
   let courseCreated = false;
   let otherCourseCreated = false;
 
-  beforeAll(async () => { pool = await getPool(); });
+  beforeAll(async () => { pool = await getFixturePool(); });
   afterAll(async () => {
     await pool.request().input('a', sql.VarChar(15), courseId).input('b', sql.VarChar(15), otherCourseId)
       .query('DELETE dbo.MONHOCTIENQUYET WHERE MaMonHoc IN (@a,@b) OR MaMonTienQuyet IN (@a,@b)');

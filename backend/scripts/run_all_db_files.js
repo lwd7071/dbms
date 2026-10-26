@@ -1,4 +1,4 @@
-﻿const path = require('path');
+const path = require('path');
 const fs = require('fs');
 const sql = require('mssql');
 const dotenv = require('dotenv');
@@ -11,24 +11,27 @@ const action = option('--action');
 const databaseName = option('--database');
 const demoDatabase = /^DBMS330284_CodexDemo(?:_[A-Za-z0-9]+)?$/.test(databaseName || '');
 const migrationDatabase = ['DBMS330284', 'DBMS330284_MigrationRehearsal', 'DBMS330284_MigrationRehearsal2'].includes(databaseName);
-if (!['build', 'seed', 'verify', 'security', 'test', 'migrate'].includes(action)
+const backupVerified = option('--backup-verified') === 'YES';
+if ((action === 'migrate' && databaseName === 'DBMS330284' && !backupVerified)
+  || !['build', 'seed', 'verify', 'security', 'test', 'migrate'].includes(action)
   || (action === 'migrate' ? !migrationDatabase : !(demoDatabase || (migrationDatabase && ['verify', 'security', 'test'].includes(action))))) {
   console.error('Usage: node backend/scripts/run_all_db_files.js --action build|seed|verify|security|test --database DBMS330284_CodexDemo');
-  console.error('Migration accepts DBMS330284 and named migration rehearsals; verify/security/test are also allowed there. No database is dropped.');
+  console.error('Production migration requires --backup-verified YES after a verified backup and restore rehearsal. No database is dropped.');
   process.exit(2);
 }
 const config = database => ({
   server: process.env.DB_SERVER || 'localhost',
   port: Number.parseInt(process.env.DB_PORT, 10) || 1433,
   database,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+  user: process.env.DB_MAINT_USER,
+  password: process.env.DB_MAINT_PASSWORD,
   options: { encrypt: false, trustServerCertificate: true, enableArithAbort: true },
   pool: { min: 1, max: 1, idleTimeoutMillis: 30000 },
   connectionTimeout: 15000,
   requestTimeout: 120000
 });
 const createPool = async database => {
+  if (!process.env.DB_MAINT_USER || !process.env.DB_MAINT_PASSWORD) throw new Error('Khai báo DB_MAINT_USER và DB_MAINT_PASSWORD cho thao tác bảo trì.');
   const pool = new sql.ConnectionPool(config(database));
   await pool.connect();
   return pool;
@@ -42,6 +45,16 @@ const runFile = async (pool, file) => {
     .replace(/\$\(DatabaseName\)/g, databaseName)
     .replace(/\[DBMS330284\]/g, `[${databaseName}]`);
   for (const batch of splitBatches(source)) await pool.request().batch(batch);
+};
+const runAppProcedures = async pool => {
+  const filePath = path.join(dbDir, '08_StoredProcedures.sql');
+  const source = fs.readFileSync(filePath, 'utf8')
+    .replace(/\$\(DatabaseName\)/g, databaseName)
+    .replace(/\[DBMS330284\]/g, `[${databaseName}]`);
+  const marker = '-- Application API procedures used by role-specific backend pools.';
+  const start = source.indexOf(marker);
+  if (start < 0) throw new Error(`Application procedure section not found in ${filePath}`);
+  for (const batch of splitBatches(source.slice(start))) await pool.request().batch(batch);
 };
 (async () => {
   let pool;
@@ -65,11 +78,11 @@ const runFile = async (pool, file) => {
       pool = await createPool(databaseName);
       if (action === 'seed') await runFile(pool, '04_SeedData.sql');
       else if (action === 'verify') await runFile(pool, '14_Verify.sql');
-      else if (action === 'security') await runFile(pool, '11_Security.sql');
+      else if (action === 'security') { await runAppProcedures(pool); await runFile(pool, '11_Security.sql'); }
       else if (action === 'migrate') {
         await runFile(pool, 'Migrations/20261021_CurriculumAndInvariants.sql');
         for (const file of ['05_Triggers.sql','06_Views.sql','07_Functions.sql','08_StoredProcedures.sql','09_Indexes.sql','11_Security.sql']) await runFile(pool, file);
-      } else for (const file of ['tests/13_Test_Integration.sql','14_Verify.sql','tests/14_RolePermissions.sql','tests/15_InvariantRejections.sql']) await runFile(pool, file);
+      } else { await runAppProcedures(pool); for (const file of ['tests/13_Test_Integration.sql','14_Verify.sql','tests/14_RolePermissions.sql','tests/15_InvariantRejections.sql','tests/16_AppProcedurePermissions.sql']) await runFile(pool, file); }
     }
     console.log(`✓ ${action} completed for ${databaseName}`);
   } catch (error) {
