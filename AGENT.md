@@ -1,4 +1,4 @@
-# AGENT.md
+﻿# AGENT.md
 
 ## 1. General Rules
 

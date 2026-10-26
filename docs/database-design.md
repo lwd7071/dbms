@@ -6,7 +6,7 @@
 ---
 
 ## TỔNG QUAN SCHEMA V1 (19 BẢNG)
-Schema hiện có **19 bảng**, **6 views**, **7 functions**, **9 stored procedures**, **20 triggers bật**, 4 role nghiệp vụ và 1 role runtime. Script khai báo **19 index thường**; hiệu quả thực tế chưa được đo bằng execution plan/IO nên chưa kết luận các index đã tối ưu. Schema/seed được dựng và kiểm tra trên DB demo cô lập `DBMS330284_CodexDemo_Final` với 1.500 sinh viên, 24 CTĐT và 480 liên kết CTĐT–môn học. Ngày 21/10/2026, migration có backup được áp dụng lên `DBMS330284`; dữ liệu nghiệp vụ được giữ lại, 1.501 sinh viên còn nguyên và 24 CTĐT khóa 2023–2025 đã được xác minh.
+Schema hiện có **19 bảng**, **6 views**, **7 functions**, **9 stored procedures**, **20 triggers bật**, 4 role nghiệp vụ. Script khai báo **19 index thường**; hiệu quả thực tế chưa được đo bằng execution plan/IO nên chưa kết luận các index đã tối ưu. Schema/seed được dựng và kiểm tra trên DB demo cô lập `DBMS330284_CodexDemo_Final` với 1.500 sinh viên, 24 CTĐT và 480 liên kết CTĐT–môn học. Ngày 21/10/2026, migration có backup được áp dụng lên `DBMS330284`; dữ liệu nghiệp vụ được giữ lại, 1.501 sinh viên còn nguyên và 24 CTĐT khóa 2023–2025 đã được xác minh.
 
 Schema bao gồm việc chuẩn hóa tách thực thể **`NGANH`** độc lập khỏi `CHUONGTRINHDAOTAO` (quan hệ `KHOA` 1:N `NGANH` 1:N `CHUONGTRINHDAOTAO`), bổ sung **`LOP`** phục vụ quản lý sinh viên theo lớp sinh hoạt / lớp niên chế và **`CHITIETTHANHTOAN`** phục vụ nghiệp vụ thanh toán học phí nhiều đợt với cơ chế xác nhận 2 bước.
 
@@ -492,12 +492,12 @@ Các đối tượng SQL dưới đây được khai báo trong `DB/`; mức ki�
   19. `TR_CHITIETTHANHTOAN_Audit`: Ghi nhật ký bảng `CHITIETTHANHTOAN` vào `LOGHOATDONG`.
   20. `TR_LOP_Audit`: Ghi nhật ký bảng `LOP` vào `LOGHOATDONG`.
 
-### 7.5. Security Roles (11_Security.sql - 4 business roles + APP_RUNTIME)
+### 7.5. Security Roles (11_Security.sql - 4 business roles)
 1. `SINH_VIEN`: Quyền tra cứu thông tin cá nhân, TKB, bảng điểm, học phí; thực hiện đăng ký tín chỉ và nộp học phí.
 2. `GIANG_VIEN`: Quyền xem lịch giảng dạy, danh sách sinh viên lớp học phần và chấm điểm.
 3. `DAO_TAO`: Quản lý chương trình học, mở lớp học phần, quản lý đăng ký tín chỉ và xác nhận học phí.
 4. `QUAN_TRI`: Quản trị hệ thống, quản lý tài khoản người dùng và xem Audit Log.
-5. `APP_RUNTIME`: role giới hạn quyền cho ứng dụng; đã xác minh `dbms_test_runtime` không đọc trực tiếp `TAIKHOAN` và không cập nhật trực tiếp `HOCPHI`. Tính đến 21/10/2026 chưa provision login `dbms_app`; backend đang dùng `sa`/`dbo`, chưa xác nhận toàn bộ API chạy dưới role này.
+`dbms_app` là SQL user chỉ được chạy ba stored procedure xác thực; bốn SQL user nghiệp vụ lần lượt thuộc đúng một trong bốn role trên. Quyền chặn truy cập trực tiếp được đặt trên bốn role nghiệp vụ và trực tiếp trên `dbms_app`.
 
 ---
 
@@ -535,8 +535,8 @@ Các đối tượng SQL dưới đây được khai báo trong `DB/`; mức ki�
 - [x] Triển khai và kiểm thử 7 Functions.
 - [x] Triển khai và kiểm thử 9 Stored Procedures.
 - [x] Khai báo 19 index thường; chưa đo execution plan/IO trong lượt nâng cấp này.
-- [x] Thiết lập 4 role nghiệp vụ và role runtime APP_RUNTIME; phản chứng đọc `TAIKHOAN` và ghi `HOCPHI` trực tiếp đã chạy trên test principal.
-- [ ] Provision login runtime và chuyển API sau khi chuyển các thao tác DML trực tiếp sang stored procedure hoặc grants riêng đã được duyệt.
+- [x] Thiết lập 4 role nghiệp vụ; phản chứng đọc `TAIKHOAN` và ghi `HOCPHI` trực tiếp đã chạy trên test principal.
+- [ ] Nghiệm thu từng SQL login theo đúng role nghiệp vụ và chạy backend rehearsal bằng quyền tối thiểu.
 - [x] Khởi tạo seed demo: 1.500 sinh viên, 24 CTĐT, 480 CTĐT–môn học; số liệu khác xem trực tiếp trong demo DB.
 - [x] Bộ SQL integration hiện chạy được trên DB demo; xem `DB/tests/13_Test_Integration.sql`. Các kịch bản concurrency/backup vẫn cần chạy riêng.
 - [ ] Backup, restore và `DBCC CHECKDB` chưa chạy trong lượt nâng cấp này.
@@ -785,4 +785,4 @@ erDiagram
 
 `LOP.MaLop` là nullable ở `SINHVIEN`; vì vậy sinh viên chưa biên chế lớp vẫn phải có khoa và CTĐT. `DIEMSO` là quan hệ 0..1 trên mỗi đăng ký, do đó view bảng điểm dùng `LEFT JOIN`. CTĐT được phép chưa có `CTDT_MONHOC`; lớp học phần nháp được phép chưa có `LICHHOC`, nhưng trigger bắt buộc lịch khi chuyển sang trạng thái mở. Truy vấn PLAN tính kỳ dự kiến theo `NamTuyenSinh` và học kỳ 1/2, tuyệt đối không dùng `MaHocKy` làm số thứ tự kỳ CTĐT.
 
-> `APP_RUNTIME` được khai báo với quyền đọc giới hạn, execute procedure được liệt kê và DENY ghi trực tiếp vào các bảng giao dịch nhạy cảm. Test SQL xác nhận runtime test principal không thể đọc `TAIKHOAN` hoặc cập nhật `HOCPHI` trực tiếp. Login `dbms_app` chưa được provision; backend vẫn dùng `sa`/`dbo`, vì repository còn luồng ghi trực tiếp.
+> Hiện chỉ có bốn role nghiệp vụ. `dbms_app` là SQL user riêng cho xác thực, được cấp EXECUTE đúng ba thủ tục đăng nhập và bị DENY truy cập trực tiếp vào bảng nhạy cảm.

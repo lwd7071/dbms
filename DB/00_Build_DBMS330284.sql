@@ -5006,7 +5006,7 @@ END CATCH;
 GO
 DECLARE @BuildState int; SELECT @BuildState = TRY_CONVERT(int, value) FROM [DBMS330284].sys.extended_properties WHERE class = 0 AND name = N'DBMS330284_BuildState';
 IF @BuildState IS NULL OR @BuildState <> 200 THROW 52102, N'Build dung an toan do batch truoc that bai hoac database khong o trang thai moi.', 1;
-DECLARE @BuildBatch nvarchar(max) = N'-- Roles nghiệp vụ và runtime least privilege.
+DECLARE @BuildBatch nvarchar(max) = N'-- Bốn role nghiệp vụ.
 USE [DBMS330284];';
 BEGIN TRY
     EXEC sys.sp_executesql @BuildBatch;
@@ -5022,8 +5022,7 @@ IF @BuildState IS NULL OR @BuildState <> 201 THROW 52102, N'Build dung an toan d
 DECLARE @BuildBatch nvarchar(max) = N'IF DATABASE_PRINCIPAL_ID(''SINH_VIEN'') IS NULL CREATE ROLE SINH_VIEN;
 IF DATABASE_PRINCIPAL_ID(''GIANG_VIEN'') IS NULL CREATE ROLE GIANG_VIEN;
 IF DATABASE_PRINCIPAL_ID(''DAO_TAO'') IS NULL CREATE ROLE DAO_TAO;
-IF DATABASE_PRINCIPAL_ID(''QUAN_TRI'') IS NULL CREATE ROLE QUAN_TRI;
-IF DATABASE_PRINCIPAL_ID(''APP_RUNTIME'') IS NULL CREATE ROLE APP_RUNTIME;';
+IF DATABASE_PRINCIPAL_ID(''QUAN_TRI'') IS NULL CREATE ROLE QUAN_TRI;';
 BEGIN TRY
     EXEC sys.sp_executesql @BuildBatch;
     EXEC sys.sp_executesql N'USE [DBMS330284]; EXEC sys.sp_updateextendedproperty @name=N''DBMS330284_BuildState'', @value=202;';
@@ -5113,29 +5112,7 @@ END CATCH;
 GO
 DECLARE @BuildState int; SELECT @BuildState = TRY_CONVERT(int, value) FROM [DBMS330284].sys.extended_properties WHERE class = 0 AND name = N'DBMS330284_BuildState';
 IF @BuildState IS NULL OR @BuildState <> 204 THROW 52102, N'Build dung an toan do batch truoc that bai hoac database khong o trang thai moi.', 1;
-DECLARE @BuildBatch nvarchar(max) = N'-- Runtime receives read-only catalog access and explicitly named procedure permissions.
-GRANT SELECT ON dbo.V_TaiKhoanNguoiDung TO APP_RUNTIME;
-GRANT SELECT ON dbo.V_CauTrucChuongTrinhDAOTAO TO APP_RUNTIME;
-GRANT SELECT ON dbo.V_ThoiKhoaBieuSinhVien TO APP_RUNTIME;
-GRANT SELECT ON dbo.V_BangDiemChiTiet TO APP_RUNTIME;
-GRANT SELECT ON dbo.V_HocPhiSinhVien TO APP_RUNTIME;
-GRANT SELECT ON dbo.V_DanhSachLopSinhHoat TO APP_RUNTIME;
-GRANT SELECT ON dbo.LOGHOATDONG TO APP_RUNTIME;
-GRANT EXECUTE ON dbo.SP_DangKyTinChi TO APP_RUNTIME;
-GRANT EXECUTE ON dbo.SP_HuyDangKy TO APP_RUNTIME;
-GRANT EXECUTE ON dbo.SP_TaoTaiKhoan TO APP_RUNTIME;
-GRANT EXECUTE ON dbo.SP_KhoaTaiKhoan TO APP_RUNTIME;
-GRANT EXECUTE ON dbo.SP_TinhHocPhiSinhVien TO APP_RUNTIME;
-GRANT EXECUTE ON dbo.SP_ThongKeHocPhi TO APP_RUNTIME;
-GRANT EXECUTE ON dbo.SP_ThongKeHocPhiTheoLop TO APP_RUNTIME;
-GRANT EXECUTE ON dbo.SP_XacNhanThanhToan TO APP_RUNTIME;
-GRANT EXECUTE ON dbo.SP_TuChoiThanhToan TO APP_RUNTIME;
-DENY SELECT ON dbo.TAIKHOAN TO APP_RUNTIME;
-DENY INSERT, UPDATE, DELETE ON dbo.DANGKYTINCHI TO APP_RUNTIME;
-DENY INSERT, UPDATE, DELETE ON dbo.DIEMSO TO APP_RUNTIME;
-DENY INSERT, UPDATE, DELETE ON dbo.HOCPHI TO APP_RUNTIME;
-DENY INSERT, UPDATE, DELETE ON dbo.CHITIETTHANHTOAN TO APP_RUNTIME;
-DENY INSERT, UPDATE, DELETE ON dbo.LOGHOATDONG TO APP_RUNTIME;';
+DECLARE @BuildBatch nvarchar(max) = N'SET NOCOUNT ON;';
 BEGIN TRY
     EXEC sys.sp_executesql @BuildBatch;
     EXEC sys.sp_executesql N'USE [DBMS330284]; EXEC sys.sp_updateextendedproperty @name=N''DBMS330284_BuildState'', @value=205;';
@@ -5161,8 +5138,7 @@ END CATCH;
 GO
 DECLARE @BuildState int; SELECT @BuildState = TRY_CONVERT(int, value) FROM [DBMS330284].sys.extended_properties WHERE class = 0 AND name = N'DBMS330284_BuildState';
 IF @BuildState IS NULL OR @BuildState <> 206 THROW 52102, N'Build dung an toan do batch truoc that bai hoac database khong o trang thai moi.', 1;
-DECLARE @BuildBatch nvarchar(max) = N'IF DATABASE_PRINCIPAL_ID(N''dbms_app'') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(''APP_RUNTIME'') AND member_principal_id=DATABASE_PRINCIPAL_ID(''dbms_app''))
-    ALTER ROLE APP_RUNTIME ADD MEMBER dbms_app;';
+DECLARE @BuildBatch nvarchar(max) = N'SET NOCOUNT ON;';
 BEGIN TRY
     EXEC sys.sp_executesql @BuildBatch;
     EXEC sys.sp_executesql N'USE [DBMS330284]; EXEC sys.sp_updateextendedproperty @name=N''DBMS330284_BuildState'', @value=207;';
@@ -5178,8 +5154,7 @@ DECLARE @BuildBatch nvarchar(max) = N'-- Principals without a login make role te
 IF DATABASE_PRINCIPAL_ID(N''dbms_test_student'') IS NULL CREATE USER dbms_test_student WITHOUT LOGIN;
 IF DATABASE_PRINCIPAL_ID(N''dbms_test_lecturer'') IS NULL CREATE USER dbms_test_lecturer WITHOUT LOGIN;
 IF DATABASE_PRINCIPAL_ID(N''dbms_test_training'') IS NULL CREATE USER dbms_test_training WITHOUT LOGIN;
-IF DATABASE_PRINCIPAL_ID(N''dbms_test_admin'') IS NULL CREATE USER dbms_test_admin WITHOUT LOGIN;
-IF DATABASE_PRINCIPAL_ID(N''dbms_test_runtime'') IS NULL CREATE USER dbms_test_runtime WITHOUT LOGIN;';
+IF DATABASE_PRINCIPAL_ID(N''dbms_test_admin'') IS NULL CREATE USER dbms_test_admin WITHOUT LOGIN;';
 BEGIN TRY
     EXEC sys.sp_executesql @BuildBatch;
     EXEC sys.sp_executesql N'USE [DBMS330284]; EXEC sys.sp_updateextendedproperty @name=N''DBMS330284_BuildState'', @value=208;';
@@ -5194,8 +5169,7 @@ IF @BuildState IS NULL OR @BuildState <> 208 THROW 52102, N'Build dung an toan d
 DECLARE @BuildBatch nvarchar(max) = N'IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(''SINH_VIEN'') AND member_principal_id=DATABASE_PRINCIPAL_ID(''dbms_test_student'')) ALTER ROLE SINH_VIEN ADD MEMBER dbms_test_student;
 IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(''GIANG_VIEN'') AND member_principal_id=DATABASE_PRINCIPAL_ID(''dbms_test_lecturer'')) ALTER ROLE GIANG_VIEN ADD MEMBER dbms_test_lecturer;
 IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(''DAO_TAO'') AND member_principal_id=DATABASE_PRINCIPAL_ID(''dbms_test_training'')) ALTER ROLE DAO_TAO ADD MEMBER dbms_test_training;
-IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(''QUAN_TRI'') AND member_principal_id=DATABASE_PRINCIPAL_ID(''dbms_test_admin'')) ALTER ROLE QUAN_TRI ADD MEMBER dbms_test_admin;
-IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(''APP_RUNTIME'') AND member_principal_id=DATABASE_PRINCIPAL_ID(''dbms_test_runtime'')) ALTER ROLE APP_RUNTIME ADD MEMBER dbms_test_runtime;';
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(''QUAN_TRI'') AND member_principal_id=DATABASE_PRINCIPAL_ID(''dbms_test_admin'')) ALTER ROLE QUAN_TRI ADD MEMBER dbms_test_admin;';
 BEGIN TRY
     EXEC sys.sp_executesql @BuildBatch;
     EXEC sys.sp_executesql N'USE [DBMS330284]; EXEC sys.sp_updateextendedproperty @name=N''DBMS330284_BuildState'', @value=209;';
@@ -7309,8 +7283,6 @@ IF DATABASE_PRINCIPAL_ID('SINH_VIEN') IS NULL CREATE ROLE SINH_VIEN;
 IF DATABASE_PRINCIPAL_ID('GIANG_VIEN') IS NULL CREATE ROLE GIANG_VIEN;
 IF DATABASE_PRINCIPAL_ID('DAO_TAO') IS NULL CREATE ROLE DAO_TAO;
 IF DATABASE_PRINCIPAL_ID('QUAN_TRI') IS NULL CREATE ROLE QUAN_TRI;
-IF DATABASE_PRINCIPAL_ID('APP_RUNTIME') IS NULL CREATE ROLE APP_RUNTIME;
-IF DATABASE_PRINCIPAL_ID('APP_AUTH') IS NULL CREATE ROLE APP_AUTH;
 GO
 
 -- Phụ trách: Trần Biểu Hương
@@ -7380,13 +7352,7 @@ GRANT EXECUTE ON dbo.SP_TuChoiThanhToan TO QUAN_TRI;
 GO
 
 -- Phụ trách: Lương Viết Vĩ Đông
--- Runtime receives read-only catalog access and explicitly named procedure permissions.
-DENY SELECT ON dbo.TAIKHOAN TO APP_RUNTIME;
-DENY INSERT, UPDATE, DELETE ON dbo.DANGKYTINCHI TO APP_RUNTIME;
-DENY INSERT, UPDATE, DELETE ON dbo.DIEMSO TO APP_RUNTIME;
-DENY INSERT, UPDATE, DELETE ON dbo.HOCPHI TO APP_RUNTIME;
-DENY INSERT, UPDATE, DELETE ON dbo.CHITIETTHANHTOAN TO APP_RUNTIME;
-DENY INSERT, UPDATE, DELETE ON dbo.LOGHOATDONG TO APP_RUNTIME;
+-- Direct table access is restricted in the final security block.
 GO
 
 -- Phụ trách: Lương Viết Vĩ Đông
@@ -7394,8 +7360,6 @@ GO
 IF SUSER_ID(N'dbms_app') IS NOT NULL AND DATABASE_PRINCIPAL_ID(N'dbms_app') IS NULL
     CREATE USER dbms_app FOR LOGIN dbms_app;
 GO
-IF DATABASE_PRINCIPAL_ID(N'dbms_app') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_app'))
-    ALTER ROLE APP_RUNTIME ADD MEMBER dbms_app;
 GO
 
 -- Principals without a login make role tests exercise SQL permissions safely.
@@ -7403,17 +7367,11 @@ IF DATABASE_PRINCIPAL_ID(N'dbms_test_student') IS NULL CREATE USER dbms_test_stu
 IF DATABASE_PRINCIPAL_ID(N'dbms_test_lecturer') IS NULL CREATE USER dbms_test_lecturer WITHOUT LOGIN;
 IF DATABASE_PRINCIPAL_ID(N'dbms_test_training') IS NULL CREATE USER dbms_test_training WITHOUT LOGIN;
 IF DATABASE_PRINCIPAL_ID(N'dbms_test_admin') IS NULL CREATE USER dbms_test_admin WITHOUT LOGIN;
-IF DATABASE_PRINCIPAL_ID(N'dbms_test_runtime') IS NULL CREATE USER dbms_test_runtime WITHOUT LOGIN;
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('SINH_VIEN') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_student')) ALTER ROLE SINH_VIEN ADD MEMBER dbms_test_student;
 IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('GIANG_VIEN') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_lecturer')) ALTER ROLE GIANG_VIEN ADD MEMBER dbms_test_lecturer;
 IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('DAO_TAO') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_training')) ALTER ROLE DAO_TAO ADD MEMBER dbms_test_training;
 IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('QUAN_TRI') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_admin')) ALTER ROLE QUAN_TRI ADD MEMBER dbms_test_admin;
-IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_student')) ALTER ROLE APP_RUNTIME ADD MEMBER dbms_test_student;
-IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_lecturer')) ALTER ROLE APP_RUNTIME ADD MEMBER dbms_test_lecturer;
-IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_training')) ALTER ROLE APP_RUNTIME ADD MEMBER dbms_test_training;
-IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_admin')) ALTER ROLE APP_RUNTIME ADD MEMBER dbms_test_admin;
-IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_runtime')) ALTER ROLE APP_RUNTIME ADD MEMBER dbms_test_runtime;
 GO
 
 -- Phụ trách: Âu Quốc Khánh
@@ -7441,22 +7399,6 @@ REVOKE INSERT, UPDATE ON dbo.HOCKY FROM QUAN_TRI;
 REVOKE INSERT, UPDATE, DELETE ON dbo.LOPHOCPHAN FROM QUAN_TRI;
 REVOKE INSERT, UPDATE, DELETE ON dbo.LICHHOC FROM QUAN_TRI;
 REVOKE SELECT ON dbo.LOGHOATDONG FROM DAO_TAO;
-REVOKE SELECT ON dbo.V_TaiKhoanNguoiDung FROM APP_RUNTIME;
-REVOKE SELECT ON dbo.V_CauTrucChuongTrinhDAOTAO FROM APP_RUNTIME;
-REVOKE SELECT ON dbo.V_ThoiKhoaBieuSinhVien FROM APP_RUNTIME;
-REVOKE SELECT ON dbo.V_BangDiemChiTiet FROM APP_RUNTIME;
-REVOKE SELECT ON dbo.V_HocPhiSinhVien FROM APP_RUNTIME;
-REVOKE SELECT ON dbo.V_DanhSachLopSinhHoat FROM APP_RUNTIME;
-REVOKE SELECT ON dbo.LOGHOATDONG FROM APP_RUNTIME;
-REVOKE EXECUTE ON dbo.SP_DangKyTinChi FROM APP_RUNTIME;
-REVOKE EXECUTE ON dbo.SP_HuyDangKy FROM APP_RUNTIME;
-REVOKE EXECUTE ON dbo.SP_TaoTaiKhoan FROM APP_RUNTIME;
-REVOKE EXECUTE ON dbo.SP_KhoaTaiKhoan FROM APP_RUNTIME;
-REVOKE EXECUTE ON dbo.SP_TinhHocPhiSinhVien FROM APP_RUNTIME;
-REVOKE EXECUTE ON dbo.SP_ThongKeHocPhi FROM APP_RUNTIME;
-REVOKE EXECUTE ON dbo.SP_ThongKeHocPhiTheoLop FROM APP_RUNTIME;
-REVOKE EXECUTE ON dbo.SP_XacNhanThanhToan FROM APP_RUNTIME;
-REVOKE EXECUTE ON dbo.SP_TuChoiThanhToan FROM APP_RUNTIME;
 
 -- Keep legacy route reads available to the two staff roles while the remaining repositories migrate to procedures.
 GRANT SELECT ON dbo.KHOA TO DAO_TAO, QUAN_TRI;
@@ -7475,34 +7417,49 @@ GRANT SELECT ON dbo.LICHHOC TO DAO_TAO, QUAN_TRI;
 IF SUSER_ID(N'dbms_app') IS NOT NULL
 BEGIN
   IF DATABASE_PRINCIPAL_ID(N'dbms_app') IS NULL CREATE USER [dbms_app] FOR LOGIN [dbms_app];
-  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_app')) ALTER ROLE APP_RUNTIME ADD MEMBER [dbms_app];
-  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'APP_AUTH') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_app')) ALTER ROLE APP_AUTH ADD MEMBER [dbms_app];
 END;
 IF SUSER_ID(N'dbms_student') IS NOT NULL
 BEGIN
   IF DATABASE_PRINCIPAL_ID(N'dbms_student') IS NULL CREATE USER [dbms_student] FOR LOGIN [dbms_student];
-  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_student')) ALTER ROLE APP_RUNTIME ADD MEMBER [dbms_student]; IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'SINH_VIEN') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_student')) ALTER ROLE SINH_VIEN ADD MEMBER [dbms_student];
+  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'SINH_VIEN') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_student')) ALTER ROLE SINH_VIEN ADD MEMBER [dbms_student];
 END;
 IF SUSER_ID(N'dbms_lecturer') IS NOT NULL
 BEGIN
   IF DATABASE_PRINCIPAL_ID(N'dbms_lecturer') IS NULL CREATE USER [dbms_lecturer] FOR LOGIN [dbms_lecturer];
-  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_lecturer')) ALTER ROLE APP_RUNTIME ADD MEMBER [dbms_lecturer]; IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'GIANG_VIEN') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_lecturer')) ALTER ROLE GIANG_VIEN ADD MEMBER [dbms_lecturer];
+  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'GIANG_VIEN') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_lecturer')) ALTER ROLE GIANG_VIEN ADD MEMBER [dbms_lecturer];
 END;
 IF SUSER_ID(N'dbms_training') IS NOT NULL
 BEGIN
   IF DATABASE_PRINCIPAL_ID(N'dbms_training') IS NULL CREATE USER [dbms_training] FOR LOGIN [dbms_training];
-  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_training')) ALTER ROLE APP_RUNTIME ADD MEMBER [dbms_training]; IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'DAO_TAO') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_training')) ALTER ROLE DAO_TAO ADD MEMBER [dbms_training];
+  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'DAO_TAO') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_training')) ALTER ROLE DAO_TAO ADD MEMBER [dbms_training];
 END;
 IF SUSER_ID(N'dbms_admin') IS NOT NULL
 BEGIN
   IF DATABASE_PRINCIPAL_ID(N'dbms_admin') IS NULL CREATE USER [dbms_admin] FOR LOGIN [dbms_admin];
-  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_admin')) ALTER ROLE APP_RUNTIME ADD MEMBER [dbms_admin]; IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'QUAN_TRI') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_admin')) ALTER ROLE QUAN_TRI ADD MEMBER [dbms_admin];
+  IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID(N'QUAN_TRI') AND member_principal_id=DATABASE_PRINCIPAL_ID(N'dbms_admin')) ALTER ROLE QUAN_TRI ADD MEMBER [dbms_admin];
 END;
 GO
--- Authentication boundary: password hash is returned only through this role's procedures.
-GRANT EXECUTE ON dbo.SP_App_Auth_FindByUsername TO APP_AUTH;
-GRANT EXECUTE ON dbo.SP_App_Auth_FindById TO APP_AUTH;
-GRANT EXECUTE ON dbo.SP_App_Auth_UpdateLastLogin TO APP_AUTH;
+-- Authentication boundary: password hash is returned only through dbms_app's procedures.
+GO
+-- dbms_app is not a business role; it can execute only the authentication procedures.
+DENY SELECT ON dbo.TAIKHOAN TO SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI;
+DENY INSERT, UPDATE, DELETE ON dbo.DANGKYTINCHI TO SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI;
+DENY INSERT, UPDATE, DELETE ON dbo.DIEMSO TO SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI;
+DENY INSERT, UPDATE, DELETE ON dbo.HOCPHI TO SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI;
+DENY INSERT, UPDATE, DELETE ON dbo.CHITIETTHANHTOAN TO SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI;
+DENY INSERT, UPDATE, DELETE ON dbo.LOGHOATDONG TO SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI;
+IF DATABASE_PRINCIPAL_ID(N'dbms_app') IS NOT NULL
+BEGIN
+    DENY SELECT ON dbo.TAIKHOAN TO dbms_app;
+    DENY INSERT, UPDATE, DELETE ON dbo.DANGKYTINCHI TO dbms_app;
+    DENY INSERT, UPDATE, DELETE ON dbo.DIEMSO TO dbms_app;
+    DENY INSERT, UPDATE, DELETE ON dbo.HOCPHI TO dbms_app;
+    DENY INSERT, UPDATE, DELETE ON dbo.CHITIETTHANHTOAN TO dbms_app;
+    DENY INSERT, UPDATE, DELETE ON dbo.LOGHOATDONG TO dbms_app;
+    GRANT EXECUTE ON dbo.SP_App_Auth_FindByUsername TO dbms_app;
+    GRANT EXECUTE ON dbo.SP_App_Auth_FindById TO dbms_app;
+    GRANT EXECUTE ON dbo.SP_App_Auth_UpdateLastLogin TO dbms_app;
+END;
 GO
 -- Shared catalog reads and role-scoped CRUD procedures.
 GRANT EXECUTE ON dbo.SP_App_Faculty_List TO SINH_VIEN, GIANG_VIEN, DAO_TAO, QUAN_TRI;
@@ -7610,4 +7567,35 @@ GRANT EXECUTE ON dbo.SP_App_Registration_Cancel TO SINH_VIEN;
 GRANT EXECUTE ON dbo.SP_App_Tuition_ConfirmPayment TO DAO_TAO, QUAN_TRI;
 GRANT EXECUTE ON dbo.SP_App_Tuition_RejectPayment TO DAO_TAO, QUAN_TRI;
 GO
+GO
+
+-- Drop legacy technical roles from databases built with older versions of this file.
+DECLARE @LegacyRole sysname, @LegacyMember sysname, @DropMember nvarchar(300), @DropRole nvarchar(300);
+DECLARE legacy_roles CURSOR LOCAL FAST_FORWARD FOR
+    SELECT name FROM sys.database_principals WHERE type = 'R' AND name IN (N'APP_RUNTIME', N'APP_AUTH');
+OPEN legacy_roles;
+FETCH NEXT FROM legacy_roles INTO @LegacyRole;
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    DECLARE legacy_members CURSOR LOCAL FAST_FORWARD FOR
+        SELECT member.name FROM sys.database_role_members AS membership
+        JOIN sys.database_principals AS member ON member.principal_id = membership.member_principal_id
+        WHERE membership.role_principal_id = DATABASE_PRINCIPAL_ID(@LegacyRole);
+    OPEN legacy_members;
+    FETCH NEXT FROM legacy_members INTO @LegacyMember;
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @DropMember = N'ALTER ROLE ' + QUOTENAME(@LegacyRole) + N' DROP MEMBER ' + QUOTENAME(@LegacyMember);
+        EXEC sys.sp_executesql @DropMember;
+        FETCH NEXT FROM legacy_members INTO @LegacyMember;
+    END;
+    CLOSE legacy_members;
+    DEALLOCATE legacy_members;
+    SET @DropRole = N'DROP ROLE ' + QUOTENAME(@LegacyRole);
+    EXEC sys.sp_executesql @DropRole;
+    FETCH NEXT FROM legacy_roles INTO @LegacyRole;
+END;
+CLOSE legacy_roles;
+DEALLOCATE legacy_roles;
+IF DATABASE_PRINCIPAL_ID(N'dbms_test_runtime') IS NOT NULL DROP USER dbms_test_runtime;
 GO

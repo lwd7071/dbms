@@ -1,77 +1,69 @@
-# Hướng dẫn chạy ProjectDBMS
+# ProjectDBMS — Hướng dẫn chạy bản hiện tại
 
-Dự án quản lý đào tạo và đăng ký tín chỉ, gồm giao diện web, API Node.js và cơ sở dữ liệu Microsoft SQL Server.
+Đây là bản hiện tại của hệ thống quản lý học vụ và đăng ký tín chỉ, gồm giao diện web, backend Node.js/Express và cơ sở dữ liệu Microsoft SQL Server. Các lệnh dưới đây dành cho Windows PowerShell.
 
-## 1. Chuẩn bị
+## 1. Cài phần mềm cần thiết
 
-Cài đặt trên máy:
+- Node.js bản LTS (bao gồm npm).
+- SQL Server 2022 Developer hoặc Express, đang chạy.
+- SQL Server Management Studio (SSMS).
+- Bật SQL Server Authentication (Mixed Mode) và TCP/IP trong SQL Server Configuration Manager; khởi động lại dịch vụ SQL Server sau khi đổi chế độ xác thực.
 
-- Node.js và npm.
-- Microsoft SQL Server (project được xây dựng với SQL Server 2022), đang chạy và cho phép kết nối TCP/IP.
-- Một tài khoản SQL Server có quyền tạo database để dựng dữ liệu demo.
+## 2. Tạo các SQL login
 
-Mở thư mục `ProjectDBMS` trong VS Code hoặc mở PowerShell tại thư mục này. Các lệnh bên dưới chạy từ thư mục gốc project.
+Backend dùng các login SQL riêng cho xác thực và bốn vai trò. Trước khi dựng database, nhờ người quản trị SQL Server tạo các login sau trong SSMS (Security → Logins → New Login), chọn SQL Server authentication:
 
-## 2. Cấu hình kết nối SQL Server
+| Login | Mục đích |
+| --- | --- |
+| `dbms_maintenance` | Dựng database và chạy các thao tác bảo trì. Cần quyền tạo database và quyền tạo đối tượng SQL; cách đơn giản cho máy demo là tạm cấp `sysadmin` trong lúc dựng DB. Không dùng login này cho backend. |
+| `dbms_app` | Xác thực tài khoản ứng dụng |
+| `dbms_student` | Kết nối của vai trò sinh viên |
+| `dbms_lecturer` | Kết nối của vai trò giảng viên |
+| `dbms_training` | Kết nối của vai trò phòng đào tạo |
+| `dbms_admin` | Kết nối của vai trò quản trị viên |
 
-Tạo file cấu hình riêng từ file mẫu:
+Đặt mật khẩu riêng cho từng login và lưu lại để điền vào `backend/.env`. Không gửi file `.env` cho người khác. Khi các login đã tồn tại, script dựng database sẽ tự ánh xạ bốn login runtime vào các role SQL tương ứng.
+
+## 3. Cấu hình kết nối
+
+Mở PowerShell tại thư mục gốc đã giải nén ZIP. Tạo file cấu hình từ mẫu:
 
 ```powershell
-if (-not (Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
+Copy-Item backend/.env.example backend/.env
 ```
 
-Mở `backend/.env` và điền thông tin SQL Server của máy cô vào `DB_SERVER`, `DB_PORT`, `DB_USER` và `DB_PASSWORD`. Đặt `DB_NAME=DBMS330284_CodexDemo`; tạo một `JWT_SECRET` riêng, tối thiểu 32 ký tự. File `.env` chứa mật khẩu nên không gửi lên Git.
+Sửa `backend/.env` và điền mật khẩu đã đặt. Cập nhật `DB_SERVER` nếu SQL Server không nằm trên máy này (ví dụ `localhost` hoặc tên máy\\SQLEXPRESS); giữ `DB_PORT=1433` nếu đang dùng cổng mặc định. `JWT_SECRET` cần là chuỗi bí mật ngẫu nhiên dài tối thiểu 32 ký tự.
 
-Ví dụ SQL Server cục bộ dùng cổng mặc định:
+Các giá trị phải điền gồm `DB_USER`/`DB_PASSWORD`, cặp user/password của bốn vai trò, `DB_MAINT_USER=dbms_maintenance`, `DB_MAINT_PASSWORD`, và `JWT_SECRET`. Đặt `DB_NAME=DBMS330284` để khớp với tên database trong các file SQL ở thư mục `DB`.
 
-```env
-DB_SERVER=localhost
-DB_PORT=1433
-DB_NAME=DBMS330284_CodexDemo
-DB_USER=ten_tai_khoan_sql
-DB_PASSWORD=mat_khau_sql
-PORT=5000
-NODE_ENV=development
-JWT_SECRET=thay_bang_chuoi_bi_mat_rieng_tu_32_ky_tu_tro_len
-JWT_EXPIRES_IN=24h
-```
+## 4. Cài thư viện và dựng database demo
 
-Tài khoản SQL dùng lúc dựng dữ liệu cần quyền tạo database. Nếu SQL Server cài theo named instance hoặc dùng cổng khác, cập nhật `DB_SERVER` và `DB_PORT` theo cấu hình trên máy.
+Mở SSMS, kết nối tới SQL Server của máy và mở `DB/00_Build_DBMS330284.sql`. Chạy toàn bộ file bằng F5 để tạo database, schema, quyền và dữ liệu mẫu. **Nếu database `DBMS330284` đã tồn tại, file này sẽ xóa và tạo lại database đó, gồm toàn bộ dữ liệu. Chỉ chạy trên database demo mới hoặc sau khi đã sao lưu dữ liệu cần giữ.**
 
-## 3. Cài thư viện và tạo dữ liệu demo
-
-Mở PowerShell tại thư mục gốc project, chạy lần lượt:
+Sau khi dựng xong, mở PowerShell tại thư mục gốc project và chạy:
 
 ```powershell
 cd backend
-npm install
+npm ci
 cd ..
-node backend/scripts/run_all_db_files.js --action build --database DBMS330284_CodexDemo
-node backend/scripts/run_all_db_files.js --action seed --database DBMS330284_CodexDemo
+node backend/scripts/run_all_db_files.js --action security --database DBMS330284
+node backend/scripts/run_all_db_files.js --action verify --database DBMS330284
 ```
 
-Hai lệnh SQL tạo cấu trúc và nạp dữ liệu mẫu vào database demo riêng. Có thể kiểm tra dữ liệu sau khi nạp:
+`security` nạp lại các stored procedure dùng bởi backend và áp quyền cho các SQL login runtime. `verify` kiểm tra cấu trúc và dữ liệu sau khi dựng.
 
-```powershell
-node backend/scripts/run_all_db_files.js --action verify --database DBMS330284_CodexDemo
-```
+## 5. Chạy ứng dụng
 
-Nếu database demo đã có bảng, lệnh `build` sẽ dừng để tránh ghi đè; `seed` cũng chỉ chạy trên database chưa có dữ liệu. Không đổi tên database trong các lệnh thành `DBMS330284` hoặc database đang có dữ liệu của nhóm.
-
-## 4. Khởi động và mở website
-
-Đảm bảo `DB_NAME` trong `backend/.env` đang là `DBMS330284_CodexDemo`, sau đó chạy:
+Đảm bảo `DB_NAME` trong `backend/.env` trùng tên database vừa dựng. Từ thư mục gốc:
 
 ```powershell
 cd backend
 npm start
 ```
 
-Giữ cửa sổ terminal này mở trong lúc demo. Mở trình duyệt tại [http://localhost:5000](http://localhost:5000). API kiểm tra trạng thái ở [http://localhost:5000/api/health](http://localhost:5000/api/health), kiểm tra kết nối database ở [http://localhost:5000/api/health/db](http://localhost:5000/api/health/db).
+Giữ cửa sổ PowerShell mở. Mở trình duyệt tại [http://localhost:5000](http://localhost:5000). Có thể kiểm tra API tại [http://localhost:5000/api/health](http://localhost:5000/api/health) và kết nối database tại [http://localhost:5000/api/health/db](http://localhost:5000/api/health/db). Dừng server bằng `Ctrl+C`.
 
-## 5. Tài khoản demo
-
-Tại trang đăng nhập, chọn một tài khoản có sẵn hoặc nhập:
+## 6. Tài khoản demo
 
 | Vai trò | Tên đăng nhập | Mật khẩu |
 | --- | --- | --- |
@@ -80,19 +72,21 @@ Tại trang đăng nhập, chọn một tài khoản có sẵn hoặc nhập:
 | Phòng đào tạo | `daotao01` | `123456` |
 | Quản trị viên | `admin` | `123456` |
 
-Đây là thông tin đăng nhập dùng riêng cho dữ liệu demo của đồ án.
+Đây là tài khoản của dữ liệu mẫu trong database demo.
 
-## 6. Tài liệu trong project
+## Xử lý lỗi thường gặp
 
-- [`docs/spec.md`](docs/spec.md): đặc tả hệ thống và cấu trúc project.
-- [`DB/README.md`](DB/README.md): hướng dẫn chi tiết các script SQL.
-- [`DB/database-design.md`](DB/database-design.md): thiết kế cơ sở dữ liệu.
-- [`sodo/index.html`](sodo/index.html): sơ đồ ERD tương tác; mở file này bằng trình duyệt.
-- [`DANH_SACH_TAI_KHOAN_TEST.md`](DANH_SACH_TAI_KHOAN_TEST.md): danh sách tài khoản mẫu.
+- **`Thiếu cấu hình bắt buộc`**: kiểm tra đã tạo `backend/.env`, điền đủ các biến runtime và `JWT_SECRET`.
+- **Lỗi đăng nhập/kết nối SQL**: kiểm tra SQL Server đang chạy, Mixed Mode/TCP-IP đã bật, `DB_SERVER`/`DB_PORT` đúng và mật khẩu trong `.env` khớp với login.
+- **Login không có quyền hoặc thiếu database user/role**: tạo đủ năm login runtime trước khi dựng DB; chạy lại `node backend/scripts/run_all_db_files.js --action security --database DBMS330284` bằng tài khoản bảo trì.
+- **Không mở được website**: để `npm start` chạy, kiểm tra cổng trong `PORT` và dùng đúng địa chỉ `http://localhost:<PORT>`.
+- **Không kết nối được package registry khi chạy `npm ci`**: máy cần Internet để tải thư viện theo `backend/package-lock.json`.
 
-## Xử lý nhanh khi không chạy được
+## Thành phần trong gói
 
-- **Lỗi kết nối database:** kiểm tra SQL Server đang chạy, TCP/IP/cổng kết nối, và giá trị `DB_SERVER`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` trong `backend/.env`.
-- **Thiếu cấu hình:** kiểm tra đã tạo `backend/.env` và điền `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`.
-- **Không mở được trang:** kiểm tra backend còn chạy trong terminal và truy cập đúng `http://localhost:5000`.
-- **Cổng 5000 đang được sử dụng:** đổi `PORT` trong `backend/.env`, rồi mở `http://localhost:<cổng_mới>`.
+- `backend/`: API, cấu hình mẫu, script dựng DB và mã kiểm thử.
+- `frontend/`: giao diện web được backend phục vụ.
+- `DB/`: schema, dữ liệu demo, quyền và kiểm tra SQL.
+- `docs/`: đặc tả và thiết kế database.
+
+Không gửi `backend/.env` cùng mã nguồn vì file này chứa thông tin đăng nhập SQL và JWT secret.

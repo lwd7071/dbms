@@ -30,8 +30,6 @@ const roleUsers = {
 
 const addIdentity = (user, activeRole = null) => mockPoolIdentities.set(user, {
   databaseUser: user,
-  appRuntime: 1,
-  appAuth: user === 'dbms_app' ? 1 : 0,
   sinhVien: activeRole === 'SINH_VIEN' ? 1 : 0,
   giangVien: activeRole === 'GIANG_VIEN' ? 1 : 0,
   daoTao: activeRole === 'DAO_TAO' ? 1 : 0,

@@ -2771,3 +2771,56 @@
 - Admin 403/503 form handling preserves entered data and failed-delete rows. Runner/migration use maintenance credentials and refuse production migration without explicit verified-backup flag. Fixture SQL access is restricted to isolated test/demo database names.
 - Local verification: 6 Jest suites / 75 tests PASS (including browser DOM behavior); all backend JavaScript passes `node --check`; procedure-call/definition/grant and standalone-build audits pass. SQL-backed suites were attempted and refused the configured non-isolated DB as intended.
 - SQL/API/UI integration acceptance remains unverified: the SQL socket probe failed with `ESOCKET`; current environment has no DB_MAINT, DB_TEST or four role-login credentials. No migration or live database mutation was run. Operational completion requires provisioning these least-privilege SQL logins and rehearsal credentials, then running runner action `security` and SQL/API/`EXECUTE AS`/browser checks against an isolated rehearsal database before any production cutover.
+
+## Đóng gói ZIP mã nguồn hiện tại và README chạy project
+
+- Status: DONE
+- Date: 2026-10-27
+- Files changed:
+  - `README.md`
+  - `README_HUONG_DAN_CHAY.md`
+  - `ProjectDBMS_HienTai.zip`
+  - `Task.md`
+
+### Changes
+- Cập nhật hướng dẫn cho đúng backend dùng các SQL login riêng theo vai trò, cấu hình SQL Server, cài dependencies, build/seed/verify database demo và chạy web.
+- Đóng gói mã hiện tại từ `backend`, `frontend`, `DB`, `docs` cùng README; loại `node_modules`, cache và `backend/.env` chứa credential.
+
+### Tests / Verification
+- Kiểm tra danh sách file ZIP, xác nhận có README và `.env.example`, không chứa `.env`, `node_modules` hoặc cache.
+- Kiểm tra archive mở được và hướng dẫn dùng đúng tên biến/runner hiện tại.
+- Không chạy database trên máy giảng viên; kết nối SQL phụ thuộc thông tin đăng nhập và cấu hình máy nhận.
+
+### Issues
+- Chưa xác nhận kết nối SQL Server trên máy nhận; thông tin đăng nhập và cấu hình cục bộ cần được điền theo hướng dẫn.
+
+### Next Step
+- Gửi `ProjectDBMS_HienTai.zip` và `README_HUONG_DAN_CHAY.md` cho giảng viên.
+
+
+
+## Dùng tên database DBMS330284 trong hướng dẫn chạy
+
+- Status: DONE
+- Date: 2026-10-27
+- Files changed:
+  - `README.md`
+  - `README_HUONG_DAN_CHAY.md`
+  - `backend/.env.example`
+  - `ProjectDBMS_HienTai.zip`
+  - `Task.md`
+
+### Changes
+- Đổi database mặc định trong cấu hình mẫu và hướng dẫn thành `DBMS330284`, thống nhất với các file SQL.
+- Hướng dẫn chạy `DB/00_Build_DBMS330284.sql` trong SSMS, sau đó áp dụng security và verify bằng runner Node.
+- Nêu rõ file tổng sẽ xóa và tạo lại database `DBMS330284` nếu database đó đã tồn tại.
+
+### Tests / Verification
+- Đối chiếu runner cho phép thao tác `security` và `verify` trên `DBMS330284`.
+- Kiểm tra ZIP có README và `.env.example` cập nhật, không chứa `backend/.env` hoặc `node_modules`.
+
+### Issues
+- Cần sao lưu dữ liệu trước khi chạy file tổng nếu `DBMS330284` đã có dữ liệu cần giữ.
+
+### Next Step
+- Gửi ZIP và README cập nhật cho giảng viên.

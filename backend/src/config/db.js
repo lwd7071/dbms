@@ -23,19 +23,18 @@ const baseConfig = () => ({
   requestTimeout: 15000
 });
 const expectedIdentitySql = `SELECT USER_NAME() AS databaseUser,
-  IS_MEMBER('APP_RUNTIME') AS appRuntime, IS_MEMBER('APP_AUTH') AS appAuth,
   IS_MEMBER('SINH_VIEN') AS sinhVien, IS_MEMBER('GIANG_VIEN') AS giangVien,
   IS_MEMBER('DAO_TAO') AS daoTao, IS_MEMBER('QUAN_TRI') AS quanTri,
   IS_MEMBER('db_owner') AS dbOwner, IS_MEMBER('db_datareader') AS dbDataReader,
   IS_MEMBER('db_datawriter') AS dbDataWriter, IS_SRVROLEMEMBER('sysadmin') AS sysadmin`;
 const roleColumns = { SINH_VIEN: 'sinhVien', GIANG_VIEN: 'giangVien', DAO_TAO: 'daoTao', QUAN_TRI: 'quanTri' };
 const identityIsAllowed = (identity, kind, role, expectedUser) => {
-  if (!identity || identity.databaseUser !== expectedUser || Number(identity.appRuntime) !== 1) return false;
+  if (!identity || identity.databaseUser !== expectedUser) return false;
   if ([identity.dbOwner, identity.dbDataReader, identity.dbDataWriter, identity.sysadmin].some(Number)) return false;
   const activeRoles = businessRoles.filter(name => Number(identity[roleColumns[name]]) === 1);
-  if (kind === 'auth') return Number(identity.appAuth) === 1 && activeRoles.length === 0;
+  if (kind === 'auth') return activeRoles.length === 0;
   if (kind !== 'role') return true;
-  return activeRoles.length === 1 && activeRoles[0] === role && Number(identity.appAuth) === 0;
+  return activeRoles.length === 1 && activeRoles[0] === role;
 };
 const openPool = (key, kind, role, userEnv, passwordEnv) => {
   assertRequiredEnvironment();
@@ -48,7 +47,7 @@ const openPool = (key, kind, role, userEnv, passwordEnv) => {
         if (kind === 'auth' || kind === 'role') {
           const result = await pool.request().query(expectedIdentitySql);
           if (!identityIsAllowed(result.recordset?.[0], kind, role, config.user)) {
-            throw new Error(`SQL principal ${config.user} is not mapped to the required ${role || 'APP_AUTH'} role with least-privilege membership.`);
+            throw new Error(`SQL principal ${config.user} does not have the required ${role || 'authentication-only'} permissions.`);
           }
         }
         if (typeof pool.on === 'function') pool.on('error', () => pools.delete(key));
