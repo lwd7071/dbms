@@ -8,24 +8,36 @@ IF DATABASE_PRINCIPAL_ID('QUAN_TRI') IS NULL CREATE ROLE QUAN_TRI;
 IF DATABASE_PRINCIPAL_ID('APP_RUNTIME') IS NULL CREATE ROLE APP_RUNTIME;
 GO
 
+-- Phụ trách: Trần Biểu Hương
 GRANT SELECT ON dbo.V_ThoiKhoaBieuSinhVien TO SINH_VIEN;
 GRANT SELECT ON dbo.V_BangDiemChiTiet TO SINH_VIEN;
 GRANT SELECT ON dbo.V_CauTrucChuongTrinhDAOTAO TO SINH_VIEN;
 GRANT EXECUTE ON dbo.SP_DangKyTinChi TO SINH_VIEN;
 GRANT EXECUTE ON dbo.SP_HuyDangKy TO SINH_VIEN;
 
+-- Phụ trách: Trần Biểu Hương
 GRANT SELECT ON dbo.V_BangDiemChiTiet TO GIANG_VIEN;
 GRANT SELECT ON dbo.V_CauTrucChuongTrinhDAOTAO TO GIANG_VIEN;
 GRANT EXECUTE ON dbo.FN_TinhDiemTongKet TO GIANG_VIEN;
 
+-- Phụ trách: Lê Trung Đông
 GRANT SELECT ON dbo.V_TaiKhoanNguoiDung TO DAO_TAO;
+
+-- Phụ trách: Lương Viết Vĩ Đông
 GRANT SELECT ON dbo.V_CauTrucChuongTrinhDAOTAO TO DAO_TAO;
+
+-- Phụ trách: Trần Biểu Hương
 GRANT SELECT ON dbo.V_BangDiemChiTiet TO DAO_TAO;
 GRANT SELECT ON dbo.V_ThoiKhoaBieuSinhVien TO DAO_TAO;
+
+-- Phụ trách: Âu Quốc Khánh
 GRANT SELECT ON dbo.V_HocPhiSinhVien TO DAO_TAO;
 GRANT SELECT ON dbo.LOGHOATDONG TO DAO_TAO;
+-- Phụ trách: Lê Trung Đông
 GRANT EXECUTE ON dbo.SP_TaoTaiKhoan TO DAO_TAO;
 GRANT EXECUTE ON dbo.SP_KhoaTaiKhoan TO DAO_TAO;
+
+-- Phụ trách: Âu Quốc Khánh
 GRANT EXECUTE ON dbo.SP_TinhHocPhiSinhVien TO DAO_TAO;
 GRANT EXECUTE ON dbo.SP_ThongKeHocPhi TO DAO_TAO;
 GRANT EXECUTE ON dbo.SP_ThongKeHocPhiTheoLop TO DAO_TAO;
@@ -33,6 +45,7 @@ GRANT EXECUTE ON dbo.SP_XacNhanThanhToan TO DAO_TAO;
 GRANT EXECUTE ON dbo.SP_TuChoiThanhToan TO DAO_TAO;
 GO
 
+-- Phụ trách: Lương Viết Vĩ Đông
 -- Quản trị demo vẫn cần DML danh mục; giao dịch nhạy cảm dùng các procedure nghiệp vụ.
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.KHOA TO QUAN_TRI;
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.NGANH TO QUAN_TRI;
@@ -40,27 +53,47 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.CHUONGTRINHDAOTAO TO QUAN_TRI;
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.MONHOC TO QUAN_TRI;
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.CTDT_MONHOC TO QUAN_TRI;
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.MONHOCTIENQUYET TO QUAN_TRI;
+
+-- Phụ trách: Lê Trung Đông
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.SINHVIEN TO QUAN_TRI;
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.GIANGVIEN TO QUAN_TRI;
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.TAIKHOAN TO QUAN_TRI;
 GRANT SELECT, INSERT, UPDATE ON dbo.HOCKY TO QUAN_TRI;
+
+-- Phụ trách: Trần Biểu Hương
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.LOPHOCPHAN TO QUAN_TRI;
 GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.LICHHOC TO QUAN_TRI;
 GRANT SELECT ON dbo.DANGKYTINCHI TO QUAN_TRI;
 GRANT SELECT ON dbo.DIEMSO TO QUAN_TRI;
+
+-- Phụ trách: Âu Quốc Khánh
 GRANT SELECT, INSERT, UPDATE ON dbo.MUCHOCPHI TO QUAN_TRI;
 GRANT SELECT ON dbo.HOCPHI TO QUAN_TRI;
 GRANT SELECT ON dbo.CHITIETTHANHTOAN TO QUAN_TRI;
 GRANT SELECT ON dbo.LOGHOATDONG TO QUAN_TRI;
+
+-- Phụ trách: Lê Trung Đông
 GRANT SELECT ON dbo.V_TaiKhoanNguoiDung TO QUAN_TRI;
+
+-- Phụ trách: Lương Viết Vĩ Đông
 GRANT SELECT ON dbo.V_CauTrucChuongTrinhDAOTAO TO QUAN_TRI;
+
+-- Phụ trách: Trần Biểu Hương
 GRANT SELECT ON dbo.V_ThoiKhoaBieuSinhVien TO QUAN_TRI;
 GRANT SELECT ON dbo.V_BangDiemChiTiet TO QUAN_TRI;
+
+-- Phụ trách: Âu Quốc Khánh
 GRANT SELECT ON dbo.V_HocPhiSinhVien TO QUAN_TRI;
+
+-- Phụ trách: Trần Biểu Hương
 GRANT EXECUTE ON dbo.SP_DangKyTinChi TO QUAN_TRI;
 GRANT EXECUTE ON dbo.SP_HuyDangKy TO QUAN_TRI;
+
+-- Phụ trách: Lê Trung Đông
 GRANT EXECUTE ON dbo.SP_TaoTaiKhoan TO QUAN_TRI;
 GRANT EXECUTE ON dbo.SP_KhoaTaiKhoan TO QUAN_TRI;
+
+-- Phụ trách: Âu Quốc Khánh
 GRANT EXECUTE ON dbo.SP_TinhHocPhiSinhVien TO QUAN_TRI;
 GRANT EXECUTE ON dbo.SP_ThongKeHocPhi TO QUAN_TRI;
 GRANT EXECUTE ON dbo.SP_ThongKeHocPhiTheoLop TO QUAN_TRI;
@@ -68,6 +101,7 @@ GRANT EXECUTE ON dbo.SP_XacNhanThanhToan TO QUAN_TRI;
 GRANT EXECUTE ON dbo.SP_TuChoiThanhToan TO QUAN_TRI;
 GO
 
+-- Phụ trách: Lương Viết Vĩ Đông
 -- Runtime receives read-only catalog access and explicitly named procedure permissions.
 GRANT SELECT ON dbo.V_TaiKhoanNguoiDung TO APP_RUNTIME;
 GRANT SELECT ON dbo.V_CauTrucChuongTrinhDAOTAO TO APP_RUNTIME;
@@ -93,6 +127,7 @@ DENY INSERT, UPDATE, DELETE ON dbo.CHITIETTHANHTOAN TO APP_RUNTIME;
 DENY INSERT, UPDATE, DELETE ON dbo.LOGHOATDONG TO APP_RUNTIME;
 GO
 
+-- Phụ trách: Lương Viết Vĩ Đông
 -- Map an already-provisioned low-privilege SQL login; this script never creates a password.
 IF SUSER_ID(N'dbms_app') IS NOT NULL AND DATABASE_PRINCIPAL_ID(N'dbms_app') IS NULL
     CREATE USER dbms_app FOR LOGIN dbms_app;
@@ -115,9 +150,11 @@ IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=D
 IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id=DATABASE_PRINCIPAL_ID('APP_RUNTIME') AND member_principal_id=DATABASE_PRINCIPAL_ID('dbms_test_runtime')) ALTER ROLE APP_RUNTIME ADD MEMBER dbms_test_runtime;
 GO
 
+-- Phụ trách: Âu Quốc Khánh
 DENY UPDATE, DELETE ON dbo.LOGHOATDONG TO SINH_VIEN;
 DENY UPDATE, DELETE ON dbo.LOGHOATDONG TO GIANG_VIEN;
 DENY UPDATE, DELETE ON dbo.LOGHOATDONG TO DAO_TAO;
+-- Phụ trách: Lê Trung Đông
 DENY SELECT ON dbo.TAIKHOAN TO SINH_VIEN;
 DENY SELECT ON dbo.TAIKHOAN TO GIANG_VIEN;
 DENY SELECT ON dbo.TAIKHOAN (PasswordHash) TO DAO_TAO;

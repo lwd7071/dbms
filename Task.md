@@ -2409,3 +2409,25 @@
 
 ### Next Step
 - Mở tab “Danh sách khoa” trong portal Quản trị để xác nhận giao diện với vai trò này.
+
+## Ghi chú người phụ trách trong phân quyền SQL
+
+- Status: DONE
+- Date: 2026-10-26
+- Files changed:
+  - `DB/11_Security.sql`
+  - `Task.md`
+
+### Changes
+- Thêm comment tên thành viên phụ trách theo từng nhóm quyền tài khoản, đăng ký/điểm, học phí/nhật ký và runtime.
+- Không thay đổi câu lệnh cấp quyền hay hành vi SQL.
+
+### Tests / Verification
+- Đối chiếu diff để xác nhận chỉ có comment mới trong SQL.
+- `git diff --check`: PASS.
+
+### Issues
+- None.
+
+### Next Step
+- Dùng file phân quyền đã ghi chú để phân chia phần trình bày.
